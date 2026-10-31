@@ -282,6 +282,18 @@ villager (村妇), Gao Liang's aide, and a city street:
 - **QC skipped one-shot clips.** A one-shot clip (a voice-over) has a one-panel strip, and `xstack` needs at least
   two inputs.
 
+**QC false positives, from looking at what it flagged:**
+- **"Daylight in a night scene" on lamp-lit rooms.** Qwen3-VL answers "is it dark?" with no for a warm-lit room.
+  It is now asked what lights the scene: daylight, night or lamp.
+- **The business card read as a caption** on every take, even when the prompt excluded printed props. A cut that
+  holds a prop with printed text is no longer judged on text.
+- **A vision check was lost to the fleet.** It was handed to a fleet server one second before the fleet powered
+  that server off. Retirement now happens under the job-assignment lock, and a failed vision call is retried on
+  another server.
+
+**Result:** every take of all four episodes judged again: 51 of 57 checks pass. E02 C3's empty insert was caught and
+re-taken; take 2 is clean. The other flags were the false positives above.
+
 ---
 
 ## 1. Market research: does this already exist?
