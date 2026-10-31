@@ -69,8 +69,15 @@ python -m sheelshort review <project> E01     # edit/E01/review.html
 and look before spending GPU time on the whole episode.)
 
 ## 5. Judge, then fix only what fails
-- **Casting:** look at every `assets/char_*.png` and `sheet_*.png`. Each `keep` anchor must be visible; if one is
-  wrong, fix the text to match the image or regenerate (delete the file and the `cast/...` job in `state.json`).
+- **Casting:** `cast` checks every close-up and sheet with the servers' vision model before anything is rendered.
+  The model describes the image blind, and the engine compares that with the bible: apparent age, sex, each `keep`
+  mark's feature and side, glasses, costume colours, and three matching views on a sheet.
+  - A failing image is regenerated (`qc.attempts`).
+  - Whatever text can fix is then aligned to the image in `bible.json` (mark side and position, stated age).
+  - Once a project has rendered clips, its existing images are canon and are never regenerated.
+
+  Read `assets/qc.json` and look at the images yourself. For what remains (e.g. "glasses missing"), regenerate
+  (delete the file and its `cast/...` job in `state.json`) or rewrite the character.
 - **Performance:** read `perform/<EP>/choice.json`. A line marked "no take passed" needs a new `act` or `say`, or
   more takes (`perform --only K1_2` after deleting its takes). Listen to the chosen takes in the review page.
 - **Picture:** sample frames of each clip (ffmpeg `-vf fps=1`) and look: faces match the close-ups, the right

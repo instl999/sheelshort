@@ -7,7 +7,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
-from sheelshort import assemble, h3prompt, perform, speech  # noqa: E402
+from sheelshort import assemble, h3prompt, perform, qc, speech  # noqa: E402
 from sheelshort.project import Project  # noqa: E402
 
 
@@ -60,11 +60,44 @@ def test_layout_retimes_cuts_to_acted_lines():
 
 def test_test_mode_takes_opening_clips():
     p = Project(ROOT / "projects/quancun")
-    p.limit_s = 20
+    p.limit_s, p.only_eps = 20, ["E01"]
     assert [c["id"] for c in p.clips("E01")] == ["C1", "C2"]          # 9 s + 6 s; C3 would overshoot to 26 s
     assert p.in_use()[0] == {"dahua", "xiaokang", "cunmin"} and p.master_name() == "master_20s"
     p.limit_s = None
     assert len(p.clips("E01")) == 7
+
+
+def _scratch_project(tmp, ch):
+    root = Path(tmp) / "p"
+    (root / "episodes").mkdir(parents=True)
+    (root / "bible.json").write_text(json.dumps({"characters": {"a": ch}, "locations": {}}))
+    return Project(root)
+
+
+def test_qc_reads_identity_marks():
+    ch = {"keep": "thin scar across the left eyebrow, mole above the left corner of the lips, black suit"}
+    marks = qc.expected_marks(ch)
+    assert [(m["kind"], m["side"], m["feature"]) for m in marks] == [("scar", "left", "eyebrow"), ("mole", "left", "lips")]
+    assert qc.written_age({"look": "a 32-year-old Chinese man", "role": "man"}) == 32
+    assert qc._colour_problems("a light-blue cotton shirt, grey trousers", "pale blue shirt", "clothing") == []
+    assert qc._colour_problems("a deep-red satin gown", "black dress", "clothing")
+
+
+def test_qc_aligns_text_to_the_image():
+    ch = {"name": "A", "role": "man", "look": "a 56-year-old man with a small mole on his right cheekbone and a thin scar across his left eyebrow.",
+          "keep": "small mole on the right cheekbone, thin scar across the left eyebrow", "face_detail": "a small mole on the right cheekbone, a thin scar across the left eyebrow."}
+    with tempfile.TemporaryDirectory() as tmp:
+        p = _scratch_project(tmp, ch)
+        left = qc.align_text(p, "a", [
+            "side: mole on the right cheekbone is on the person's left",
+            "missing or misplaced: scar across the left eyebrow (seen: scar on nose bridge (center of image))",
+            "looks about 72, written as 56", "glasses missing"],
+            {"face_marks": [{"kind": "scar", "on": "nose bridge", "image_side": "center"}]})
+        a = json.loads((p.root / "bible.json").read_text())["characters"]["a"]
+    assert left == ["glasses missing"]                                  # text cannot fix a missing object
+    assert "mole on his left cheekbone" in a["look"] and "left cheekbone" in a["keep"]
+    assert "scar on the nose bridge" in a["keep"] and "eyebrow" not in a["face_detail"]
+    assert a["look"].startswith("a 72-year-old")
 
 
 if __name__ == "__main__":

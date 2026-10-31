@@ -112,6 +112,7 @@ def main(argv: list[str] | None = None) -> None:
     p.limit_s = a.seconds
     only = set(a.only.split(",")) if a.only else None
     eps = [a.episode] if a.episode else p.episodes()
+    p.only_eps = [a.episode] if a.episode else None
 
     if a.command == "doctor":
         sys.exit(0 if doctor(p) else 1)

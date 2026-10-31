@@ -22,6 +22,15 @@ plate_size = [720, 1280]
 prop_size = [1024, 1024]
 sheet_long_side = 1664
 
+[qc]
+# Casting vision check: the servers' VLM compares each close-up and sheet with the bible (age, sex, identity anchors,
+# three matching views) and failing images are regenerated with a new seed, at most `attempts` times.
+enabled = true
+attempts = 3
+vlm_model = "Qwen3.8-27B-Q4_K_M.gguf"
+vlm_mmproj = "Qwen3.8-mmproj-BF16.gguf"
+vlm_chat_handler = "Qwen3.8"
+
 [perform]
 # Performance first: every line is acted by a speech engine in the character's cast voice, several takes are scored
 # (words, voice identity, expressiveness) and the best becomes the dialogue the picture is rendered to.

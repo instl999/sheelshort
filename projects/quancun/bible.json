@@ -6,9 +6,9 @@
     "xiaokang": {
       "name": "Li Xiaokang",
       "role": "young man",
-      "look": "a 24-year-old Chinese man with a lean, earnest face, straight dark brows, clear bright eyes, a small mole on his right cheekbone, short neat black hair, wearing a plain light-blue cotton shirt with the sleeves rolled to the elbows and dark-grey work trousers.",
-      "keep": "small mole on the right cheekbone, short neat black hair, light-blue shirt with rolled sleeves",
-      "face_detail": "a small mole on the right cheekbone, clear eyes, light sun-tan and fine skin texture.",
+      "look": "a 24-year-old Chinese man with a lean, earnest face, straight dark brows, clear bright eyes, a small mole on his left cheekbone, short neat black hair, wearing a plain light-blue cotton shirt with the sleeves rolled to the elbows and dark-grey work trousers.",
+      "keep": "small mole on the left cheekbone, short neat black hair, light-blue shirt with rolled sleeves",
+      "face_detail": "a small mole on the left cheekbone, clear eyes, light sun-tan and fine skin texture.",
       "hair": "short neat black hair",
       "costume": "a plain light-blue cotton shirt with sleeves rolled to the elbows, dark-grey work trousers, worn black canvas shoes",
       "voice_en": "in a clear young male voice",
@@ -18,9 +18,9 @@
     "dahua": {
       "name": "Wang Dahua",
       "role": "middle-aged woman",
-      "look": "a 52-year-old stout Chinese village woman with a round sunburned face, thin arched painted brows, narrow sharp eyes, a mole above the left corner of her lips, short permed curly black hair, wearing a bright floral red-and-pink short-sleeved blouse and black trousers.",
-      "keep": "mole above the left corner of the lips, short permed curly black hair, red-and-pink floral blouse",
-      "face_detail": "a mole above the left corner of her lips, thin painted brows, sunburned cheeks and fine wrinkles.",
+      "look": "a 52-year-old stout Chinese village woman with a round sunburned face, thin arched painted brows, narrow sharp eyes, a mole on the chin, short permed curly black hair, wearing a bright floral red-and-pink short-sleeved blouse and black trousers.",
+      "keep": "mole on the chin, short permed curly black hair, red-and-pink floral blouse",
+      "face_detail": "a mole on the chin, thin painted brows, sunburned cheeks and fine wrinkles.",
       "hair": "short permed curly black hair",
       "costume": "a bright floral red-and-pink short-sleeved blouse, loose black trousers, black cloth shoes",
       "voice_en": "in a loud, high-pitched middle-aged female voice",
@@ -42,7 +42,7 @@
     "shoudi": {
       "name": "Li Shoudi",
       "role": "old farmer",
-      "look": "a 56-year-old Chinese farmer with a thin, deeply lined sun-darkened face, sparse grey eyebrows, kind tired eyes, short cropped grey hair, wearing a faded olive-green work jacket over a white undershirt.",
+      "look": "a 72-year-old Chinese farmer with a thin, deeply lined sun-darkened face, sparse grey eyebrows, kind tired eyes, short cropped grey hair, wearing a faded olive-green work jacket over a white undershirt.",
       "keep": "short cropped grey hair, deeply lined face, faded olive-green work jacket",
       "face_detail": "deep wrinkles, sun-darkened skin, sparse grey eyebrows and tired, kind eyes.",
       "hair": "short cropped grey hair",
@@ -62,6 +62,30 @@
       "voice_en": "in a rough, loud male voice",
       "voice_design": "四十多岁的农村汉子，音色粗犷，中低音，嗓门大，普通话带北方乡音。",
       "voice_sample": "今天早上我去镇上卖了两筐鸡蛋，回来的时候顺路买了包烟。"
+    },
+    "erdaye": {
+      "name": "Second Grand-uncle",
+      "role": "old man",
+      "look": "a 78-year-old Chinese village elder with a gaunt, deeply wrinkled face, white stubble on his chin, sunken gentle eyes, a liver spot on his left temple, thin white hair cropped short, wearing a faded dark-blue Mao-style cotton jacket buttoned to the neck and leaning on a worn wooden walking cane.",
+      "keep": "liver spot on the left temple, thin white cropped hair, faded dark-blue buttoned cotton jacket, wooden walking cane",
+      "face_detail": "deep wrinkles, white chin stubble, a liver spot on the left temple and gentle sunken eyes.",
+      "hair": "thin white hair cropped short",
+      "costume": "a faded dark-blue Mao-style cotton jacket buttoned to the neck, black cloth trousers, black cloth shoes, a worn wooden walking cane",
+      "voice_en": "in a slow, frail old man's voice",
+      "voice_design": "七十多岁的农村老人，音色苍老、略带沙哑，音调偏低，北方乡音浓重，语速很慢。",
+      "voice_sample": "我在这村里活了七十多年，什么样的年景都见过，地里的事我心里有数。"
+    },
+    "fugui": {
+      "name": "Village Chief Fugui",
+      "role": "middle-aged man",
+      "look": "a 50-year-old Chinese village chief with a plump round face, small eyes, a receding hairline with thin combed-over black hair, a gold front tooth, wearing a plain brown zip-up jacket over a grey shirt.",
+      "keep": "receding hairline with thin combed-over black hair, gold front tooth, plain brown zip-up jacket",
+      "face_detail": "a plump round face, small eyes, a gold front tooth and a shiny forehead.",
+      "hair": "thin black hair combed over a receding hairline",
+      "costume": "a plain brown zip-up jacket over a grey shirt, dark trousers, black leather shoes",
+      "voice_en": "in a slightly nasal middle-aged male voice",
+      "voice_design": "五十岁左右的农村干部，音色略带鼻音，中音，普通话带北方口音，语速中等。",
+      "voice_sample": "乡亲们都放心，咱们村的事情，我这个当村长的肯定一碗水端平。"
     }
   },
   "locations": {
@@ -70,7 +94,30 @@
       "look": "an open dirt clearing at the entrance of a northern Chinese village on a sunny morning, a plain red-painted wooden archway gate with no lettering in the background, two folding tables pushed together with thick stacks of contract papers and a black pen, red plastic stools, low brick houses with grey tiled roofs and tall green cornfields beyond.",
       "keep": "the red village archway, the folding tables with contract stacks, the dirt clearing, the cornfields and brick houses behind",
       "time": "day"
+    },
+    "lijia_home": {
+      "name": "Li family farmhouse room at night",
+      "look": "a shabby northern Chinese farmhouse main room at night lit by a single bare warm-yellow bulb, whitewashed walls with peeling patches, a worn square wooden table with two wooden stools, an old wooden window looking onto a moonlit courtyard with an old jujube tree, a doorway to an inner room hung with a faded cloth curtain.",
+      "keep": "the bare warm-yellow bulb, the square wooden table, the window onto the moonlit courtyard and jujube tree, the inner doorway curtain",
+      "time": "night"
+    },
+    "restaurant_door": {
+      "name": "upscale restaurant entrance in the city",
+      "look": "the entrance of an upscale city restaurant in the afternoon, a polished granite facade, a glass revolving door with brass frames, two potted pine bonsai beside the steps, a black luxury SUV parked at the kerb, and a leafy plane tree on the pavement a few metres away.",
+      "keep": "the glass revolving door, the granite facade, the black SUV at the kerb, the plane tree on the pavement",
+      "time": "day"
     }
   },
-  "props": {}
+  "props": {
+    "money_box": {
+      "name": "old iron biscuit tin",
+      "look": "a dented old red iron biscuit tin, its lid open, packed with stacks of crumpled ten-, twenty- and fifty-yuan banknotes and a few small bank passbooks.",
+      "keep": "the dented red iron tin and the crumpled banknote stacks"
+    },
+    "contract": {
+      "name": "supplementary contract",
+      "look": "a thin stapled contract booklet of white A4 pages with a red seal stamp on the cover and dense printed paragraphs, slightly crumpled from handling.",
+      "keep": "the thin stapled white booklet with the red seal stamp"
+    }
+  }
 }

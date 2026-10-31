@@ -74,6 +74,7 @@ class Project:
         self._wf: dict[str, dict] = {}
         self._touched: set[str] = set()
         self.limit_s: float | None = None   # test mode: only the opening clips of each episode, about this long
+        self.only_eps: list[str] | None = None   # the episodes this run works on (casting covers only their characters)
 
     # ---------- files ----------
 
@@ -105,7 +106,7 @@ class Project:
         if not self.limit_s:
             return set(self.chars), set(self.bible["locations"]), set(self.bible.get("props", {}))
         chars, locs, props = set(), set(), set()
-        for ep in self.episodes():
+        for ep in self.only_eps or self.episodes():
             for clip in self.clips(ep):
                 locs.add(clip["location"])
                 for cut in clip["cuts"]:

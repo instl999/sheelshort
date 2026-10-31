@@ -6,10 +6,11 @@ prop_<id>.png, voice_<id>.wav + voice_<id>.txt transcript) replaces the generate
 """
 from __future__ import annotations
 
+import shutil
 from concurrent.futures import ThreadPoolExecutor
 
-from . import flows, media, speech
-from .project import AUDIO_EXTS, Project, load_json, log, save_json
+from . import flows, media, qc, speech
+from .project import AUDIO_EXTS, IMAGE_EXTS, Project, load_json, log, save_json
 
 VOICE_MAX_S = 12.0      # Drama 3 clones from the whole clip
 H3_VOICE_MAX_S = 7.0    # H3 keeps at most ~7 s of a reference clip
@@ -43,12 +44,6 @@ def images(p: Project) -> None:
     ic, b = p.cfg["images"], p.bible
     chars, locs, props = p.in_use()
     jobs = []
-    for c, ch in b["characters"].items():
-        if c in chars and not p.asset(f"char_{c}").exists():
-            key = f"cast/char_{c}"
-            jobs.append(lambda c=c, ch=ch, key=key: p.run_job(key, lambda cl: flows.t2i(
-                p.wf("t2i"), portrait_prompt(ch), *ic["portrait_size"], p.seed(key), f"sheelshort/char_{c}"),
-                p.d("assets"), f"char_{c}", ("images",), 900))
     for pr, v in b.get("props", {}).items():
         if pr in props and not p.asset(f"prop_{pr}").exists():
             key = f"cast/prop_{pr}"
@@ -61,20 +56,89 @@ def images(p: Project) -> None:
             jobs.append(lambda loc=loc, v=v, key=key: p.run_job(key, lambda cl: flows.t2i(
                 p.wf("t2i"), plate_prompt(v), *ic["plate_size"], p.seed(key), f"sheelshort/loc_{loc}"),
                 p.d("assets"), f"loc_{loc}", ("images",), 900))
+    jobs += [lambda c=c: character(p, c) for c in b["characters"] if c in chars]
     _parallel(p, jobs)
-    jobs = []
-    for c, ch in b["characters"].items():
-        if c not in chars or p.asset(f"sheet_{c}").exists():
+
+
+def character(p: Project, c: str) -> None:
+    """Close-up, then three-view sheet, each generated until the vision check passes (`qc.attempts` tries; the
+    candidate with the fewest problems is kept and its problems logged). A close-up the user supplied is checked and
+    reported but never replaced. A replaced close-up invalidates the sheet made from it."""
+    ic, ch = p.cfg["images"], p.chars[c]
+    qcfg = p.cfg.get("qc", {})
+    done = load_json(p.root / "assets" / "qc.json") if (p.root / "assets" / "qc.json").exists() else {}
+    portrait = p.asset(f"char_{c}")
+
+    def make_portrait(a: int):
+        key = f"cast/char_{c}" if a == 0 else f"cast/char_{c}_a{a}"
+        out = p.run_job(key, lambda cl: flows.t2i(p.wf("t2i"), portrait_prompt(ch), *ic["portrait_size"], p.seed(key),
+                                                  f"sheelshort/char_{c}"), p.d("assets", "candidates"), f"char_{c}_a{a}", ("images",), 900)
+        return out[0] if out else None
+
+    def make_sheet(a: int):
+        key = f"cast/sheet_{c}" if a == 0 else f"cast/sheet_{c}_a{a}"
+        out = p.run_job(key, lambda cl: flows.edit(p.wf("edit"), sheet_prompt(ch), [p.put(cl, portrait)], ic["sheet_long_side"],
+                                                   p.seed(key), f"sheelshort/sheet_{c}", aspect="16:9", background="#D9D9D9"),
+                        p.d("assets", "candidates"), f"sheet_{c}_a{a}", ("images",), 900)
+        return out[0] if out else None
+
+    user_portrait = p.supplied(f"char_{c}", IMAGE_EXTS) is not None
+    if not qcfg.get("enabled", True):
+        if not portrait.exists():
+            f = make_portrait(0)
+            f and shutil.copy2(f, portrait)
+    elif f"char_{c}" not in done:
+        canon = user_portrait or (qc.locked(p) and portrait.exists())   # only images already rendered are canon
+        changed = _best_of(p, f"char_{c}", portrait, make_portrait, qc.check_portrait, c,
+                           attempts=1 if canon else int(qcfg.get("attempts", 3)), keep_existing=True)
+        if changed:   # the sheet was made from the old close-up
+            p.asset(f"sheet_{c}").unlink(missing_ok=True)
+            done.pop(f"sheet_{c}", None)
+    qpath = p.root / "assets" / "qc.json"
+    rec = load_json(qpath).get(f"char_{c}") if qpath.exists() else None
+    if rec and rec["problems"] and rec.get("seen"):   # what regeneration could not fix, the text is aligned to (the image wins)
+        left = qc.align_text(p, c, rec["problems"], rec["seen"])
+        if left != rec["problems"]:
+            qc.report(p, {f"char_{c}": {**rec, "problems": left}})
+    sheet = p.asset(f"sheet_{c}")
+    if not portrait.exists():
+        log(f"sheet {c}: no close-up")
+        return
+    if not qcfg.get("enabled", True):
+        if not sheet.exists():
+            f = make_sheet(0)
+            f and shutil.copy2(f, sheet)
+    elif f"sheet_{c}" not in done or not sheet.exists():
+        _best_of(p, f"sheet_{c}", sheet, make_sheet, qc.check_sheet, c,
+                 attempts=1 if qc.locked(p) and sheet.exists() else int(qcfg.get("attempts", 3)), keep_existing=True)
+
+
+def _best_of(p: Project, name: str, dest, make, check, c: str, attempts: int, keep_existing: bool) -> bool:
+    """Check the existing file (attempt 0) or make candidates until one passes; install the best. Returns True when
+    `dest` was replaced."""
+    tried = []
+    for a in range(attempts):
+        f = dest if (a == 0 and keep_existing and dest.exists()) else make(a)
+        if f is None:
             continue
-        src = p.asset(f"char_{c}")
-        if not src.exists():
-            log(f"sheet {c}: no close-up yet")
-            continue
-        key = f"cast/sheet_{c}"
-        jobs.append(lambda c=c, ch=ch, key=key, src=src: p.run_job(key, lambda cl: flows.edit(
-            p.wf("edit"), sheet_prompt(ch), [p.put(cl, src)], ic["sheet_long_side"], p.seed(key), f"sheelshort/sheet_{c}",
-            aspect="16:9", background="#D9D9D9"), p.d("assets"), f"sheet_{c}", ("images",), 900))
-    _parallel(p, jobs)
+        try:
+            problems, raw = check(p, c, f, a)
+        except Exception as e:  # noqa: BLE001 - a failed check must not stop casting
+            log(f"qc {name}: check failed ({e}); keeping the image unchecked")
+            problems, raw = [f"unchecked: {e}"], {}
+        tried.append((len(problems), a, f, problems, raw))
+        log(f"qc {name} attempt {a}: " + ("pass" if not problems else "; ".join(problems)))
+        if not problems:
+            break
+    if not tried:
+        return False
+    n, a, f, problems, raw = min(tried, key=lambda t: (t[0], t[1]))
+    replaced = f != dest
+    if replaced:
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(f, dest)
+    qc.report(p, {name: {"attempt": a, "attempts": len(tried), "problems": problems, "seen": raw}})
+    return replaced
 
 
 def speakers(p: Project) -> list[str]:

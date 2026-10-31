@@ -18,9 +18,9 @@
     "luchen": {
       "name": "Lu Chen",
       "role": "man",
-      "look": "a 32-year-old Chinese man with a lean face, a sharp jawline, straight thick brows, narrow dark eyes, a thin pale diagonal scar across his left eyebrow, short black hair neatly swept back, clearly visible light stubble on his jaw and upper lip, wearing a black two-piece suit over a white shirt with an open collar and no tie.",
-      "keep": "thin scar across the left eyebrow, swept-back short black hair, light stubble, black suit and open-collar white shirt",
-      "face_detail": "a thin pale scar across the left eyebrow, light stubble, fine skin texture, and dark eyes catching a small lamp highlight.",
+      "look": "a 32-year-old Chinese man with a lean face, a sharp jawline, straight thick brows, narrow dark eyes, a thin pale diagonal scar on the nose bridge, short black hair neatly swept back, clearly visible light stubble on his jaw and upper lip, wearing a black two-piece suit over a white shirt with an open collar and no tie.",
+      "keep": "thin scar on the nose bridge, swept-back short black hair, light stubble, black suit and open-collar white shirt",
+      "face_detail": "a thin pale scar on the nose bridge, light stubble, fine skin texture, and dark eyes catching a small lamp highlight.",
       "voice_en": "in a deep, calm male voice",
       "voice_design": "三十二岁左右的成年男性，音色低沉、沉稳，普通话标准，语速偏慢，克制冷静，几乎没有情绪起伏，句尾干脆利落。",
       "voice_sample": "有些事情你不需要知道，你只需要相信我。今晚跟着我走，别回头，也别出声。",
