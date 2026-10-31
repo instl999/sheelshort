@@ -1,0 +1,300 @@
+{
+  "id": "E02",
+  "title": "卖身契",
+  "music": "rural Chinese drama underscore, erhu, pipa, low strings, growing tension, mid tempo, instrumental, no vocals",
+  "logline": "While the village celebrates its 200,000 yuan, Xiaokang finds the contract binds them to work for the developer forever - and the village turns on him.",
+  "clips": [
+    {
+      "id": "C1",
+      "location": "village_gate",
+      "summary": "At {loc}, the villagers celebrate the signed contracts: {cunmin} can't believe the money and {dahua} brags it was all her doing, while {xiaokang} stands apart reading the contract.",
+      "soundscape": "Outdoor village ambience: excited chatter and laughter of a crowd, wind through the cornfields.",
+      "cuts": [
+        {
+          "type": "CU",
+          "subjects": [
+            "cunmin"
+          ],
+          "speaker": "cunmin",
+          "line": "二十万！俺这辈子都没见过这么多钱！",
+          "say": "二十万！俺这辈子……都没见过这么多钱！",
+          "act": "兴奋得声音发颤，乐得合不拢嘴，嗓门很大",
+          "emotion": "joy",
+          "delivery": "beaming, waving the contract, voice cracking with excitement",
+          "composition": "Close-up of {cunmin} centre frame, grinning; a loose crowd of unnamed villagers in simple rural clothes fills the background, laughing.",
+          "action": "{cunmin} slaps the contract against his palm and laughs.",
+          "camera": "Static camera with a barely perceptible handheld breathing.",
+          "end": "",
+          "dur": 4
+        },
+        {
+          "type": "CU",
+          "subjects": [
+            "dahua"
+          ],
+          "speaker": "dahua",
+          "line": "这回要不是我牵头，你们谁能多拿这十五万？",
+          "say": "这回要不是我牵头……你们谁能多拿这十五万？",
+          "act": "被众人围着，得意洋洋，拖长了腔调炫耀",
+          "emotion": "joy",
+          "delivery": "smug and triumphant, chin raised",
+          "composition": "Close-up of {dahua} in the left two-thirds of the frame, flushed with pride; a loose crowd of unnamed villagers in simple rural clothes fills the background, nodding.",
+          "action": "{dahua} fans herself with the contract and looks around at her admirers.",
+          "camera": "Static camera with a barely perceptible handheld breathing.",
+          "end": "",
+          "dur": 5
+        },
+        {
+          "type": "MS",
+          "subjects": [
+            "xiaokang"
+          ],
+          "composition": "Medium shot of {xiaokang} standing alone at the edge of the crowd at {loc}, holding {contract}.",
+          "action": "{xiaokang} flips the pages of {contract} back and forth, frowning, then freezes, eyes widening at one page.",
+          "camera": "Slow push in, with small amplitude, at slow speed.",
+          "sound": "Pages rustle.",
+          "end": "His eyes are fixed on the page.",
+          "props": [
+            "contract"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "C2",
+      "location": "village_gate",
+      "summary": "{xiaokang}'s inner voice says he found a problem nobody noticed; he pushes into the middle of the crowd and tells them the contract is wrong.",
+      "soundscape": "Outdoor village ambience: wind through the cornfields, a dog barking far off. The crowd chatters, then falls silent.",
+      "cuts": [
+        {
+          "type": "VO",
+          "subjects": [
+            "xiaokang"
+          ],
+          "speaker": "xiaokang",
+          "line": "我看了三遍，发现了一个所有人都没注意到的问题。",
+          "say": "我看了三遍……发现了一个，所有人都没注意到的问题。",
+          "act": "低沉的内心独白，紧张，越说越确定",
+          "emotion": "calm",
+          "delivery": "tense, quiet, certain",
+          "composition": "Close-up of {xiaokang} looking down at {contract}, sunlight on his face.",
+          "action": "His finger stops on a line of the contract.",
+          "end": "The shot ends on his eyes in extreme close-up.",
+          "dur": 6,
+          "props": [
+            "contract"
+          ]
+        },
+        {
+          "type": "CU",
+          "subjects": [
+            "xiaokang"
+          ],
+          "speaker": "xiaokang",
+          "line": "大家先别急着高兴，这合同有问题！",
+          "say": "大家先别急着高兴——这合同有问题！",
+          "act": "挤到人群中间，举起合同大声喊，又急又响",
+          "emotion": "shout",
+          "delivery": "urgent, raising the contract high",
+          "composition": "Close-up of {xiaokang} in the middle of the crowd, centre frame; a loose crowd of unnamed villagers in simple rural clothes fills the background, turning toward him.",
+          "action": "{xiaokang} holds {contract} up above his head.",
+          "camera": "Static camera with a barely perceptible handheld breathing.",
+          "end": "",
+          "dur": 4,
+          "props": [
+            "contract"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "C3",
+      "location": "village_gate",
+      "summary": "{dahua} scoffs; {xiaokang} explains the contract has no time limit, so they must work for the developer as long as he wants; {cunmin} says he is just jealous.",
+      "soundscape": "Outdoor village ambience: wind through the cornfields, a dog barking far off. The crowd mutters.",
+      "cuts": [
+        {
+          "type": "CU",
+          "subjects": [
+            "dahua"
+          ],
+          "speaker": "dahua",
+          "line": "李家娃子，你又在闹什么？",
+          "say": "李家娃子……你又在闹什么？",
+          "act": "不耐烦，翻白眼，阴阳怪气",
+          "emotion": "contempt",
+          "delivery": "rolling her eyes, mocking",
+          "composition": "Close-up of {dahua}, arms folded, centre-left of the frame.",
+          "action": "{dahua} rolls her eyes and folds her arms.",
+          "camera": "Static camera with a barely perceptible handheld breathing.",
+          "end": ""
+        },
+        {
+          "type": "CU",
+          "subjects": [
+            "xiaokang"
+          ],
+          "speaker": "xiaokang",
+          "line": "合同上没写期限，他想让你干多久，你就得干多久！",
+          "say": "合同上没写期限！他想让你干多久……你就得干多久！",
+          "act": "急切地解释，指着合同那一页，恳切又着急",
+          "emotion": "plead",
+          "delivery": "urgent and pleading, jabbing a finger at the page",
+          "composition": "Close-up of {xiaokang} holding {contract} open toward the crowd, centre-right of the frame.",
+          "action": "{xiaokang} stabs his finger at a paragraph of {contract}.",
+          "camera": "Static camera with a barely perceptible handheld breathing.",
+          "end": "",
+          "dur": 5,
+          "props": [
+            "contract"
+          ]
+        },
+        {
+          "type": "CU",
+          "subjects": [
+            "cunmin"
+          ],
+          "speaker": "cunmin",
+          "line": "我看他就是眼红！自己选错了！",
+          "say": "我看他就是眼红！自己选错了！",
+          "act": "撇嘴冷笑，带头起哄",
+          "emotion": "contempt",
+          "delivery": "sneering, pointing at him",
+          "composition": "Close-up of {cunmin} in the right two-thirds of the frame; a loose crowd of unnamed villagers in simple rural clothes fills the background, nodding.",
+          "action": "{cunmin} points at Xiaokang and sneers.",
+          "camera": "Static camera with a barely perceptible handheld breathing.",
+          "end": ""
+        }
+      ]
+    },
+    {
+      "id": "C4",
+      "location": "village_gate",
+      "summary": "{dahua} accuses {xiaokang} and his father of wanting to ruin the village; he stands pale and shaking.",
+      "soundscape": "Outdoor village ambience: wind through the cornfields, a dog barking far off. The crowd's muttering grows louder.",
+      "cuts": [
+        {
+          "type": "OTS",
+          "over": "xiaokang",
+          "subjects": [
+            "dahua"
+          ],
+          "speaker": "dahua",
+          "line": "还是说，你和你爸都想着坏我们一个村的人？",
+          "say": "还是说……你和你爸，都想着坏我们一个村的人？",
+          "act": "双手抱胸，冷冷地逼问，一字一顿",
+          "emotion": "cold",
+          "delivery": "cold and accusing, eyes narrowed",
+          "composition": "{xiaokang}'s shoulder blurs in the right foreground; {dahua} faces the camera in the left third, arms folded.",
+          "action": "{dahua} leans in, arms folded, staring him down.",
+          "camera": "Static camera, focus held on the speaker's eyes.",
+          "end": "",
+          "dur": 5
+        },
+        {
+          "type": "CU",
+          "subjects": [
+            "xiaokang"
+          ],
+          "composition": "Close-up of {xiaokang} centre frame, the hostile crowd blurred behind him.",
+          "action": "{xiaokang}'s face drains of colour; his lips tremble and he grips {contract} until it crumples.",
+          "camera": "Static camera, slow push in, with small amplitude.",
+          "end": "He says nothing.",
+          "props": [
+            "contract"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "C5",
+      "location": "village_gate",
+      "summary": "Old {erdaye} limps up on his cane and pats {xiaokang}; when Xiaokang asks if even he doubts him, the old man says nothing is scarier than corn rotting in the field.",
+      "soundscape": "Outdoor village ambience: wind through the cornfields, a dog barking far off. The crowd goes quiet; a cane taps on the dirt.",
+      "cuts": [
+        {
+          "type": "MS",
+          "subjects": [
+            "erdaye",
+            "xiaokang"
+          ],
+          "composition": "Medium shot at {loc}: {erdaye} limps in from the left on his cane toward {xiaokang}, who stands in the right third.",
+          "action": "{erdaye} reaches {xiaokang} and pats his arm gently.",
+          "camera": "Static camera.",
+          "sound": "A cane taps on the dirt.",
+          "end": "They face each other."
+        },
+        {
+          "type": "CU",
+          "subjects": [
+            "xiaokang"
+          ],
+          "speaker": "xiaokang",
+          "line": "二大爷，连你也……",
+          "say": "二大爷……连你也……",
+          "act": "声音哽住，委屈又难以置信，说不下去",
+          "emotion": "broken",
+          "delivery": "hurt, voice catching",
+          "composition": "Close-up of {xiaokang} in the right two-thirds of the frame, eyes glistening.",
+          "action": "{xiaokang} looks at the old man, swallowing hard.",
+          "camera": "Static camera with a barely perceptible handheld breathing.",
+          "end": ""
+        },
+        {
+          "type": "CU",
+          "subjects": [
+            "erdaye"
+          ],
+          "speaker": "erdaye",
+          "line": "没有什么事，比玉米烂在地里一年没收成更吓人了。",
+          "say": "小康啊……没有什么事，比玉米烂在地里、一年都没收成，更吓人了。",
+          "act": "慢慢地、语重心长，苍老的声音里带着心疼",
+          "emotion": "sad",
+          "delivery": "slow and sorrowful, shaking his head",
+          "composition": "Close-up of {erdaye} in the left two-thirds of the frame, the cornfields soft behind him.",
+          "action": "{erdaye} shakes his head slowly, eyes full of pity.",
+          "camera": "Static camera with a barely perceptible handheld breathing.",
+          "end": "",
+          "dur": 6
+        }
+      ]
+    },
+    {
+      "id": "C6",
+      "location": "village_gate",
+      "summary": "{erdaye} sends {xiaokang} home to think it over; Xiaokang grips the contract, alone against the village.",
+      "soundscape": "Outdoor village ambience: wind through the cornfields, a dog barking far off.",
+      "cuts": [
+        {
+          "type": "CU",
+          "subjects": [
+            "erdaye"
+          ],
+          "speaker": "erdaye",
+          "line": "你先回去吧，好好想想。",
+          "say": "你先回去吧……好好想想。",
+          "act": "轻声、温和，拍拍他的手",
+          "emotion": "warm",
+          "delivery": "gentle, patting his hand",
+          "composition": "Close-up of {erdaye}, centre frame.",
+          "action": "{erdaye} pats Xiaokang's hand and turns away.",
+          "camera": "Static camera with a barely perceptible handheld breathing.",
+          "end": ""
+        },
+        {
+          "type": "CU",
+          "subjects": [
+            "xiaokang"
+          ],
+          "composition": "Close-up of {xiaokang} in three-quarter profile, the villagers drifting away behind him.",
+          "action": "{xiaokang} watches the old man go, then looks down at {contract}; his jaw sets.",
+          "camera": "Static camera, slow push in, with small amplitude.",
+          "end": "His eyes harden with resolve.",
+          "props": [
+            "contract"
+          ]
+        }
+      ]
+    }
+  ]
+}

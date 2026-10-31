@@ -140,6 +140,81 @@ Scene: two 12 s clips, each four 3 s cuts, Mandarin dialogue plus one voice-over
   2. **No background music** is requested in the prompt, but no one has confirmed it by listening yet. Add an automatic music detector to QC.
   3. **Face-identity metrics** need `insightface`, which needs C++ build tools on Windows. Run it on a server, or use a pure-Python alternative.
 
+### 0.7 Performance-first dialogue (2026-10-31, the `sheelshort/` engine)
+- **Problem.** In the predecessor project (drama-studio), the voices lacked emotion even when the faces showed it.
+  Its `docs/DIALOGUE_PERFORMANCE.md` traces three prompt-side causes:
+  1. delivery words in the voice definition;
+  2. stripped punctuation;
+  3. neutral voice references.
+
+  It also traces one hard limit: H3's own speech ceiling. Its best production fix (acted takes as `<Audio n>`
+  references) helped but stayed "better, not yet proper", because H3 still re-speaks every line.
+- **Decision.** The dialogue is performed before any picture exists, and the picture is rendered around it:
+  1. `perform` has Fish Audio Drama 3 act every line in the cast voice, from the episode's Chinese `act`
+     direction and the `say` text (rhythm in the punctuation), 4 takes per line.
+  2. Each take is scored on three counts: words (Whisper CER), identity (median pitch against the cast voice, with a
+     wider band for intense emotions), and expressiveness (semitones of pitch motion between syllables, capped for calm
+     lines). The best passing take is kept.
+  3. Cuts are retimed to the acted lines, so **shot timing comes from the performance**. A clip that would exceed
+     15 s is rejected, and the agent splits it.
+  4. `render` uses U22's tuned model chain with U24's T8 audio conditioning: `lock_source`, the drive track presented
+     as `<Audio 1>` (`partially_copy`), and a pass-2 audio lock (`flows.h3_drive`). Measured on the first clip: the
+     render's audio matches the drive track with envelope correlation 0.999, and mouths move inside the line windows.
+  5. Because the locked render is silent between lines, `render` adds an MMAudio foley/room-tone pass from the clip's
+     soundscape. `assemble` mixes it under the clean dialogue.
+  6. Subtitles come from the script at the exact placed line times.
+- **A/B kept.** `--dialogue h3` renders the M0 variant C (H3 voices itself) into `*_h3_t*.mp4`. `evaluate` compares
+  the two modes line by line.
+- **Owner verdict (2026-10-31, 归来 E01): the H3-voiced master is better.** The default is therefore
+  `render.dialogue = "h3"`. The performed track remains available as `"acted"`. The prompt-side lessons stay in both
+  modes: `say` with verbatim punctuation inside `<d>`, timbre-only voice definitions, and a per-line `delivery`. The
+  objective pitch-motion measure did not separate the modes either (acted median 2.2, H3 3.3, with H3 readings partly
+  unreliable), so the ear decides.
+- **Acted voice references (`voice_ref = "acted"`), owner verdict 2026-10-31.** In this mode H3 still voices the lines,
+  but each speaker's `<Audio N>` is built from acted Drama 3 takes of their own lines. The test used the same seeds,
+  so the reference was the only difference.
+  - 全村抢 opening: the cast-voice version is better.
+  - 归来: about the same, with a slight preference for the acted references.
+  - The pitch measures rose on 归来 K1/K1b and were mixed on K2.
+  - **Decision:** `voice_ref = "cast"` stays the default. Acted references cost an extra Drama 3 stage per episode for
+    no consistent gain. They stay available for scenes that need it.
+
+### 0.8 Throughput and autoscaling (2026-10-31)
+
+**Where the time goes.** Measured on 全村抢 E02 and E03, 13 clips:
+- **GPU generation:** about 5 min per clip (median).
+- **Getting each result back:** about 110 s per clip (median) when the server has already started its next job. The
+  file transfer itself takes 6–8 s; the rest is the server answering slowly while it starts that job.
+- **Local processing on the Mac:** small. Whisper subtitle alignment takes about 29 s per clip on the CPU; the final
+  encode takes about 30 s.
+
+**Fixes:**
+- Each server keeps one extra job queued, so the GPU never waits for a download.
+- Subtitle alignment runs while the other clips render.
+- The music bed renders alongside the clips.
+- The final encode uses a faster preset.
+
+A single episode now runs at about 3.8 min per clip on 2 servers, so it is GPU-bound.
+
+**Autoscaling (`sheelshort/fleet.py`).** The servers are AutoDL.Art instances of the app `spcwDDc6XW` (v9.48), so
+the app API can create, power on, power off and release identical servers. A test instance was running 40 s after the
+create call; the owner observed ComfyUI ready under 3 minutes after each power-on. Findings from the test:
+- A new instance may serve ComfyUI on 6008 instead of 6006, so both addresses are probed.
+- Beijing B had no free 5090 when the test instance was created.
+- The Northwest region's addresses are not reachable from this network.
+
+**Scaling rule (time-based, owner-approved).** Let n be the servers working, W the remaining GPU work (clips left ×
+`clip_minutes`) and S the startup cost of a new server, which is updated from each real scale-up. One more server
+saves (W − n·S) / (n·(n+1)) minutes, and the fleet adds one only when that saving is at least `min_gain_minutes`.
+The rule follows clip length and startup cost, and each additional server must save more than the last.
+
+**Job hand-out.** A server holds at most `[comfy] in_flight` = 2 of the run's jobs, one running and one queued, and
+the rest wait locally. Before this, the live E04 run queued all 7 clips onto the two existing servers at once, which
+would have left nothing for an added server.
+
+The owner's decision: **Beijing only.** The fleet adds servers while a render has clips waiting and powers off what
+it added when idle and at the end of the run. It never touches other instances.
+
 ---
 
 ## 1. Market research: does this already exist?
