@@ -145,6 +145,8 @@ def wrap(text: str) -> str:
             cut = min(bounds, key=lambda b: abs(b - mid)) if bounds else len(text) // 2
         except ImportError:
             cut = len(text) // 2
+    while cut < len(text) and text[cut] in "！？!?」”）)":   # closing punctuation ends the first row, never opens the second
+        cut += 1
     return text[:cut].rstrip() + r"\N" + text[cut:].lstrip()
 
 

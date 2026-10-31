@@ -32,6 +32,9 @@ def test_wrap_two_lines_at_punctuation():
     assert assemble.wrap("我签！") == "我签！"
     w = assemble.wrap("钱是死的，股份是活的，长远看股票更划算！")
     assert w.count(r"\N") == 1 and all(len(x) <= 14 for x in w.split(r"\N")) and "，" not in w
+    assert not any(row.startswith(("！", "？")) for row in assemble.wrap("我看他就是拿了开发商的好处！黄谷村不要叛徒，滚出去！").split(r"\N"))
+    assert "我们" in assemble.wrap("高老板，您可真是我们黄谷村的大恩人啊！").replace(r"\N", "|").split("|")[0] or \
+        "我们" in assemble.wrap("高老板，您可真是我们黄谷村的大恩人啊！").replace(r"\N", "|").split("|")[1]
 
 
 def test_acted_prompt_uses_dialogue_track_and_say():
@@ -252,8 +255,9 @@ def test_fleet_does_not_flap_after_an_idle_power_off():
     fl = Fleet(p, api=api, clock=lambda: now[0])
     fl.pending = 9
     _scaled(fl)
-    now[0] += 11 * 60
-    fl.pending = 8                                # still waiting, yet the new server got no work for 11 min
+    fl.pending = 8
+    fl.tick()                                     # the new server is idle from now on
+    now[0] += 11 * 60                             # still waiting, yet the new server got no work for 11 min
     _scaled(fl)
     assert api.calls[-1][0] == "power_off" and not fl.managed
     now[0] += 60

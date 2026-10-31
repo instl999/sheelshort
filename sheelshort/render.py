@@ -112,10 +112,16 @@ def clip_path(p: Project, ep: str, clip_id: str, take: int) -> Path:
 
 
 def run(p: Project, ep: str, only: set[str] | None = None, takes: int | None = None) -> None:
-    rc = p.cfg["render"]
+    """Render an episode in three phases, so the vision model and H3 do not keep evicting each other from the GPUs:
+    1. render every clip (`takes` each);
+    2. check every take (clipqc: dialogue locally, one vision call per clip, all together);
+    3. re-take the clips whose best take still has problems (up to `qc.max_takes`), check those, and record the best
+       take of every clip in edit/<EP>/picks.json."""
+    from . import clipqc
+    rc, qcfg = p.cfg["render"], p.cfg.get("qc", {})
     acted = rc["dialogue"] == "acted"
     n = takes or int(rc["takes"])
-    jobs = []
+    specs = []
     for clip in p.clips(ep):
         if only and clip["id"] not in only:
             continue
@@ -124,18 +130,21 @@ def run(p: Project, ep: str, only: set[str] | None = None, takes: int | None = N
         if acted:
             tm = load_json(p.root / "perform" / ep / "timing.json")[clip["id"]]
             track = Path(tm["track"]) if tm["track"] else None
-        job = (lambda clip=clip, text=text, refs=refs, files=files, seconds=seconds, track=track:
-               _clip(p, ep, clip, n, text, refs, files, seconds, track))
-        first = clip_path(p, ep, clip["id"], 1)
-        meta = first.with_suffix(".json")
-        job.renders = not first.exists() or (meta.exists() and load_json(meta).get("fingerprint")
-                                              != fingerprint(text, files, track, seconds))   # current take: QC only
-        jobs.append(job)
+        specs.append((clip, text, refs, files, seconds, track))
+
+    def take_job(spec, t):
+        clip, text, refs, files, seconds, track = spec
+        job = lambda: _render(p, ep, f"render/{ep}/{stem(p, clip['id'], t)}", clip, t, text, refs, files, seconds, track)  # noqa: E731
+        dest = clip_path(p, ep, clip["id"], t)
+        meta = dest.with_suffix(".json")
+        job.renders = not dest.exists() or (meta.exists() and load_json(meta).get("fingerprint")
+                                             != fingerprint(text, files, track, seconds))   # a current take needs no GPU
+        return job
+
+    jobs = [take_job(sp, t) for sp in specs for t in range(1, n + 1)]
     if p.cfg["edit"].get("music") == "auto" and not only:
         from . import assemble
         jobs.insert(0, lambda: assemble.score(p, ep))   # the music bed renders alongside the clips, not after them
-    # Two jobs in flight per server: the next clip is already queued when one finishes, so the GPU never waits for a
-    # result to come back through the tunnel (measured: ~110 s per clip under load, vs ~300 s of GPU time).
     fl = None
     if p.cfg.get("fleet", {}).get("enabled") and not p.dry:
         from .fleet import Fleet
@@ -150,42 +159,62 @@ def run(p: Project, ep: str, only: set[str] | None = None, takes: int | None = N
             if fl and getattr(job, "renders", False):
                 fl.job_done()
 
+    def pool(fn, items):
+        ex = ThreadPoolExecutor(max(1, workers))
+        try:
+            return list(ex.map(fn, items))
+        except BaseException:   # SIGTERM/Ctrl-C: drop the queued jobs instead of rendering them all before exiting
+            ex.shutdown(wait=False, cancel_futures=True)
+            raise
+        finally:
+            ex.shutdown(wait=False)
+
     try:
-        with ThreadPoolExecutor(max(1, workers)) as ex:
-            list(ex.map(run_one, jobs))
-    finally:
-        if fl:
-            fl.stop()   # every server the fleet added is powered off, also after a crash
+        pool(run_one, jobs)                                              # 1. render
+        if not (qcfg.get("clips", True) and not acted):
+            return
+        results: dict[str, list[tuple[int, dict]]] = {}
 
+        def check(item):
+            spec, t = item
+            dest = clip_path(p, ep, spec[0]["id"], t)
+            if dest.exists():
+                results.setdefault(spec[0]["id"], []).append((t, clipqc.check(p, ep, spec[0], dest)))
 
-def _clip(p, ep, clip, n, text, refs, files, seconds, track) -> None:
-    """Render `n` takes of a clip; with clip QC on (H3 dialogue), check each and re-take while the best still has
-    problems, up to `qc.max_takes`, then record the best take in edit/<EP>/picks.json for assembly."""
-    from . import clipqc
-    qcfg = p.cfg.get("qc", {})
-    check = qcfg.get("clips", True) and track is None
-    results = []
-    t = 0
-    while True:
-        t += 1
-        _render(p, ep, f"render/{ep}/{stem(p, clip['id'], t)}", clip, t, text, refs, files, seconds, track)
-        dest = clip_path(p, ep, clip["id"], t)
-        if check and dest.exists():
-            results.append((t, clipqc.check(p, ep, clip, dest)))
-        if t >= n and (not check or not results or not results[-1][1]["problems"]
-                       or t >= int(qcfg.get("max_takes", 2))):
-            break
-        if check and results and results[-1][1]["problems"]:
-            log(f"{ep} {clip['id']}: take {t} has problems; rendering take {t + 1}")
-    if results:
-        best = clipqc.best_take(results)
+        def existing(spec):
+            t, out = 1, []
+            while clip_path(p, ep, spec[0]["id"], t).exists():
+                out.append(t)
+                t += 1
+            return out
+
+        pool(check, [(sp, t) for sp in specs for t in existing(sp)])  # 2. check every take
+        for _round in range(int(qcfg.get("max_takes", 2))):
+            retake = []
+            for sp in specs:
+                rs = sorted(results.get(sp[0]["id"], []))
+                if rs and all(r["problems"] for _, r in rs) and len(rs) < int(qcfg.get("max_takes", 2)):
+                    log(f"{ep} {sp[0]['id']}: no clean take yet; rendering take {len(rs) + 1}")
+                    retake.append(take_job(sp, len(rs) + 1))
+                    retake[-1].spec, retake[-1].t = sp, len(rs) + 1
+            if not retake:
+                break
+            if fl:
+                fl.pending += sum(1 for j in retake if j.renders)
+            pool(run_one, retake)                                         # 3. re-take
+            pool(check, [(j.spec, j.t) for j in retake])
         with p.lock:
             picks_path = p.d("edit", ep) / "picks.json"
             picks = load_json(picks_path) if picks_path.exists() else {}
-            picks[clip["id"]] = best
+            for cid, rs in results.items():
+                best = clipqc.best_take(rs)
+                picks[cid] = best
+                left = dict(rs)[best]["problems"]
+                log(f"{ep} {cid}: using take {best}" + (f" (still: {'; '.join(left)})" if left else ""))
             save_json(picks_path, picks)
-        left = next(r for tk, r in results if tk == best)["problems"]
-        log(f"{ep} {clip['id']}: using take {best}" + (f" (still: {'; '.join(left)})" if left else ""))
+    finally:
+        if fl:
+            fl.stop()   # every server the fleet added is powered off, also after a crash
 
 
 def _render(p, ep, key, clip, t, text, refs, files, seconds, track) -> None:
