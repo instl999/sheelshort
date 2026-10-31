@@ -1,0 +1,1241 @@
+{
+ "187": {
+  "inputs": {
+   "lora_name": "Qwen/Qwen-Image-Edit-2511-Lightning-4steps-V1.0-bf16.safetensors",
+   "strength_model": 1,
+   "model": [
+    "188",
+    0
+   ]
+  },
+  "class_type": "LoraLoaderModelOnly",
+  "_meta": {
+   "title": "Load LoRA"
+  }
+ },
+ "188": {
+  "inputs": {
+   "unet_name": "qwen/qwen_image_edit_2511_fp8mixed.safetensors",
+   "weight_dtype": "fp8_e4m3fn"
+  },
+  "class_type": "UNETLoader",
+  "_meta": {
+   "title": "Load Diffusion Model"
+  }
+ },
+ "190": {
+  "inputs": {
+   "lora_name": "Qwen/Qwen-Image-Edit-F2P.safetensors",
+   "strength_model": 0.25,
+   "model": [
+    "187",
+    0
+   ]
+  },
+  "class_type": "LoraLoaderModelOnly",
+  "_meta": {
+   "title": "Load LoRA"
+  }
+ },
+ "191": {
+  "inputs": {
+   "clip_name": "qwen_2.5_vl_7b_fp8_scaled.safetensors",
+   "type": "qwen_image",
+   "device": "default"
+  },
+  "class_type": "CLIPLoader",
+  "_meta": {
+   "title": "Load CLIP"
+  }
+ },
+ "193": {
+  "inputs": {
+   "strength": 1,
+   "pre_cfg": false,
+   "model": [
+    "190",
+    0
+   ]
+  },
+  "class_type": "CFGNorm",
+  "_meta": {
+   "title": "CFGNorm"
+  }
+ },
+ "194": {
+  "inputs": {
+   "seed": 652331627499295,
+   "steps": 4,
+   "cfg": 1,
+   "sampler_name": "euler_ancestral",
+   "scheduler": "simple",
+   "denoise": 1,
+   "model": [
+    "193",
+    0
+   ],
+   "positive": [
+    "223",
+    0
+   ],
+   "negative": [
+    "222",
+    0
+   ],
+   "latent_image": [
+    "224",
+    0
+   ]
+  },
+  "class_type": "KSampler",
+  "_meta": {
+   "title": "KSampler"
+  }
+ },
+ "195": {
+  "inputs": {
+   "samples": [
+    "194",
+    0
+   ],
+   "vae": [
+    "201",
+    0
+   ]
+  },
+  "class_type": "VAEDecode",
+  "_meta": {
+   "title": "VAE Decode"
+  }
+ },
+ "196": {
+  "inputs": {
+   "mode": "always",
+   "volume": 1,
+   "file": "notify.mp3",
+   "any": [
+    "302",
+    0
+   ]
+  },
+  "class_type": "PlaySound|pysssss",
+  "_meta": {
+   "title": "PlaySound 🐍"
+  }
+ },
+ "197": {
+  "inputs": {
+   "images": [
+    "211",
+    0
+   ]
+  },
+  "class_type": "PreviewImage",
+  "_meta": {
+   "title": "Preview Image"
+  }
+ },
+ "198": {
+  "inputs": {
+   "image1_text": "original",
+   "image2_text": "Final Effect",
+   "image3_text": "",
+   "image4_text": "",
+   "reel_height": 1024,
+   "border": 32,
+   "image1": [
+    "219",
+    0
+   ],
+   "image2": [
+    "302",
+    0
+   ]
+  },
+  "class_type": "LayerUtility: ImageReel",
+  "_meta": {
+   "title": "LayerUtility: Image Reel"
+  }
+ },
+ "199": {
+  "inputs": {
+   "rgthree_comparer": {
+    "images": [
+     {
+      "name": "A",
+      "selected": true,
+      "url": "/api/view?filename=rgthree.compare._temp_mtbag_00001_.png&type=temp&subfolder=&rand=0.7860121034370143"
+     },
+     {
+      "name": "B",
+      "selected": true,
+      "url": "/api/view?filename=rgthree.compare._temp_mtbag_00002_.png&type=temp&subfolder=&rand=0.5945916338503664"
+     }
+    ]
+   },
+   "image_a": [
+    "302",
+    0
+   ],
+   "image_b": [
+    "219",
+    0
+   ]
+  },
+  "class_type": "Image Comparer (rgthree)",
+  "_meta": {
+   "title": "Image Comparer (rgthree)"
+  }
+ },
+ "201": {
+  "inputs": {
+   "vae_name": "qwen_image_vae.safetensors"
+  },
+  "class_type": "VAELoader",
+  "_meta": {
+   "title": "Load VAE"
+  }
+ },
+ "208": {
+  "inputs": {
+   "value": 1280
+  },
+  "class_type": "INTConstant",
+  "_meta": {
+   "title": "INT Constant"
+  }
+ },
+ "211": {
+  "inputs": {
+   "font_file": "Alibaba-PuHuiTi-Heavy.ttf",
+   "font_size": 30,
+   "border": 8,
+   "color_theme": "light",
+   "reel_1": [
+    "198",
+    0
+   ]
+  },
+  "class_type": "LayerUtility: ImageReelComposit",
+  "_meta": {
+   "title": "LayerUtility: Image Reel Composit"
+  }
+ },
+ "216": {
+  "inputs": {
+   "filename_prefix": "20261030/image_",
+   "images": [
+    "302",
+    0
+   ]
+  },
+  "class_type": "SaveImage",
+  "_meta": {
+   "title": "Save Image"
+  }
+ },
+ "218": {
+  "inputs": {
+   "prompt": "生成圣诞节主题，一位纯欲气质的美少女，图中人脸不变。松散的双麻花辫松散低扎(麻花辫上有布艺彩球装饰)，少女气质，无辜眼神，头戴圣诞树造型发饰，小型锥形圣诞树整齐地固定在头顶，顶部是金色五角星，树身装饰着彩色灯串、金色铃铛、蝴蝶结、红蓝金小球，布置精致饱满;冷白皮，白嫩嫩的皮肤如琼玉般嫩滑，纯欲朦胧滤镜，红棕系眼影自然晕染，双手拿着圣诞老人玩偶，圣诞氛围拉满，庆祝感眼神和表情，轻轻歪头，俏皮又好看的动作，可爱与性感并存，反差;蓬松微乱发丝与头顶圣诞树自然融合;穿毛绒红色上衣，质感柔软蓬松;暖白背景、棚拍柔光、低对比度、低饱和度、细腻胶片颗粒、轻微色散光晕、胶片柔光感、温暖治愈氛围、独特视角，非常规构图，70mm胶片人像风格绿色涂鸦描边人物轮廓，描边周围空白处还有各种圣诞节元素的可爱涂鸦，充满童趣和圣诞氛围的手绘拼贴感。人物轮廓荧光红绿金色虚线波点包裹，写满了 \"MERRYCHRISMAS\"可爱字体，中景"
+  },
+  "class_type": "CR Prompt Text",
+  "_meta": {
+   "title": "⚙️ CR Prompt Text"
+  }
+ },
+ "219": {
+  "inputs": {
+   "image": "123.png"
+  },
+  "class_type": "LoadImage",
+  "_meta": {
+   "title": "Load Image"
+  }
+ },
+ "220": {
+  "inputs": {
+   "prompt": "",
+   "clip": [
+    "191",
+    0
+   ],
+   "image1": [
+    "219",
+    0
+   ]
+  },
+  "class_type": "TextEncodeQwenImageEditPlus",
+  "_meta": {
+   "title": "Text Encode Qwen Image Edit Plus"
+  }
+ },
+ "221": {
+  "inputs": {
+   "prompt": [
+    "218",
+    0
+   ],
+   "clip": [
+    "191",
+    0
+   ],
+   "image1": [
+    "219",
+    0
+   ]
+  },
+  "class_type": "TextEncodeQwenImageEditPlus",
+  "_meta": {
+   "title": "Text Encode Qwen Image Edit Plus"
+  }
+ },
+ "222": {
+  "inputs": {
+   "conditioning": [
+    "220",
+    0
+   ],
+   "latent": [
+    "224",
+    0
+   ]
+  },
+  "class_type": "ReferenceLatent",
+  "_meta": {
+   "title": "Set Reference Latent"
+  }
+ },
+ "223": {
+  "inputs": {
+   "conditioning": [
+    "221",
+    0
+   ],
+   "latent": [
+    "224",
+    0
+   ]
+  },
+  "class_type": "ReferenceLatent",
+  "_meta": {
+   "title": "Set Reference Latent"
+  }
+ },
+ "224": {
+  "inputs": {
+   "pixels": [
+    "225",
+    0
+   ],
+   "vae": [
+    "201",
+    0
+   ]
+  },
+  "class_type": "VAEEncode",
+  "_meta": {
+   "title": "VAE Encode"
+  }
+ },
+ "225": {
+  "inputs": {
+   "aspect_ratio": "original",
+   "proportional_width": 1,
+   "proportional_height": 1,
+   "fit": "letterbox",
+   "method": "lanczos",
+   "round_to_multiple": "8",
+   "scale_to_side": "longest",
+   "scale_to_length": [
+    "208",
+    0
+   ],
+   "background_color": "#000000",
+   "image": [
+    "219",
+    0
+   ]
+  },
+  "class_type": "LayerUtility: ImageScaleByAspectRatio V2",
+  "_meta": {
+   "title": "LayerUtility: ImageScaleByAspectRatio V2"
+  }
+ },
+ "230": {
+  "inputs": {
+   "lora_name": "Qwen/Qwen-Image-Edit-2511-Lightning-4steps-V1.0-bf16.safetensors",
+   "strength_model": 1,
+   "model": [
+    "231",
+    0
+   ]
+  },
+  "class_type": "LoraLoaderModelOnly",
+  "_meta": {
+   "title": "Load LoRA"
+  }
+ },
+ "231": {
+  "inputs": {
+   "unet_name": "qwen/qwen_image_edit_2511_fp8mixed.safetensors",
+   "weight_dtype": "fp8_e4m3fn"
+  },
+  "class_type": "UNETLoader",
+  "_meta": {
+   "title": "Load Diffusion Model"
+  }
+ },
+ "232": {
+  "inputs": {
+   "lora_name": "Qwen/Qwen-Image-Edit-F2P.safetensors",
+   "strength_model": 0.25,
+   "model": [
+    "230",
+    0
+   ]
+  },
+  "class_type": "LoraLoaderModelOnly",
+  "_meta": {
+   "title": "Load LoRA"
+  }
+ },
+ "233": {
+  "inputs": {
+   "strength": 1,
+   "pre_cfg": false,
+   "model": [
+    "232",
+    0
+   ]
+  },
+  "class_type": "CFGNorm",
+  "_meta": {
+   "title": "CFGNorm"
+  }
+ },
+ "234": {
+  "inputs": {
+   "seed": 885809771246928,
+   "steps": 4,
+   "cfg": 1,
+   "sampler_name": "euler_ancestral",
+   "scheduler": "simple",
+   "denoise": 1,
+   "model": [
+    "233",
+    0
+   ],
+   "positive": [
+    "250",
+    0
+   ],
+   "negative": [
+    "251",
+    0
+   ],
+   "latent_image": [
+    "253",
+    0
+   ]
+  },
+  "class_type": "KSampler",
+  "_meta": {
+   "title": "KSampler"
+  }
+ },
+ "235": {
+  "inputs": {
+   "samples": [
+    "234",
+    0
+   ],
+   "vae": [
+    "246",
+    0
+   ]
+  },
+  "class_type": "VAEDecode",
+  "_meta": {
+   "title": "VAE Decode"
+  }
+ },
+ "236": {
+  "inputs": {
+   "mode": "always",
+   "volume": 1,
+   "file": "notify.mp3",
+   "any": [
+    "303",
+    0
+   ]
+  },
+  "class_type": "PlaySound|pysssss",
+  "_meta": {
+   "title": "PlaySound 🐍"
+  }
+ },
+ "237": {
+  "inputs": {
+   "images": [
+    "242",
+    0
+   ]
+  },
+  "class_type": "PreviewImage",
+  "_meta": {
+   "title": "Preview Image"
+  }
+ },
+ "238": {
+  "inputs": {
+   "image1_text": "original",
+   "image2_text": "Final Effect",
+   "image3_text": "",
+   "image4_text": "",
+   "reel_height": 1024,
+   "border": 32,
+   "image1": [
+    "261",
+    0
+   ],
+   "image2": [
+    "262",
+    0
+   ],
+   "image3": [
+    "303",
+    0
+   ]
+  },
+  "class_type": "LayerUtility: ImageReel",
+  "_meta": {
+   "title": "LayerUtility: Image Reel"
+  }
+ },
+ "239": {
+  "inputs": {
+   "rgthree_comparer": {
+    "images": [
+     {
+      "name": "A",
+      "selected": true,
+      "url": "/api/view?filename=rgthree.compare._temp_yfcqu_00001_.png&type=temp&subfolder=&rand=0.7738288274945174"
+     },
+     {
+      "name": "B",
+      "selected": true,
+      "url": "/api/view?filename=rgthree.compare._temp_yfcqu_00002_.png&type=temp&subfolder=&rand=0.8945799596828851"
+     }
+    ]
+   },
+   "image_a": [
+    "303",
+    0
+   ],
+   "image_b": [
+    "261",
+    0
+   ]
+  },
+  "class_type": "Image Comparer (rgthree)",
+  "_meta": {
+   "title": "Image Comparer (rgthree)"
+  }
+ },
+ "242": {
+  "inputs": {
+   "font_file": "Alibaba-PuHuiTi-Heavy.ttf",
+   "font_size": 30,
+   "border": 8,
+   "color_theme": "light",
+   "reel_1": [
+    "238",
+    0
+   ]
+  },
+  "class_type": "LayerUtility: ImageReelComposit",
+  "_meta": {
+   "title": "LayerUtility: Image Reel Composit"
+  }
+ },
+ "243": {
+  "inputs": {
+   "filename_prefix": "20261030/image_",
+   "images": [
+    "303",
+    0
+   ]
+  },
+  "class_type": "SaveImage",
+  "_meta": {
+   "title": "Save Image"
+  }
+ },
+ "245": {
+  "inputs": {
+   "value": 1280
+  },
+  "class_type": "INTConstant",
+  "_meta": {
+   "title": "INT Constant"
+  }
+ },
+ "246": {
+  "inputs": {
+   "vae_name": "qwen_image_vae.safetensors"
+  },
+  "class_type": "VAELoader",
+  "_meta": {
+   "title": "Load VAE"
+  }
+ },
+ "247": {
+  "inputs": {
+   "prompt": "",
+   "clip": [
+    "256",
+    0
+   ],
+   "image1": [
+    "261",
+    0
+   ],
+   "image2": [
+    "262",
+    0
+   ]
+  },
+  "class_type": "TextEncodeQwenImageEditPlus",
+  "_meta": {
+   "title": "Text Encode Qwen Image Edit Plus"
+  }
+ },
+ "248": {
+  "inputs": {
+   "aspect_ratio": "original",
+   "proportional_width": 1,
+   "proportional_height": 1,
+   "fit": "letterbox",
+   "method": "lanczos",
+   "round_to_multiple": "8",
+   "scale_to_side": "longest",
+   "scale_to_length": [
+    "245",
+    0
+   ],
+   "background_color": "#000000",
+   "image": [
+    "261",
+    0
+   ]
+  },
+  "class_type": "LayerUtility: ImageScaleByAspectRatio V2",
+  "_meta": {
+   "title": "LayerUtility: ImageScaleByAspectRatio V2"
+  }
+ },
+ "249": {
+  "inputs": {
+   "prompt": [
+    "258",
+    0
+   ],
+   "clip": [
+    "256",
+    0
+   ],
+   "image1": [
+    "261",
+    0
+   ],
+   "image2": [
+    "262",
+    0
+   ]
+  },
+  "class_type": "TextEncodeQwenImageEditPlus",
+  "_meta": {
+   "title": "Text Encode Qwen Image Edit Plus"
+  }
+ },
+ "250": {
+  "inputs": {
+   "conditioning": [
+    "249",
+    0
+   ],
+   "latent": [
+    "253",
+    0
+   ]
+  },
+  "class_type": "ReferenceLatent",
+  "_meta": {
+   "title": "Set Reference Latent"
+  }
+ },
+ "251": {
+  "inputs": {
+   "conditioning": [
+    "247",
+    0
+   ],
+   "latent": [
+    "253",
+    0
+   ]
+  },
+  "class_type": "ReferenceLatent",
+  "_meta": {
+   "title": "Set Reference Latent"
+  }
+ },
+ "253": {
+  "inputs": {
+   "pixels": [
+    "248",
+    0
+   ],
+   "vae": [
+    "246",
+    0
+   ]
+  },
+  "class_type": "VAEEncode",
+  "_meta": {
+   "title": "VAE Encode"
+  }
+ },
+ "256": {
+  "inputs": {
+   "clip_name": "qwen_2.5_vl_7b_fp8_scaled.safetensors",
+   "type": "qwen_image",
+   "device": "default"
+  },
+  "class_type": "CLIPLoader",
+  "_meta": {
+   "title": "Load CLIP"
+  }
+ },
+ "258": {
+  "inputs": {
+   "prompt": "女生抱着这只小猫"
+  },
+  "class_type": "CR Prompt Text",
+  "_meta": {
+   "title": "⚙️ CR Prompt Text"
+  }
+ },
+ "261": {
+  "inputs": {
+   "image": "2.png"
+  },
+  "class_type": "LoadImage",
+  "_meta": {
+   "title": "Load Image"
+  }
+ },
+ "262": {
+  "inputs": {
+   "image": "507afdf6b2b62203e5fc42e356aa41e5.jpg"
+  },
+  "class_type": "LoadImage",
+  "_meta": {
+   "title": "Load Image"
+  }
+ },
+ "264": {
+  "inputs": {
+   "lora_name": "Qwen/Qwen-Image-Edit-2511-Lightning-4steps-V1.0-bf16.safetensors",
+   "strength_model": 1,
+   "model": [
+    "265",
+    0
+   ]
+  },
+  "class_type": "LoraLoaderModelOnly",
+  "_meta": {
+   "title": "Load LoRA"
+  }
+ },
+ "265": {
+  "inputs": {
+   "unet_name": "qwen/qwen_image_edit_2511_fp8mixed.safetensors",
+   "weight_dtype": "fp8_e4m3fn"
+  },
+  "class_type": "UNETLoader",
+  "_meta": {
+   "title": "Load Diffusion Model"
+  }
+ },
+ "266": {
+  "inputs": {
+   "lora_name": "Qwen/Qwen-Image-Edit-F2P.safetensors",
+   "strength_model": 0.25,
+   "model": [
+    "264",
+    0
+   ]
+  },
+  "class_type": "LoraLoaderModelOnly",
+  "_meta": {
+   "title": "Load LoRA"
+  }
+ },
+ "267": {
+  "inputs": {
+   "strength": 1,
+   "pre_cfg": false,
+   "model": [
+    "266",
+    0
+   ]
+  },
+  "class_type": "CFGNorm",
+  "_meta": {
+   "title": "CFGNorm"
+  }
+ },
+ "268": {
+  "inputs": {
+   "seed": 573793386523372,
+   "steps": 4,
+   "cfg": 1,
+   "sampler_name": "euler_ancestral",
+   "scheduler": "simple",
+   "denoise": 1,
+   "model": [
+    "267",
+    0
+   ],
+   "positive": [
+    "281",
+    0
+   ],
+   "negative": [
+    "282",
+    0
+   ],
+   "latent_image": [
+    "288",
+    0
+   ]
+  },
+  "class_type": "KSampler",
+  "_meta": {
+   "title": "KSampler"
+  }
+ },
+ "269": {
+  "inputs": {
+   "samples": [
+    "268",
+    0
+   ],
+   "vae": [
+    "294",
+    0
+   ]
+  },
+  "class_type": "VAEDecode",
+  "_meta": {
+   "title": "VAE Decode"
+  }
+ },
+ "270": {
+  "inputs": {
+   "mode": "always",
+   "volume": 1,
+   "file": "notify.mp3",
+   "any": [
+    "305",
+    0
+   ]
+  },
+  "class_type": "PlaySound|pysssss",
+  "_meta": {
+   "title": "PlaySound 🐍"
+  }
+ },
+ "271": {
+  "inputs": {
+   "images": [
+    "276",
+    0
+   ]
+  },
+  "class_type": "PreviewImage",
+  "_meta": {
+   "title": "Preview Image"
+  }
+ },
+ "272": {
+  "inputs": {
+   "image1_text": "original",
+   "image2_text": "Final Effect",
+   "image3_text": "",
+   "image4_text": "",
+   "reel_height": 1024,
+   "border": 32,
+   "image1": [
+    "289",
+    0
+   ],
+   "image2": [
+    "292",
+    0
+   ],
+   "image3": [
+    "297",
+    0
+   ],
+   "image4": [
+    "305",
+    0
+   ]
+  },
+  "class_type": "LayerUtility: ImageReel",
+  "_meta": {
+   "title": "LayerUtility: Image Reel"
+  }
+ },
+ "273": {
+  "inputs": {
+   "rgthree_comparer": {
+    "images": [
+     {
+      "name": "A",
+      "selected": true,
+      "url": "/api/view?filename=rgthree.compare._temp_ouixp_00001_.png&type=temp&subfolder=&rand=0.07219688286678094"
+     },
+     {
+      "name": "B",
+      "selected": true,
+      "url": "/api/view?filename=rgthree.compare._temp_ouixp_00002_.png&type=temp&subfolder=&rand=0.6269792544438489"
+     }
+    ]
+   },
+   "image_a": [
+    "305",
+    0
+   ],
+   "image_b": [
+    "289",
+    0
+   ]
+  },
+  "class_type": "Image Comparer (rgthree)",
+  "_meta": {
+   "title": "Image Comparer (rgthree)"
+  }
+ },
+ "276": {
+  "inputs": {
+   "font_file": "Alibaba-PuHuiTi-Heavy.ttf",
+   "font_size": 30,
+   "border": 8,
+   "color_theme": "light",
+   "reel_1": [
+    "272",
+    0
+   ]
+  },
+  "class_type": "LayerUtility: ImageReelComposit",
+  "_meta": {
+   "title": "LayerUtility: Image Reel Composit"
+  }
+ },
+ "277": {
+  "inputs": {
+   "filename_prefix": "20261030/image_",
+   "images": [
+    "305",
+    0
+   ]
+  },
+  "class_type": "SaveImage",
+  "_meta": {
+   "title": "Save Image"
+  }
+ },
+ "278": {
+  "inputs": {
+   "value": 1280
+  },
+  "class_type": "INTConstant",
+  "_meta": {
+   "title": "INT Constant"
+  }
+ },
+ "279": {
+  "inputs": {
+   "prompt": "",
+   "clip": [
+    "286",
+    0
+   ],
+   "image1": [
+    "289",
+    0
+   ],
+   "image2": [
+    "292",
+    0
+   ],
+   "image3": [
+    "297",
+    0
+   ]
+  },
+  "class_type": "TextEncodeQwenImageEditPlus",
+  "_meta": {
+   "title": "Text Encode Qwen Image Edit Plus"
+  }
+ },
+ "280": {
+  "inputs": {
+   "prompt": [
+    "290",
+    0
+   ],
+   "clip": [
+    "286",
+    0
+   ],
+   "image1": [
+    "289",
+    0
+   ],
+   "image2": [
+    "292",
+    0
+   ],
+   "image3": [
+    "297",
+    0
+   ]
+  },
+  "class_type": "TextEncodeQwenImageEditPlus",
+  "_meta": {
+   "title": "Text Encode Qwen Image Edit Plus"
+  }
+ },
+ "281": {
+  "inputs": {
+   "conditioning": [
+    "280",
+    0
+   ],
+   "latent": [
+    "288",
+    0
+   ]
+  },
+  "class_type": "ReferenceLatent",
+  "_meta": {
+   "title": "Set Reference Latent"
+  }
+ },
+ "282": {
+  "inputs": {
+   "conditioning": [
+    "279",
+    0
+   ],
+   "latent": [
+    "288",
+    0
+   ]
+  },
+  "class_type": "ReferenceLatent",
+  "_meta": {
+   "title": "Set Reference Latent"
+  }
+ },
+ "286": {
+  "inputs": {
+   "clip_name": "qwen_2.5_vl_7b_fp8_scaled.safetensors",
+   "type": "qwen_image",
+   "device": "default"
+  },
+  "class_type": "CLIPLoader",
+  "_meta": {
+   "title": "Load CLIP"
+  }
+ },
+ "288": {
+  "inputs": {
+   "pixels": [
+    "291",
+    0
+   ],
+   "vae": [
+    "294",
+    0
+   ]
+  },
+  "class_type": "VAEEncode",
+  "_meta": {
+   "title": "VAE Encode"
+  }
+ },
+ "289": {
+  "inputs": {
+   "image": "3A07B28F2BF7AC5EA27EF962D0B08F62.png"
+  },
+  "class_type": "LoadImage",
+  "_meta": {
+   "title": "Load Image"
+  }
+ },
+ "290": {
+  "inputs": {
+   "prompt": "图一女生抱着图二的小猫，穿着图三的衣服"
+  },
+  "class_type": "CR Prompt Text",
+  "_meta": {
+   "title": "⚙️ CR Prompt Text"
+  }
+ },
+ "291": {
+  "inputs": {
+   "aspect_ratio": "original",
+   "proportional_width": 1,
+   "proportional_height": 1,
+   "fit": "letterbox",
+   "method": "lanczos",
+   "round_to_multiple": "8",
+   "scale_to_side": "longest",
+   "scale_to_length": [
+    "278",
+    0
+   ],
+   "background_color": "#000000",
+   "image": [
+    "289",
+    0
+   ]
+  },
+  "class_type": "LayerUtility: ImageScaleByAspectRatio V2",
+  "_meta": {
+   "title": "LayerUtility: ImageScaleByAspectRatio V2"
+  }
+ },
+ "292": {
+  "inputs": {
+   "image": "3aeb023666f9fbc9af5124fa7e2e39dbb068f4a17dc9f597271ec64ea10b7b55.png"
+  },
+  "class_type": "LoadImage",
+  "_meta": {
+   "title": "Load Image"
+  }
+ },
+ "294": {
+  "inputs": {
+   "vae_name": "qwen_image_vae.safetensors"
+  },
+  "class_type": "VAELoader",
+  "_meta": {
+   "title": "Load VAE"
+  }
+ },
+ "297": {
+  "inputs": {
+   "image": "507afdf6b2b62203e5fc42e356aa41e5.jpg"
+  },
+  "class_type": "LoadImage",
+  "_meta": {
+   "title": "Load Image"
+  }
+ },
+ "301": {
+  "inputs": {
+   "clean_file_cache": true,
+   "clean_processes": true,
+   "clean_dlls": true,
+   "retry_times": 3,
+   "anything": [
+    "195",
+    0
+   ]
+  },
+  "class_type": "RAMCleanup",
+  "_meta": {
+   "title": "释放内存"
+  }
+ },
+ "302": {
+  "inputs": {
+   "offload_model": true,
+   "offload_cache": true,
+   "anything": [
+    "301",
+    0
+   ]
+  },
+  "class_type": "VRAMCleanup",
+  "_meta": {
+   "title": "释放显存"
+  }
+ },
+ "303": {
+  "inputs": {
+   "offload_model": true,
+   "offload_cache": true,
+   "anything": [
+    "304",
+    0
+   ]
+  },
+  "class_type": "VRAMCleanup",
+  "_meta": {
+   "title": "释放显存"
+  }
+ },
+ "304": {
+  "inputs": {
+   "clean_file_cache": true,
+   "clean_processes": true,
+   "clean_dlls": true,
+   "retry_times": 3,
+   "anything": [
+    "235",
+    0
+   ]
+  },
+  "class_type": "RAMCleanup",
+  "_meta": {
+   "title": "释放内存"
+  }
+ },
+ "305": {
+  "inputs": {
+   "offload_model": true,
+   "offload_cache": true,
+   "anything": [
+    "306",
+    0
+   ]
+  },
+  "class_type": "VRAMCleanup",
+  "_meta": {
+   "title": "释放显存"
+  }
+ },
+ "306": {
+  "inputs": {
+   "clean_file_cache": true,
+   "clean_processes": true,
+   "clean_dlls": true,
+   "retry_times": 3,
+   "anything": [
+    "269",
+    0
+   ]
+  },
+  "class_type": "RAMCleanup",
+  "_meta": {
+   "title": "释放内存"
+  }
+ }
+}

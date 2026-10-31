@@ -1,0 +1,5 @@
+httpx>=0.28
+# Optional metrics; each is skipped with a note if missing.
+faster-whisper>=1.1      # ASR: dialogue error rate, per-line timing, tighter voice references
+resemblyzer>=0.1.4       # speaker embeddings: voice consistency across clips
+# insightface + onnxruntime + opencv-python  # face identity scores (needs C++ build tools on Windows)

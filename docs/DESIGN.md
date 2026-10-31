@@ -1,0 +1,486 @@
+# sheelshort: Design Concept
+
+**Status:** Draft v0.2 · 2026-10-30. §0 records decisions that supersede earlier sections.
+**One-liner:** An agent-driven toolkit that turns a script into finished, vertical micro-drama episodes, using MiniMax H3 for video and ComfyUI for images. The output targets PineDrama-style series.
+
+---
+
+## 0. Decisions and requirements since v0.1
+
+### 0.1 Confirmed setup
+- **Market:** Chinese-language short drama first. **No automated upload.** The pipeline ends at the delivery package.
+- **Compute:** the user's two rented ComfyUI servers. Each is an RTX 5090 (32 GB) running ComfyUI 0.42.1 with about 330 ready-made workflows. **H3 runs locally inside ComfyUI** (`MiniMaxH3ReferenceToVideo` and related nodes), so no MiniMax API key is needed. Jobs go to the least busy server. The MiniMax cloud API adapter (`spike/h3.py`) stays as an optional backend.
+- **Default video workflow: U22** (`U22-YZ金鱼-MiniMax-H3-多参考生视频-优化版`). It is two-pass reference-to-video with a turbo LoRA and a 1.3× latent upscale, and takes references by filename through `ZealmanH3PickReferenceMedia` (≤9 images, ≤3 videos, ≤3 audio clips). Variants of it are kept for comparison: `u22_selflift` (终极篇, SelfLift sampler with fight/drama LoRA switches) and `u22_full`.
+- **Helper workflows on the servers:**
+
+| Job | Workflow |
+|---|---|
+| Close-ups, props, location plates | `C01-文生图-Zimage基础版` (Z-Image turbo + AWPortrait LoRA) |
+| Three-view sheets, keyframes, image repairs | `Y01-图像修改千问2511` (Qwen-Image-Edit 2511, extended to 3 inputs) |
+| Designed voices | `N06-Qwen3TTS音频创造` (voice from a written description) |
+| Cloned voices | `N06-Qwen3TTS音频克隆` (a user recording speaking new lines) |
+
+  `Y04` is deliberately not used because it loads an NSFW checkpoint.
+- **Workflow handling:** the servers store UI-format workflows. The ComfyUI frontend's own `graphToPrompt()` converts them to API format; hand conversion is error-prone with Set/Get nodes, autogrow inputs and bypass switches. Every job is then **validated against the server's live node schemas** before it is queued. This caught a real bug in U22 as shipped: an updated node received the strings `"cuda"`/`"bf16"` in two BOOLEAN inputs.
+
+### 0.2 House rules for every generation
+These are enforced in `spike/h3prompt.py` (`check_rules` plus the prompt builder), not left to prompt wording alone:
+- No on-screen text, subtitles or background music. `non_diegetic_music` is always "None".
+- Each H3 clip (4–15 s) is a sequence of **3-second cuts** by default.
+- Shot types by purpose:
+  - A speaking character gets a **close-up**.
+  - Two-person dialogue uses **over-the-shoulder** shots.
+  - Positioning and movement get **medium shots**.
+  - Actions and expressions get **close-ups**.
+  - **Voice-over** starts as a close-up and pushes in slowly to an extreme close-up.
+- Lines must fit their cut: about 4.5 Mandarin characters per second, with 0.3 s spare.
+- Cinematic composition, with fine facial detail called out for every face in close-up (eyelashes, makeup, skin texture).
+- A character's appearance never changes across clips. Generated characters must not resemble real celebrities.
+
+### 0.3 Prompts: the official H3 prompt skill
+- Prompts follow MiniMax's official [`h3-prompt-writing`](https://github.com/MiniMax-AI/MiniMax-H3/tree/main/skills/h3-prompt-writing) skill, pinned at commit `a107547`. Its full-reference (Ref2VA) format has six sections:
+  - `subject_definitions`
+  - `summary` (with a task-type prefix)
+  - `retention_analysis`
+  - `detailed_description`, written as `[Shot N] At MM:SS.mmm` cuts with `(Sx)` speaker IDs and `<d>[Chinese] …</d>` dialogue
+  - `overall_soundscape`
+  - `non_diegetic_music`
+- The sections are written in English while dialogue stays in Mandarin. This also corrects the example prompt that ships in U22, which is written in Chinese.
+- The repo has **no license file**. We therefore install the skill for the agent at the pinned commit rather than copying it into this repo.
+- **Who writes what:** the agent writes rich per-cut text (composition, action, camera, sound, end state) into the scene file. The builder then assembles the labels, references and structure deterministically. An agent-written prompt in `prompts/<clip>_<variant>.txt` overrides the builder for any clip.
+- Prompts are long by design, about 650 words of `detailed_description` per 12 s clip, because the user asked for maximum detail.
+
+### 0.4 Locked reference packs (before any video is generated)
+
+| Asset | Locks | How it is made |
+|---|---|---|
+| **Close-up** (per character) | face, makeup, identity anchors (beauty mark, scar) | Z-Image portrait, or the user's imported face photo. Repaired with Qwen edit when an anchor is wrong. |
+| **Three-view sheet** (per character × costume) | hair, costume, shoes, proportions: front / side / back | Qwen edit from the approved close-up on a 16:9 letterboxed canvas, so the face carries over |
+| **Prop reference** (per prop) | shape, material, fill level… | Z-Image product shot |
+| **Location set** (per location) | layout, windows, furniture, skyline | Generated plate, or the user's own photo set (see §0.5) |
+| **Voice reference** (per speaking character) | timbre and delivery | Qwen3-TTS voice design from a written description, or the user's recording (see §0.5) |
+
+- **Text is subordinate to the image.** Each character's `hair`, `costume` and `keep` text is locked with the pack, and when the image and the text disagree, the text is corrected to match the approved image. The spike moved Lu Chen's scar from "right" to "left" eyebrow this way.
+- **H3 reference budget per clip** (9 images, 3 audio clips, 12 files in total) is allocated in this order:
+  1. Two images per on-screen character (close-up + sheet).
+  2. Props that appear in the clip.
+  3. As many location pictures as fit.
+  4. One voice per speaking character, up to 3.
+
+  Clips with more than 3 characters must be split.
+
+### 0.5 Reference inputs (location libraries and blockouts built in the spike; faces and voices proposed)
+- **Fixed scene references (location libraries): built** (`spike/library.py`, `spike.py locations`):
+  - **Input:** any number of photos per location in `inputs/locations/<loc>/` (sub-folders allowed; the flat `inputs/loc_<id>_*` form still works).
+  - **Indexing:** each photo is hashed and tagged once by the servers' own vision model: Qwen3.8-27B through the llama.cpp nodes of the `通用反推` workflow, about 10 s per photo. The tags are framing (wide/medium/detail), what the camera faces, features, landmarks, time of day, people and visible text. The index is `library.json` next to the photos. People can pin or veto a photo, allow people or text in it, or rewrite its tags, and re-indexing keeps those edits.
+  - **Selection:** for each clip, up to 3 photos (configurable) within the remaining 9-image budget:
+    - Dropped: photos with people or legible text, which would leak into the video as extras or on-screen text, and photos at the wrong time of day.
+    - Picked: greedily, to cover what each cut's background needs (its `bg` hint or composition text, matched against the tags), preferring wide photos for medium shots and medium or detail photos for close-ups, skipping near-duplicates (dHash), and ranking real photos above synthetic ones.
+    - All chosen photos together form the environment `<Subject N>`, as the official skill specifies. Each choice is logged with its reason.
+  - **New angles (not built):** for angles the library lacks, the servers' `L02` (Gaussian-splat re-angle) and `B17` (360° panorama) workflows can synthesize views. They would enter the library with `synthetic: true`. A blockout set plate (below) is another source of on-axis views.
+- **Blender white-mesh (blockout) files: built** (`spike/blender/render_shots.py`, `spike/blockout.py`, `spike.py blockout`). The agent never needs Blender interactively.
+  - **Shot cameras:** a headless `blender -b set.blend -P render_shots.py -- job.json` step uses cameras named `CAM_<clip>_<cut>` from the file, or builds them from the storyboard:
+    - Shot types: MS (staged in depth when the characters are far apart), CU, OTS behind the `over` character, and VO as a close-up pushing in to an extreme close-up.
+    - The 180° rule is kept per clip, and cameras stand only where there is floor.
+    - The move is parsed from the cut's camera text or set as an explicit `move`.
+    - Blocking per clip or per cut uses `linxia@K2` / `linxia@K2.3` objects.
+  - **Per-cut renders:** a clay still and a depth map (near = white) at 720×1280, plus one animatic per clip with the clip's exact cut timing (288×512, rendered at 8 fps and retimed to 24 fps).
+  - **CPU rendering:** the build machine has no GPU (a VM), so the default engine is Cycles on the CPU, about 2 min per 12 s clip. Workbench is an option on GPU machines.
+  - **Use 1, keyframes (built, variant E):** two Qwen edits. First, the clay still plus the best library photo give a set plate with the blockout's exact camera and layout. Second, the close-ups paint the cast over the mannequins. In the test, both keyframes kept the blockout's composition and the library's look.
+  - **Use 2, H3 reference video (built, variants D/E; U22 needed rewiring; tested and found ineffective as camera control, see §0.6):** the animatic goes to H3 as `<Video 1>`, written as a `weak_reference` for camera, framing, cut timing and blocking. Its clay look is explicitly not reproduced. It uses 1 of H3's 3 reference-video slots.
+  - **Use 3, depth control (later):** the depth maps are ready for `C02` (Z-Image ControlNet) keyframes, or for a depth control video through `MiniMaxH3FunControlNetApply`.
+  - **Formats:** `.blend` is native. `.glb`/`.gltf`/`.fbx`/`.obj` are imported by the same script.
+- **Custom faces:**
+  - An imported photo becomes the character's close-up after face alignment, a crop to head and shoulders, and an upscale if needed. The three-view sheet is then generated from it, so all downstream steps are unchanged.
+  - **Rights:** we cannot automatically prove a face is *not* a celebrity, so imported faces require the user's confirmation that they have the subject's consent. Generated faces go through a human review gate at casting.
+- **Custom voices:**
+  - An imported recording is cleaned (leading silence trimmed, loudness normalized, mono 44.1 kHz) and cut to the best 2–7 s of clean speech. It is then used directly as the H3 reference audio.
+  - If the recording is noisy or in another language, the Qwen3-TTS clone workflow first re-voices a clean Mandarin reference line in that voice.
+  - The same consent rule as faces applies.
+
+### 0.6 M0 spike results (2026-10-30, U22 on both servers)
+Scene: two 12 s clips, each four 3 s cuts, Mandarin dialogue plus one voice-over. Each clip was generated in three variants (`spike/out/report.html`, `sequence_{A,B,C}.mp4`).
+
+| | A: keyframe only | B: reference pack | **C: pack + voice refs** |
+|---|---|---|---|
+| Shot grammar (MS → OTS → CU → VO push-in) | followed | followed | followed |
+| Face consistency across cuts/clips (visual review) | drifts (Lin Xia's VO close-up reads as a different, older face; Lu Chen grew a nose ring) | consistent | consistent |
+| Prop continuity (wine glass, 3 cuts) | n/a | held | held |
+| Dialogue accuracy (Whisper CER) | 0% | 0% | 0% |
+| Same-character voice similarity across clips (resemblyzer; same speaker ≈ 0.8+) | 0.59 / 0.66 | 0.66 / 0.77 | **0.86 / 0.85** |
+| Render time per 12 s clip (RTX 5090, 832×1504, 24 fps) | ~6 min | ~7 min | ~7 min |
+
+- **Blockout and location-library run (same scene, 2026-10-30):** the selector used the 6-photo stand-in library and never picked the two decoys. The blockout keyframes (E) kept the clay render's composition.
+  - **Correction: the first D/E clips never used the animatic.** U22 as shipped loads reference videos in its pick node but never wires them into `MiniMaxH3ReferenceToVideo`, so H3 silently dropped them. A camera-override test caught this: four deliberately contradicting cameras gave clips byte-identical to the originals. The compositions in those clips came from the prompt text (and in E, from the keyframe). `flows.h3_reference` now wires `ref_videos`. The old clips are kept as `clips/D_unwired`, `clips/E_unwired`.
+  - **Camera-override test, with the video wired (2026-10-30):**
+    - **Setup:** a copy of the set (`penthouse_cams.blend`) puts a deliberately contradicting camera on four cuts: a high angle from the ceiling (K1/1), a low angle (K1/2), a reverse angle from the window with no skyline and the characters swapped left/right (K2/1), and a 25° Dutch tilt (K2/3). D was rerun with the same seeds, prompts and references as the original D, so the animatic was the only difference.
+    - **Result: H3 ignored the animatic's camera.** All four override cuts came out nearly frame-for-frame like the original D (`spike/out_cams/cmp_K1.jpg`, `cmp_K2.jpg`). A `weak_reference` video does not override the prompt text and image references. It costs ~15–20% more render time (~500 s vs ~420 s per clip) for no visible effect.
+    - **Consequences:**
+      1. Drop the animatic as a camera control (variant D) from the production path.
+      2. Camera intent from a blockout has to travel as **prompt text derived from the blockout camera** (height, tilt, lens, roll, screen side) and as **keyframes** (E: shown to set shot 1's composition).
+      3. Hard geometric control means the **depth path**: per-cut depth stills to C02/Qwen keyframes for every cut, or a depth video through `MiniMaxH3FunControlNetApply`.
+  - **Camera text instead (variants F and G, same override set and seeds, 2026-10-30):**
+    - **How it works:** Blender measures each cut's camera (height, tilt, roll, lens, shot size, each character's screen position, scale and facing, and labelled set pieces in and out of frame) and `blockout.camera_texts` writes it into the prompt. For cameras placed in the set file, the measured text replaces the written composition. G adds the [Shot 1] keyframe painted from the override clay render. Comparison sheets are `spike/out_cams/cmpFG_K1.jpg` and `cmpFG_K2.jpg`.
+    - **Results, override by override:**
+      - **High angle (K1/1):** F gives a higher, wider shot looking down, though shallower than the blockout. G matches the blockout closely.
+      - **Low angle (K1/2):** both F and G move to a lower angle with the ceiling in view, and from a close-up to a medium close-up.
+      - **Reverse angle (K2/1):** both swap the characters left/right as specified, but ignore "not in frame: city skyline", because every location reference shows the skyline. In G, the Qwen keyframe also put two copies of Lu Chen in the shot, and H3 carried the extra man into the clip.
+      - **Dutch tilt (K2/3):** background verticals lean, but there is no real 25° roll.
+    - **Conclusion:** prompt text derived from the blockout steers H3 where the reference video did not. Shot size, angle direction and screen positions follow it, while extreme values are softened and negative instructions are ignored. A blockout keyframe is the strongest control for the opening shot, but it needs QC first.
+    - **Next steps:**
+      1. A vision check on keyframes: head count and who is where, matched against the measured view.
+      2. Per-cut location pictures chosen to match the camera's view direction, so the references stop contradicting "not in frame".
+      3. Depth control for angles the text can't force.
+  - **Quality of those runs, unchanged by the bug:** dialogue CER is 0% except one homophone ASR slip (家/嫁) in E/K1, cross-clip voice similarity is 0.69–0.88, and render time is ~7–8 min per clip.
+  - **Known issue:** Lu Chen's thin scar is still drawn as a long line in some close-ups (open issue 1 below).
+- **Decision:** variant C, the locked reference pack plus reference voices, is the production default. A keyframe on its own does not hold identity.
+- **Throughput:** a 60–90 s episode is 5–8 clips. That is roughly 35–55 GPU-minutes, or about 20–30 min wall-clock on the two servers.
+- **Open issues found:**
+  1. **Identity anchors that are only in the text** fail silently. The beauty mark is described but isn't visible in the approved close-up, so it rarely appears. Lu Chen's thin scar line gets lengthened into the cheek. Fix: a vision-model canon check that compares each close-up against its `keep` list before locking, plus `fix-image` repairs.
+  2. **No background music** is requested in the prompt, but no one has confirmed it by listening yet. Add an automatic music detector to QC.
+  3. **Face-identity metrics** need `insightface`, which needs C++ build tools on Windows. Run it on a server, or use a pure-Python alternative.
+
+---
+
+## 1. Market research: does this already exist?
+
+**Short answer: partly.** Several open-source projects cover most of the pipeline. None of them matches this exact combination: agent-native, English-market/PineDrama-targeted, H3 plus ComfyUI as user-supplied backends, and fully automatic QC and assembly.
+
+### 1.1 Closest existing projects
+
+| Project | What it does | Gap vs. our vision |
+|---|---|---|
+| [zenstory-ai/drama-skills](https://github.com/zenstory-ai/drama-skills) (MIT, ~3.6k★, active) | **Closest match.** Claude Code / Codex skills for script → assets → storyboard → image/video prompts → review. Has adapters for Seedance, GPT Image 2, **MiniMax H3** and MiniMax Music. Assembles episodes with ffmpeg (subtitles, loudness). | Chinese-first workflow and pacing. No ComfyUI backend. Generation batches are human-confirmed by design. QC scripts check document cross-references but don't do visual or identity QC. |
+| [binwu1/drama-series-agent](https://github.com/binwu1/drama-series-agent/wiki) (Apache-2.0, very early, 7★) | One idea → multi-episode vertical drama. Renders with **MiniMax H3 Ref2VA workflows inside self-hosted ComfyUI**. Has a cast library, tail-frame→first-frame chaining, resumable progress, and a headless CLI. | Tiny and immature. Self-hosted H3 only. Starts from an idea rather than a supplied script. No automated QC. |
+| [A-cat-with-carrots/OnlyShot](https://github.com/A-cat-with-carrots/OnlyShot) (MIT, ~345★) | 5-step Claude Skill: script → storyboard JSON → keyframes → Seedance/Jimeng clips. | Jimeng/Seedance only. Final edit is manual in CapCut. Chinese market (Hongguo pacing). |
+| [HBAI-Ltd/Toonflow-app](https://www.sourcepulse.org/projects/23907340) (AGPL) | Novel → script → images/video, with decision/execution/supervision agent layers. | Standalone app, not agent-driven. AGPL. No confirmed H3 or ComfyUI support. |
+| [HKUDS/ViMax](https://huggingface.co/papers/2606.07649.md) (MIT, research) | Multi-agent: screenwriter, shot planner, character styling, generation, VLM QC with best-of-k. | Research framework, not tied to a vertical-drama format or to H3/ComfyUI. **Good reference for the QC loop.** |
+| [Anil-matcha/Open-AI-Micro-Drama-Generator](https://github.com/topics/micro-drama) (~550★) | Multi-agent idea → drama with Seedance 2, Kling 3, Veo 3.1, Sora 2. | Standalone app. No H3 or ComfyUI. |
+| Jellyfish, LocalMiniDrama, ZJT ([GitHub topic](https://github.com/topics/script-to-video)) | Script → storyboard → video workspaces. | GUI workspaces rather than agent toolkits. |
+| Commercial: [invideo AI Microdrama](https://invideo.io/make/ai-microdrama/), [Morphic](https://morphic.com/resources/tools/microdrama-generator), [microdrama.com](https://microdrama.com/) | Hosted script → vertical episodes with recurring cast. | Closed, locked to their own models, can't plug in your own H3/ComfyUI. An [independent comparison](https://alici.ai/blog/best-ai-short-drama-generators) notes that "assets" and "finished episode" aren't the same deliverable. |
+
+### 1.2 Conclusion and recommendation
+
+The real whitespace is narrow:
+1. Built for **English-language, US-market (PineDrama) pacing and conventions**.
+2. **Autopilot by default**, with an automated QC loop (vision checks, identity, ASR dialogue check, retries) instead of human-confirmed batches.
+3. **Pluggable backends**: MiniMax H3 via the official API *or* via ComfyUI, plus ComfyUI for all image work.
+4. **Ends at a delivery package**, not at a folder of clips.
+
+**Update (2026-10-30): the Chinese market is in scope, and automated upload is out of scope.** This removes the biggest drawback of `zenstory-ai/drama-skills`. Its Chinese-first workflow and pacing rules now fit, and it already has an H3 adapter and ffmpeg editing. **Revised recommendation: build on drama-skills, or adopt its skill structure and document formats directly.** Add what it lacks as this project's contribution: the deterministic engine (state, cache, budget, resume), the ComfyUI backend, and the automated QC loop. Make the final fork-vs-depend decision after the M0 spike, once we know which H3 mode holds faces and voices best.
+
+### 1.3 Facts about the targets (with caveats)
+
+- **PineDrama** is TikTok's standalone micro-drama app, launched in January 2026 ([TechCrunch](https://techcrunch.com/2026/01/16/tiktok-quietly-launches-a-micro-drama-app-called-pinedrama/)). It shows serialized ~1-minute vertical episodes and is ad-supported.
+  ⚠️ **There is no public upload or creator program.** Content appears to come through negotiated or licensed deals ([Influencer Intelligence](https://www.influencerintelligence.com/blog/GNv/pine-drama-what-tik-toks-microdrama-push-means-for-creators), [Morphic distribution guide](https://morphic.com/resources/guides/filmmakers/where-to-distribute-a-microdrama)). No official AI-content policy was found. The tool should therefore aim at **"PineDrama-grade" deliverables** (also usable on TikTok, ReelShort or DramaBox pitches), not at automated publishing.
+- **MiniMax H3** (Hailuo 3, launched 2026-07-31) supports text-to-video, image-to-video (with optional last frame), and reference-to-video. Clips are **4–15 s in whole seconds**, 2K at 24 fps, with 9:16 supported. It generates **native synchronized dialogue, SFX and ambience in the same pass** ([Segmind](https://blog.segmind.com/minimax-h3-release-date-open-weights-and-api-pricing-explained/)). Reference-to-video takes several subject/style images and up to 3 reference audio clips. Reference media **cannot be combined with first/last frame** (400 error) ([Civitai](https://developer.civitai.com/orchestration/recipes/minimax-h3)). Generation is slow (~4–5 min per clip) and async on most providers. Cost is roughly **$0.08–0.16 per output second**. Open-weights status is disputed between sources, but ComfyUI H3 nodes exist (see drama-series-agent).
+  ⚠️ Parameter names and limits differ by provider. The adapter must be configurable and must be checked against the official MiniMax API reference.
+- **ComfyUI** can be driven over its HTTP/WebSocket API (`/prompt`, `/history`, `/view`, `/upload/image`). An official [Comfy-Org MCP server](https://github.com/Comfy-Org/comfy-mcp) and a [Comfy Cloud MCP endpoint](https://docs.comfy.org/development/cloud/mcp-server) also exist.
+
+---
+
+## 2. Goals and non-goals
+
+**Goals**
+- **Market:** Chinese-language short drama is first-class: Mandarin dialogue, Hongguo/Douyin-style pacing, and the mainland API endpoint `api.minimaxi.com`. English is a secondary target. The PineDrama-grade quality bar stays.
+- Input: a script (screenplay, prose or outline, in any reasonable format) plus backend links and credentials. Output: N finished episodes as 1080×1920 MP4s with captions, plus a delivery package.
+- **The agent runs it end-to-end with zero required human steps.** Approval gates are optional.
+- Character, voice and location consistency across all shots and episodes.
+- Resumable, idempotent and budget-aware. A crash or a bad shot never forces a full re-run.
+- Every artifact is inspectable (JSON + Markdown + media on disk) so a human can step in at any stage.
+
+**Non-goals (v1)**
+- Uploading episodes to any platform (PineDrama, Hongguo, Douyin, etc.). The pipeline ends at the delivery package.
+- Writing the script from scratch. We adapt and expand a supplied script, and only fill gaps.
+- Training custom models or LoRAs. A later option: per-character LoRA via ComfyUI.
+- A GUI. A static HTML review page per episode is enough.
+
+---
+
+## 3. Core architecture
+
+**Principle: the agent does the creative and judgment work. The software does the deterministic work.**
+
+```
+┌─────────────────────────── Agent (Claude Code, etc.) ───────────────────────────┐
+│  Skills (SKILL.md per stage): adapt script, write bible, storyboard, write      │
+│  prompts, judge QC results, repair prompts, pick takes                          │
+└───────────────┬─────────────────────────────────────────────────────────────────┘
+                │ CLI (JSON in / JSON out)  — optionally also exposed as MCP server
+┌───────────────▼─────────────────────────────────────────────────────────────────┐
+│  sheelshort engine (Python)                                                     │
+│  • project state + schemas (pydantic)   • job queue, retries, content-hash cache│
+│  • validators (schema, timing, refs)    • cost estimator + budget guard         │
+│  • backends:  ImageBackend ─► ComfyUI   VideoBackend ─► H3 API | H3-on-ComfyUI  │
+│               ASR (faster-whisper)      TTS (optional fallback)                 │
+│  • QC tools: frame sampling, face-embedding identity score, ASR diff            │
+│  • editor: ffmpeg assembly, captions, loudness, packaging                       │
+└─────────────────────────────────────────────────────────────────────────────────┘
+```
+
+Why split it this way:
+- The LLM is good at adaptation, shot design and prompt writing. It is unreliable at bookkeeping, polling, retries and ffmpeg flags.
+- Every engine command is **deterministic and idempotent**. Re-running a step is safe, and cached results are reused by content hash.
+- Validators let the engine reject malformed agent output (for example, a 17 s shot or an unknown character ID) before money is spent.
+
+### 3.1 Agent interface
+
+**Skills** (in `skills/`, loaded by the agent):
+
+| Skill | Purpose |
+|---|---|
+| `sheelshort-run` | Master playbook: the stage order, when to call which command, and how to handle failures. The entry point for "launch sheelshort". |
+| `adapt-script` | Normalize the script and break it into episodes using micro-drama structure rules (§5). |
+| `series-bible` | Characters, looks, voices, locations, props, visual style. |
+| `storyboard` | Episode → beats → shots, respecting H3 constraints. |
+| `prompting-comfy` / `prompting-h3` | Prompt-writing rules and templates per backend. |
+| `qc-judge` | How to read QC reports and decide accept, retry, re-prompt, or re-storyboard. |
+
+**CLI** (the engine's whole surface; every command prints JSON):
+
+```
+sheelshort init <project> --script script.md --config sheelshort.toml
+sheelshort status [--episode E01]            # stage progress, costs, blockers
+sheelshort validate <stage>                  # schema + rule checks on agent-written files
+sheelshort estimate [--episode E01]          # projected spend before generating
+sheelshort gen assets  [--only char:mia]     # ComfyUI: character sheets, locations, props
+sheelshort gen keyframes --episode E01 [--shot S03]
+sheelshort gen clips     --episode E01 [--shot S03] [--takes 2]
+sheelshort qc --episode E01 [--shot S03]     # writes qc report JSON for the agent to judge
+sheelshort accept|reject <shot> --take N [--reason ...]
+sheelshort edit --episode E01                # assemble master.mp4
+sheelshort package [--episodes all]          # delivery folder
+sheelshort review --episode E01              # static HTML contact sheet + player
+```
+
+An MCP wrapper around the same commands is a thin follow-up.
+
+---
+
+## 4. Inputs and configuration
+
+The user supplies only these:
+
+```toml
+# sheelshort.toml
+[project]
+title = "The Billionaire's Secret Bodyguard"
+language = "en-US"
+episode_target_seconds = [60, 90]
+aspect = "9:16"
+budget_usd = 400                     # hard stop
+mode = "autopilot"                   # or "gated" (pause after bible + casting)
+
+[video]                              # MiniMax H3
+backend = "minimax_api"              # minimax_api | comfyui_h3 | fal | ...
+base_url = "https://api.minimax.io"  # the "H3 link" the user provides
+api_key_env = "MINIMAX_API_KEY"
+model = "MiniMax-H3"
+resolution = "2K"
+
+[image]                              # ComfyUI
+base_url = "http://127.0.0.1:8188"   # the "ComfyUI link" the user provides
+workflows_dir = "workflows/"         # parameterized workflow templates (API format JSON)
+auth_header_env = "COMFY_TOKEN"      # optional, for cloud/tunneled instances
+```
+
+Secrets are read only from environment variables and never written into project files.
+
+---
+
+## 5. Pipeline stages
+
+Each stage reads and writes files under `projects/<name>/` (layout in §7). Stages marked **A** are agent work, **E** is engine work.
+
+### S0. Ingest (E + A)
+- E: convert `.md`, `.txt`, `.docx`, `.fdx` or `.pdf` to plain text and save it as `source/script.txt`.
+- A: produce `script.json`, a structured scene list (scene heading, characters, action, dialogue). Mark gaps such as missing scene descriptions.
+
+### S1. Series bible and episode map (A, validated by E)
+- **Episode map** (`episodes.json`): split into episodes using micro-drama rules:
+  - **Hook in the first 3 seconds** of every episode, with the conflict or reveal up front.
+  - **Cliffhanger in the last 5–10 seconds.** The next episode resolves it in its first beat.
+  - 60–90 s per episode, 3–6 beats, with an emotional reversal roughly every 15–20 s.
+  - Episode 1 must establish the protagonist, their wound or desire, and the antagonist within 30 s.
+  - Payoff episodes (slaps, reveals, rescues) at regular intervals, typical of the genre.
+- **Bible** (`bible.json`):
+  - Characters: ID, age, ethnicity, build, face description, hair, **outfits per arc**, mannerisms, voice description (timbre, accent, pace).
+  - Locations: description, time-of-day variants, palette.
+  - Props.
+  - Visual style: realism level, lens and lighting language, color grade, negative list.
+
+### S2. Storyboard (A, validated by E)
+`episodes/E01/storyboard.json`. Per shot:
+
+```json
+{
+  "id": "E01_S03", "beat": 1, "duration_s": 6,
+  "shot": "MCU", "camera": "slow push-in", "angle": "eye level",
+  "location": "loc:penthouse_night", "characters": ["char:mia", "char:ryan"],
+  "outfits": {"char:mia": "red_gown"},
+  "action": "Mia turns from the window, sees Ryan, freezes.",
+  "dialogue": [{"char": "char:ryan", "line": "You weren't supposed to be here.", "emotion": "cold"}],
+  "sfx": "city hum, glass clink", "music_cue": "tension_rise",
+  "video_mode": "i2v",                  // i2v | i2v_firstlast | ref2v | t2v
+  "continuity": {"from_prev_tail": false},
+  "keyframe_prompt": "...", "video_prompt": "..."
+}
+```
+
+Validator rules (E):
+- `duration_s` is an integer from 4 to 15.
+- The episode sum fits the target length.
+- All referenced IDs exist in the bible.
+- Dialogue fits the duration (about 2.5 words/s).
+- At most 2 speaking characters per shot. More than that degrades H3 lip/voice attribution.
+- A `ref2v` shot never also sets first/last frame.
+
+### S3. Asset generation: the "casting" stage (E via ComfyUI, judged by A)
+- For each character, a **reference pack**: front/¾/profile turnaround, 4–6 expressions, one sheet per outfit, on a neutral background, 9:16 and 1:1.
+- Location plates for each time-of-day variant, and key props.
+- Generate several candidates per asset. The agent picks one using QC (prompt adherence, artifacts), then the engine **locks** it into `assets/canon/` with a hash. In `gated` mode, this is a human checkpoint.
+- **Voice canon:** generate or choose a 5–10 s reference audio clip per speaking character, using TTS or a user-supplied clip. It is later passed to H3 as reference audio to keep voices stable across clips.
+
+### S4. Keyframes (E via ComfyUI, judged by A)
+- Per shot, render the **first frame** at 9:16 with canon references. The ComfyUI template does identity conditioning (e.g. IP-Adapter/PuLID/InstantID, or an instruction-edit model composing canon character into the location plate).
+- Shots with `from_prev_tail: true` use the previous accepted clip's last frame instead of a new keyframe. This keeps motion and lighting continuous within a scene.
+- Quick automated QC (§6) runs before any video money is spent. Keyframes are cheap, so this is the place to iterate.
+
+### S5. Video clips (E via H3)
+Mode selection per shot:
+
+| Situation | Mode | Inputs |
+|---|---|---|
+| Default | `i2v` | keyframe as first frame + `video_prompt` |
+| Must land on a specific end state (e.g. a match cut into the next shot) | `i2v_firstlast` | first + last keyframe |
+| 2 characters, new setup, identity is the priority | `ref2v` | character canon images, location plate, voice refs (Image 1…N named in the prompt) |
+| Establishing or B-roll with no characters | `t2v` | prompt only |
+
+- Dialogue is generated **natively by H3**. The prompt includes exact quoted lines with speaker tags and emotion. Voice reference audio is attached where the mode allows.
+- Jobs are submitted async with concurrency limits and polling or webhooks. Raw outputs are stored per take in `clips/E01_S03/take_01.mp4`.
+- Every request and response is logged (minus secrets) for reproducibility and cost accounting.
+
+### S6. QC and repair loop (E measures, A decides)
+See §6. Possible outcomes per shot: accept, retry with the same prompt, re-prompt, change mode, or send back to storyboard (split or merge shots).
+
+### S7. Edit and assembly (E)
+- Trim heads and tails using motion/audio onset detection, plus agent-specified in/out points if any.
+- Cuts: hard cuts by default. J/L audio overlaps between dialogue shots so the edit doesn't feel stitched together.
+- **Audio:** keep H3 dialogue and SFX, duck under a music bed (generated or from a licensed library folder), and normalize to **-14 LUFS integrated, -1 dBTP**.
+- **Captions:** ASR-aligned (faster-whisper word timestamps), checked against the script text. Burned in, mobile-safe (center-lower third, max 2 lines, ~32 chars per line, bold with outline), plus a separate `.srt`.
+- Optional opener: series title card on E01. Optional "To be continued" sting on episodes ending in a cliffhanger.
+- Output: `E01/master.mp4`, 1080×1920, 30 fps (up-converted from 24 fps), H.264 High, AAC 48 kHz.
+
+### S8. Package (E + A)
+`delivery/`:
+- Episode MP4s, SRTs, and a burned-in plus clean version of each episode.
+- A cover/poster (9:16, generated in ComfyUI from canon assets) and episode thumbnails.
+- `metadata.json`: series title, logline, genre tags, episode titles and synopses (A).
+- An **AI-generated-content disclosure** note.
+- `production_report.md`: cost per episode, takes used, QC scores, known issues.
+
+---
+
+## 6. Quality strategy
+
+Quality is the product. Automated checks feed the agent's judgment:
+
+| Check | How | Threshold / action |
+|---|---|---|
+| Identity consistency | Face embeddings (InsightFace/ArcFace) on sampled frames vs. character canon | Below threshold → retry, or switch to `ref2v` |
+| Visual defects | VLM (the agent itself, viewing ~6 sampled frames) using a rubric: hands, faces, text glitches, morphing, wrong outfit, wrong location | Any "major" → retry |
+| Dialogue correctness | ASR transcript vs. script lines (word error rate), speaker check by diarization against voice canon | WER > 15% or wrong speaker → re-prompt |
+| Timing | Speech fits the clip, no cut-off words | Fail → lengthen the shot or trim the line |
+| Continuity | Adjacent shots: palette/lighting histogram, outfit check by VLM | Flag for the agent |
+| Technical | Resolution, fps, duration, black frames, silence, clipping | Hard fail |
+
+- **Best-of-k:** generate 1 take by default. Escalate to 2–3 takes only for shots that fail, or for "hero" shots (hook, cliffhanger) flagged in the storyboard.
+- **Retry budget:** at most 3 attempts per shot, and each failed attempt changes something (the prompt, the mode, or the keyframe). After that, the shot goes back to storyboard with a simpler design (fewer characters, less motion, tighter framing).
+- **Review page:** `sheelshort review` builds a static HTML page per episode (contact sheet, takes, QC scores, player) so a human can audit quickly.
+
+---
+
+## 7. Project layout on disk
+
+```
+projects/<name>/
+  sheelshort.toml
+  source/script.txt
+  script.json
+  bible.json
+  episodes.json
+  assets/
+    candidates/char_mia/...
+    canon/char_mia/{front,three_quarter,profile,expr_*,outfit_*}.png
+    canon/voice/char_mia.wav
+    canon/loc_penthouse_night.png
+  episodes/E01/
+    storyboard.json
+    keyframes/E01_S03/{cand_01.png, accepted.png}
+    clips/E01_S03/{take_01.mp4, take_01.qc.json, accepted -> take_01.mp4}
+    edit/{timeline.json, captions.srt, master.mp4}
+  state/
+    jobs.sqlite          # job queue, status, provider task IDs, costs
+    cache/               # content-hash → output
+    logs/
+  delivery/
+```
+
+The SQLite job table makes everything resumable. A job's key is a hash of (inputs + prompt + params + backend version), so an unchanged shot is never regenerated.
+
+---
+
+## 8. Backend adapters
+
+```python
+class VideoBackend(Protocol):
+    def capabilities(self) -> VideoCaps: ...           # modes, durations, ratios, ref limits
+    def submit(self, req: VideoRequest) -> JobHandle: ...
+    def poll(self, h: JobHandle) -> JobStatus: ...
+    def fetch(self, h: JobHandle, dest: Path) -> Path: ...
+    def price(self, req: VideoRequest) -> float: ...
+
+class ImageBackend(Protocol):
+    def run_workflow(self, template: str, params: dict, inputs: dict[str, Path]) -> list[Path]: ...
+```
+
+- **`MiniMaxH3Api`**: the official API. Parameter names live in a provider profile (YAML), so differences across MiniMax, fal and others are handled by config rather than code.
+- **`ComfyUIH3`**: H3 nodes inside the user's ComfyUI (as in drama-series-agent), for self-hosting or when open weights are available.
+- **`ComfyUI` image backend**: workflows are stored as **API-format JSON templates** with named placeholders, e.g. `{{positive}}`, `{{ref_image_1}}`, `{{seed}}`, `{{width}}`. The engine uploads inputs, injects params, queues the prompt, listens on the WebSocket, and downloads outputs. Required custom nodes and models are listed in a `workflows/manifest.json` and checked at `init`, so missing nodes fail fast with a clear message.
+- **Reference images:** some H3 providers need **public URLs**. The adapter supports an optional upload target (S3/R2 presigned URLs) or the provider's own upload endpoint.
+
+---
+
+## 9. Cost and performance (rough)
+
+The 60–90 s episode figures assume about 12 shots of ~6 s, 2K, at an average of 1.4 takes:
+- Video: 12 × 6 s × 1.4 × ~$0.13/s ≈ **$13 per episode**. At $0.08–0.16/s the range is $8–16.
+- Images: negligible on self-hosted ComfyUI.
+- A 60-episode series costs roughly **$500–1,000** in video. `estimate` and `budget_usd` guard against overruns.
+- Wall-clock: about 5 min per H3 clip. With 4 concurrent jobs, one episode takes ~20–30 min, so throughput depends on provider concurrency limits.
+
+---
+
+## 10. Risks and open questions
+
+1. **Distribution.** PineDrama has no public upload, so "publishing on PineDrama" means pitching or licensing. Deliverables should follow general platform specs. The user should confirm current content and AI-disclosure requirements with TikTok directly.
+2. **Voice consistency across clips.** H3 generates a fresh voice per clip, so the same character can sound different between shots. Mitigations, in order: H3 reference audio; reuse of voice prompt text; and, if still inconsistent, a **fallback path**: replace dialogue with consistent TTS plus a lip-sync pass in ComfyUI (e.g. LatentSync), stripping H3's audio. This is the biggest technical unknown and the first thing to prototype.
+3. **H3 API uncertainty.** Sources disagree on 768p availability, sync vs. async behavior, reference limits and open weights. This is handled by provider profiles plus a `sheelshort doctor` probe command.
+4. **Identity drift in multi-character shots.** Limit to 2 characters per shot, prefer `ref2v` for those shots, and cover with singles and over-the-shoulder shots (standard micro-drama coverage anyway).
+5. **Rights.** The user must own or license the script. Generated likenesses must not resemble real people. Add a bible-stage check that rejects descriptions naming celebrities.
+6. **Content policy.** Genre staples (violence, romance) must stay within provider and platform rules, or failed generations waste budget. The adapt-script skill should flag risky beats early.
+
+---
+
+## 11. Roadmap
+
+| Milestone | Scope | Exit criteria |
+|---|---|---|
+| **M0 Spike** (1 week) | Hand-written 3-shot scene. Call H3 (i2v + ref2v) and ComfyUI directly from scripts. | Answer the voice-consistency and identity questions with real outputs. Confirm API parameters. |
+| **M1 Paper pipeline** | S0–S2: skills, schemas, validators, `init`, `validate`, `status`, `estimate` | A real script produces a valid bible, episode map and storyboards with no media spend. |
+| **M2 Casting + keyframes** | ComfyUI backend, workflow templates and manifest, S3–S4, identity QC | Canon pack and keyframes for E01 pass QC. |
+| **M3 Clips** | H3 adapter(s), job queue, cache, S5, cost tracking | All E01 shots generated, resumable after a kill. |
+| **M4 QC + edit** | S6 loop, ASR, S7 assembly, review page | E01 `master.mp4` is watchable without manual edits. |
+| **M5 Autopilot + package** | Full multi-episode run, S8, budget guard, MCP wrapper | A 10-episode series runs from a single "launch" instruction. |
+
+**Suggested stack:** Python 3.12, `uv`, pydantic v2, httpx, websockets, SQLite, ffmpeg/ffprobe, faster-whisper, insightface, Jinja2 (review page and prompt templates). Skills are plain Markdown and agent-agnostic (Claude Code first).

@@ -1,0 +1,86 @@
+{
+ "102": {
+  "inputs": {
+   "image": "123.png"
+  },
+  "class_type": "LoadImage",
+  "_meta": {
+   "title": "Load Image"
+  }
+ },
+ "143": {
+  "inputs": {
+   "precision": "auto"
+  },
+  "class_type": "LoadSharpModel",
+  "_meta": {
+   "title": "(Down)Load SHARP Model"
+  }
+ },
+ "144": {
+  "inputs": {
+   "focal_length_mm": 0,
+   "output_prefix": "sharp",
+   "model": [
+    "143",
+    0
+   ],
+   "image": [
+    "164",
+    0
+   ]
+  },
+  "class_type": "SharpPredict",
+  "_meta": {
+   "title": "SHARP Predict (Image to PLY)"
+  }
+ },
+ "151": {
+  "inputs": {
+   "images": [
+    "152",
+    0
+   ]
+  },
+  "class_type": "PreviewImage",
+  "_meta": {
+   "title": "Preview Image"
+  }
+ },
+ "152": {
+  "inputs": {
+   "preview_gaussian_v2": "",
+   "ply_path": [
+    "144",
+    0
+   ],
+   "extrinsics": [
+    "144",
+    1
+   ],
+   "intrinsics": [
+    "144",
+    2
+   ]
+  },
+  "class_type": "GaussianViewer",
+  "_meta": {
+   "title": "GaussianViewer"
+  }
+ },
+ "164": {
+  "inputs": {
+   "upscale_method": "lanczos",
+   "megapixels": 1,
+   "resolution_steps": 1,
+   "image": [
+    "102",
+    0
+   ]
+  },
+  "class_type": "ImageScaleToTotalPixels",
+  "_meta": {
+   "title": "Scale Image to Total Pixels"
+  }
+ }
+}

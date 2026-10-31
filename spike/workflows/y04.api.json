@@ -1,0 +1,241 @@
+{
+ "104": {
+  "inputs": {
+   "samples": [
+    "119",
+    0
+   ],
+   "vae": [
+    "108",
+    0
+   ]
+  },
+  "class_type": "VAEDecode",
+  "_meta": {
+   "title": "VAE Decode"
+  }
+ },
+ "105": {
+  "inputs": {
+   "conditioning": [
+    "120",
+    0
+   ]
+  },
+  "class_type": "ConditioningZeroOut",
+  "_meta": {
+   "title": "Conditioning Zero Out"
+  }
+ },
+ "106": {
+  "inputs": {
+   "seed": 957297162658210,
+   "steps": 8,
+   "cfg": 1,
+   "sampler_name": "euler",
+   "scheduler": "simple",
+   "denoise": 1,
+   "model": [
+    "121",
+    0
+   ],
+   "positive": [
+    "120",
+    0
+   ],
+   "negative": [
+    "105",
+    0
+   ],
+   "latent_image": [
+    "109",
+    0
+   ]
+  },
+  "class_type": "KSampler",
+  "_meta": {
+   "title": "1st K采样器"
+  }
+ },
+ "108": {
+  "inputs": {
+   "vae_name": "ae.safetensors"
+  },
+  "class_type": "VAELoader",
+  "_meta": {
+   "title": "ZIT 加载VAE"
+  }
+ },
+ "109": {
+  "inputs": {
+   "width": [
+    "122",
+    0
+   ],
+   "height": [
+    "123",
+    0
+   ],
+   "batch_size": 1
+  },
+  "class_type": "EmptySD3LatentImage",
+  "_meta": {
+   "title": "EmptySD3LatentImage"
+  }
+ },
+ "110": {
+  "inputs": {
+   "clip_name": "qwen_3_4b.safetensors",
+   "type": "lumina2",
+   "device": "default"
+  },
+  "class_type": "CLIPLoader",
+  "_meta": {
+   "title": "ZIT 加载CLIP"
+  }
+ },
+ "111": {
+  "inputs": {
+   "pixels": [
+    "114",
+    0
+   ],
+   "vae": [
+    "108",
+    0
+   ]
+  },
+  "class_type": "VAEEncode",
+  "_meta": {
+   "title": "VAE Encode"
+  }
+ },
+ "113": {
+  "inputs": {
+   "samples": [
+    "106",
+    0
+   ],
+   "vae": [
+    "108",
+    0
+   ]
+  },
+  "class_type": "VAEDecode",
+  "_meta": {
+   "title": "VAE Decode"
+  }
+ },
+ "114": {
+  "inputs": {
+   "upscale_method": "bicubic",
+   "scale_by": 2,
+   "image": [
+    "113",
+    0
+   ]
+  },
+  "class_type": "ImageScaleBy",
+  "_meta": {
+   "title": "Upscale Image By"
+  }
+ },
+ "116": {
+  "inputs": {
+   "filename_prefix": "Z-2nd",
+   "images": [
+    "117",
+    0
+   ]
+  },
+  "class_type": "SaveImage",
+  "_meta": {
+   "title": "Save Image"
+  }
+ },
+ "117": {
+  "inputs": {
+   "upscale_method": "bicubic",
+   "scale_by": 0.75,
+   "image": [
+    "104",
+    0
+   ]
+  },
+  "class_type": "ImageScaleBy",
+  "_meta": {
+   "title": "Upscale Image By"
+  }
+ },
+ "119": {
+  "inputs": {
+   "seed": 957297162658210,
+   "steps": 8,
+   "cfg": 1,
+   "sampler_name": "euler",
+   "scheduler": "simple",
+   "denoise": 0.5,
+   "model": [
+    "121",
+    0
+   ],
+   "positive": [
+    "120",
+    0
+   ],
+   "negative": [
+    "105",
+    0
+   ],
+   "latent_image": [
+    "111",
+    0
+   ]
+  },
+  "class_type": "KSampler",
+  "_meta": {
+   "title": "reFine 采样器"
+  }
+ },
+ "120": {
+  "inputs": {
+   "text": "A stunning young Chinese idol with long wavy brown hair and delicate facial features sits gracefully inside a vibrant pink claw machine. She is completely naked, with fair and smooth skin. Her expression is serene and captivating, featuring detailed eye makeup with pink hues. She is positioned inside the machine, covered in a large pile of soft pink plush toys, including fluffy unicorns with small horns, round teddy bears, bunny, etc, creating a playful and artistic pose with legs crossing naturally. The scene is illuminated by bright vertical pink LED strips on the interior corners of the machine, casting a strong neon pink glow throughout the space. The lighting is cinematic, creating soft highlights on her hair and skin while maintaining deep, rich magenta tones in the shadows. The composition is a medium-full body shot with a sharp focus on the woman, capturing the intricate textures of the plush fur, and the reflective glass panels. The overall atmosphere is dreamlike and whimsical, presented in high-resolution photography with a clean, professional aesthetic.\n\n",
+   "clip": [
+    "110",
+    0
+   ]
+  },
+  "class_type": "CLIPTextEncode",
+  "_meta": {
+   "title": "ZIT refine Postive Prompt"
+  }
+ },
+ "121": {
+  "inputs": {
+   "unet_name": "Zimage/darkBeastMar1526Latest_darkblitz6Beyondnsfw.safetensors",
+   "weight_dtype": "default"
+  },
+  "class_type": "UNETLoader",
+  "_meta": {
+   "title": "ZIT UNet加载器"
+  }
+ },
+ "122": {
+  "inputs": {
+   "value": 1280
+  },
+  "class_type": "INTConstant",
+  "_meta": {
+   "title": "INT Constant"
+  }
+ },
+ "123": {
+  "inputs": {
+   "value": 720
+  },
+  "class_type": "INTConstant",
+  "_meta": {
+   "title": "INT Constant"
+  }
+ }
+}

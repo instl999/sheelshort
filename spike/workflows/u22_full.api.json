@@ -1,0 +1,521 @@
+{
+ "36": {
+  "inputs": {
+   "vae_name": "minimax_h3_video_vae_int8_convrot.safetensors"
+  },
+  "class_type": "VAELoader",
+  "_meta": {
+   "title": "Load VAE"
+  }
+ },
+ "37": {
+  "inputs": {
+   "vae_name": "minimax_h3_audio_vae_fp32.safetensors"
+  },
+  "class_type": "VAELoader",
+  "_meta": {
+   "title": "Load VAE"
+  }
+ },
+ "38": {
+  "inputs": {
+   "clip_name": "qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors",
+   "type": "minimax",
+   "device": "default"
+  },
+  "class_type": "CLIPLoader",
+  "_meta": {
+   "title": "Load CLIP"
+  }
+ },
+ "49": {
+  "inputs": {
+   "image": "123549196.jpg"
+  },
+  "class_type": "LoadImage",
+  "_meta": {
+   "title": "Load Image"
+  }
+ },
+ "50": {
+  "inputs": {
+   "image": "9b03b4e5f16550d82ce1b875586019f6.jpg"
+  },
+  "class_type": "LoadImage",
+  "_meta": {
+   "title": "Load Image"
+  }
+ },
+ "51": {
+  "inputs": {
+   "image": "47dcc787-d3a4-4898-be4d-4bf0488f053e.png"
+  },
+  "class_type": "LoadImage",
+  "_meta": {
+   "title": "Load Image"
+  }
+ },
+ "53": {
+  "inputs": {
+   "lora_name": "minimax/minimax_h3_turbo_v4_step600_ema_pruned_comfyui.safetensors",
+   "strength_model": 1.0000000000000002,
+   "model": [
+    "128",
+    0
+   ]
+  },
+  "class_type": "LoraLoaderModelOnly",
+  "_meta": {
+   "title": "Load LoRA"
+  }
+ },
+ "58": {
+  "inputs": {
+   "model": [
+    "192",
+    0
+   ]
+  },
+  "class_type": "MiniMaxH3MemoryEfficientSageAttentionPatch",
+  "_meta": {
+   "title": "MiniMax H3 Mem Eff Sage Attention Patch"
+  }
+ },
+ "115": {
+  "inputs": {
+   "samples": [
+    "144",
+    1
+   ],
+   "vae": [
+    "37",
+    0
+   ]
+  },
+  "class_type": "VAEDecodeAudio",
+  "_meta": {
+   "title": "VAE Decode Audio"
+  }
+ },
+ "116": {
+  "inputs": {
+   "samples": [
+    "144",
+    1
+   ],
+   "vae": [
+    "36",
+    0
+   ]
+  },
+  "class_type": "VAEDecode",
+  "_meta": {
+   "title": "VAE Decode"
+  }
+ },
+ "128": {
+  "inputs": {
+   "lora_name": "minimax/MysticXXX_MMH3-V1.safetensors",
+   "strength_model": 0.5000000000000001,
+   "model": [
+    "58",
+    0
+   ]
+  },
+  "class_type": "LoraLoaderModelOnly",
+  "_meta": {
+   "title": "Load LoRA"
+  }
+ },
+ "139": {
+  "inputs": {
+   "av_latent": [
+    "226",
+    1
+   ]
+  },
+  "class_type": "LTXVSeparateAVLatent",
+  "_meta": {
+   "title": "Separate AV Latent"
+  }
+ },
+ "142": {
+  "inputs": {
+   "video_latent": [
+    "330",
+    0
+   ],
+   "audio_latent": [
+    "139",
+    1
+   ]
+  },
+  "class_type": "LTXVConcatAVLatent",
+  "_meta": {
+   "title": "Concat AV Latent"
+  }
+ },
+ "144": {
+  "inputs": {
+   "noise": [
+    "256",
+    0
+   ],
+   "guider": [
+    "223",
+    0
+   ],
+   "sampler": [
+    "255",
+    0
+   ],
+   "sigmas": [
+    "289",
+    1
+   ],
+   "latent_image": [
+    "142",
+    0
+   ]
+  },
+  "class_type": "SamplerCustomAdvanced",
+  "_meta": {
+   "title": "SamplerCustomAdvanced"
+  }
+ },
+ "192": {
+  "inputs": {
+   "unet_name": "minimax/minimax_h3_hybrid_fl2va_ref2va_b25-49-int8.safetensors",
+   "weight_dtype": "default"
+  },
+  "class_type": "UNETLoader",
+  "_meta": {
+   "title": "Load Diffusion Model"
+  }
+ },
+ "214": {
+  "inputs": {
+   "frame_rate": 24,
+   "loop_count": 0,
+   "filename_prefix": "H3_二采",
+   "format": "video/h264-mp4",
+   "pix_fmt": "yuv420p",
+   "crf": 16,
+   "save_metadata": true,
+   "trim_to_audio": false,
+   "pingpong": false,
+   "save_output": true,
+   "images": [
+    "116",
+    0
+   ],
+   "audio": [
+    "115",
+    0
+   ]
+  },
+  "class_type": "VHS_VideoCombine",
+  "_meta": {
+   "title": "Video Combine 🎥🅥🅗🅢"
+  }
+ },
+ "223": {
+  "inputs": {
+   "model": [
+    "53",
+    0
+   ],
+   "conditioning": [
+    "265",
+    0
+   ]
+  },
+  "class_type": "BasicGuider",
+  "_meta": {
+   "title": "Basic Guider"
+  }
+ },
+ "226": {
+  "inputs": {
+   "noise": [
+    "256",
+    0
+   ],
+   "guider": [
+    "223",
+    0
+   ],
+   "sampler": [
+    "255",
+    0
+   ],
+   "sigmas": [
+    "289",
+    0
+   ],
+   "latent_image": [
+    "265",
+    1
+   ]
+  },
+  "class_type": "SamplerCustomAdvanced",
+  "_meta": {
+   "title": "SamplerCustomAdvanced"
+  }
+ },
+ "250": {
+  "inputs": {
+   "expression": "max(5, round(a * 24)) + (5 - (max(5, round(a * 24)) % 17)) % 17",
+   "values.a": [
+    "259",
+    0
+   ]
+  },
+  "class_type": "ComfyMathExpression",
+  "_meta": {
+   "title": "Math Expression"
+  }
+ },
+ "252": {
+  "inputs": {
+   "aspect_ratio": "16:9 (Widescreen)",
+   "megapixels": 0.5,
+   "multiple": 32
+  },
+  "class_type": "ResolutionSelector",
+  "_meta": {
+   "title": "Resolution Selector"
+  }
+ },
+ "253": {
+  "inputs": {
+   "samples": [
+    "226",
+    1
+   ],
+   "vae": [
+    "36",
+    0
+   ]
+  },
+  "class_type": "VAEDecode",
+  "_meta": {
+   "title": "VAE Decode"
+  }
+ },
+ "254": {
+  "inputs": {
+   "samples": [
+    "226",
+    1
+   ],
+   "vae": [
+    "37",
+    0
+   ]
+  },
+  "class_type": "VAEDecodeAudio",
+  "_meta": {
+   "title": "VAE Decode Audio"
+  }
+ },
+ "255": {
+  "inputs": {
+   "sampler_name": "euler"
+  },
+  "class_type": "KSamplerSelect",
+  "_meta": {
+   "title": "KSamplerSelect"
+  }
+ },
+ "256": {
+  "inputs": {
+   "noise_seed": 83483809983334
+  },
+  "class_type": "RandomNoise",
+  "_meta": {
+   "title": "RandomNoise"
+  }
+ },
+ "259": {
+  "inputs": {
+   "value": 10
+  },
+  "class_type": "PrimitiveFloat",
+  "_meta": {
+   "title": "视频时长（秒）"
+  }
+ },
+ "261": {
+  "inputs": {
+   "scheduler": "beta",
+   "steps": 12,
+   "denoise": 1,
+   "model": [
+    "53",
+    0
+   ]
+  },
+  "class_type": "BasicScheduler",
+  "_meta": {
+   "title": "BasicScheduler"
+  }
+ },
+ "264": {
+  "inputs": {
+   "frame_rate": 24,
+   "loop_count": 0,
+   "filename_prefix": "H3_一采",
+   "format": "video/h264-mp4",
+   "pix_fmt": "yuv420p",
+   "crf": 19,
+   "save_metadata": false,
+   "trim_to_audio": false,
+   "pingpong": false,
+   "save_output": false,
+   "images": [
+    "253",
+    0
+   ],
+   "audio": [
+    "254",
+    0
+   ]
+  },
+  "class_type": "VHS_VideoCombine",
+  "_meta": {
+   "title": "Video Combine 🎥🅥🅗🅢"
+  }
+ },
+ "265": {
+  "inputs": {
+   "prompt": [
+    "326",
+    0
+   ],
+   "width": [
+    "252",
+    0
+   ],
+   "height": [
+    "252",
+    1
+   ],
+   "length": [
+    "250",
+    1
+   ],
+   "ref_image_size": "max",
+   "clip": [
+    "38",
+    0
+   ],
+   "vae": [
+    "36",
+    0
+   ],
+   "audio_vae": [
+    "37",
+    0
+   ],
+   "ref_images.ref_image_0": [
+    "51",
+    0
+   ],
+   "ref_images.ref_image_1": [
+    "49",
+    0
+   ],
+   "ref_images.ref_image_2": [
+    "50",
+    0
+   ]
+  },
+  "class_type": "MiniMaxH3ReferenceToVideo",
+  "_meta": {
+   "title": "MiniMax H3 Reference to Video"
+  }
+ },
+ "283": {
+  "inputs": {
+   "value": 1.5
+  },
+  "class_type": "easy float",
+  "_meta": {
+   "title": "Float"
+  }
+ },
+ "289": {
+  "inputs": {
+   "step": 8,
+   "sigmas": [
+    "261",
+    0
+   ]
+  },
+  "class_type": "SplitSigmas",
+  "_meta": {
+   "title": "SplitSigmas"
+  }
+ },
+ "307": {
+  "inputs": {},
+  "class_type": "忽略多组孤海",
+  "_meta": {
+   "title": "忽略多组 孤海"
+  }
+ },
+ "308": {
+  "inputs": {},
+  "class_type": "忽略多组孤海",
+  "_meta": {
+   "title": "忽略多组 孤海"
+  }
+ },
+ "309": {
+  "inputs": {},
+  "class_type": "忽略多组孤海",
+  "_meta": {
+   "title": "忽略多组 孤海"
+  }
+ },
+ "310": {
+  "inputs": {},
+  "class_type": "忽略多组孤海",
+  "_meta": {
+   "title": "忽略多组 孤海"
+  }
+ },
+ "326": {
+  "inputs": {
+   "prompt": "subject_definitions:\n- Model 1: An edgy female fashion model with short dark hair, wearing a voluminous bright pink fluffy faux fur coat over a black turtleneck, layered with intricate silver chains, a pink snakeskin-patterned top, and silver metallic pants.\n- Model 2: A futuristic female fashion model with pink twin braids, wearing a high-fashion, one-shoulder silver metallic gown with shattered-glass mirror embellishments and light blue reflective accents.\n- Stage Environment: A grand, illuminated fashion runway inside a dark auditorium with a large blue LED background screen displaying \"MISS UNIVERSE\", surrounded by bright overhead spotlights, reflective glass catwalk floors, and an audience on both sides.\n\nsummary:\nA 10-second sequential fashion runway presentation on a grand illuminated stage. Model 1 struts to the front mark, executes a high-fashion pose with a dramatic camera close-up, and turns back, creating a passing cross-over moment as Model 2 enters from the background to take the front stage in fluid 1.0x real-time speed.\n\nretention_analysis:\nN/A - Pure text-to-video generation.\n\ndetailed_description:\nThe target video is a single continuous 10-second shot rendered in raw 1.0x real-time speed with a dynamic tracking camera, high shutter-speed clarity, realistic garment motion, and zero slow-motion.\n[Shot 1] The camera starts at a low-angle tracking position along the center runway axis, focusing sequentially on each model's catwalk routine.\n- From 00:00.000 to 00:03.500: Model 1 struts confidently down the center of the reflective catwalk, her pink fur coat swaying heavy with each pace. She stops at the front runway mark, rests her right hand in her pocket, and cocks her hip. The camera zooms in tight for an intimate facial close-up, locking onto her cool expression under flashing spotlights.\n- From 00:03.500 to 00:06.500: Model 1 turns 180 degrees to begin her return walk, her pink fur jacket whipping around dramatically. As Model 1 moves toward the background, Model 2 emerges from the rear stage area, striding forward down the opposite side of the runway. They pass each other smoothly in a staggered cross-over path under bright overhead beams.\n- From 00:06.500 to 00:10.000: Model 2 reaches the front mark as Model 1 vanishes into the background light. Model 2 pauses, placing her right hand on her hip and resting her left hand down to showcase the shattered-glass dress details. The camera captures her in a stunning close-up before she executes a sharp spin and begins her exit walk toward the glowing \"MISS UNIVERSE\" screen.\n\noverall_soundscape:\nThumping electronic fashion runway beat, sharp heels clicking distinctly on the glass catwalk, intense camera shutter pops, subtle fabric rustle from the fur coat and metallic dress, and soft ambient audience murmur.\n\nnon_diegetic_music:\nN/A"
+  },
+  "class_type": "CR Prompt Text",
+  "_meta": {
+   "title": "⚙️ CR Prompt Text"
+  }
+ },
+ "330": {
+  "inputs": {
+   "model_name": "minimax_h3_latent_upscaler_3d_fp16.safetensors",
+   "mode": "scale by multiplier",
+   "mode.scale": [
+    "283",
+    0
+   ],
+   "align": 32,
+   "enable_temporal_chunking": true,
+   "force_unload": true,
+   "device": "cuda",
+   "precision": "fp16",
+   "latent": [
+    "139",
+    0
+   ]
+  },
+  "class_type": "MinimaxH3LatentUpscaler3D",
+  "_meta": {
+   "title": "Minimax H3 Latent Upscaler (3D)"
+  }
+ }
+}

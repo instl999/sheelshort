@@ -1,0 +1,55 @@
+# Copy to config.toml. Secrets (if any) come from environment variables only.
+
+[comfy]
+# Jobs go to the least busy server. Both run MiniMax H3 locally inside ComfyUI, so no MiniMax API key is needed.
+servers = [
+  "https://your-comfyui-server-1:8443",
+  "https://your-comfyui-server-2:8443",
+]
+auth_header_env = ""           # e.g. "COMFY_TOKEN" if a server needs a Bearer token
+
+[workflows]
+# The servers' own workflows, converted to API format by the ComfyUI frontend (graphToPrompt).
+h3 = "workflows/u22_base.api.json"           # U22-YZ金鱼-MiniMax-H3-多参考生视频-优化版
+t2i = "workflows/c01.api.json"               # C01-文生图-Zimage基础版 (portraits, location plates)
+edit = "workflows/y01.api.json"              # Y01-图像修改千问2511 (keyframes: location + cast composed)
+voice_design = "workflows/n06design.api.json"  # N06-Qwen3TTS音频创造 (voices from a description)
+voice_clone = "workflows/n06clone.api.json"    # N06-Qwen3TTS音频克隆 (a recording speaking new lines)
+
+[h3]
+aspect_ratio = "9:16 (Portrait Widescreen)"
+megapixels = 0.7               # first-pass size; U22's second pass upscales the latent 1.3x
+timeout_s = 3600
+
+[images]
+portrait_size = [720, 1280]
+plate_size = [720, 1280]
+keyframe_long_side = 1280
+keyframe_attempts = 3         # blockout keyframes and view plates: retries until the vision check passes
+sheet_long_side = 1664         # 16:9 front/side/back sheet
+prop_size = [1024, 1024]
+
+[library]
+# Location photo libraries (inputs/locations/<loc>/) are tagged by a vision model on the servers (llama.cpp nodes,
+# as in the servers' 通用反推 workflow); tags live in inputs/locations/<loc>/library.json and can be edited by hand.
+max_per_clip = 3               # location pictures per clip, within H3's 9-image budget
+vlm_model = "Qwen3.8-27B-Q4_K_M.gguf"
+vlm_mmproj = "Qwen3.8-mmproj-BF16.gguf"
+vlm_chat_handler = "Qwen3.8"
+
+[blender]
+# White-mesh sets (scene.json locations.<loc>.blockout, relative to inputs/) are rendered headless.
+exe = ""                       # empty = BLENDER env var, PATH, or C:\Program Files\Blender Foundation\Blender *
+engine = "cycles"              # "cycles" renders on the CPU anywhere; "workbench" is faster but needs a GPU
+still_res = [720, 1280]        # per-cut clay and depth stills
+animatic_res = [288, 512]      # U22 scales reference video to 512 px anyway
+animatic_fps = 8               # rendered rate; retimed to 24 fps so camera moves keep their speed
+animatic_samples = 4
+timeout_s = 3600
+
+[spike]
+# A = keyframe-anchored, B = cast + location references, C = B + reference voices,
+# D = C + blockout animatic (reference video), E = D + [Shot 1] keyframe painted from the blockout
+variants = ["C", "D", "E"]
+whisper_model = "small"
+seed_offset = 0                # change to re-roll every generation

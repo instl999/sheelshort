@@ -1,0 +1,296 @@
+{
+ "11": {
+  "inputs": {
+   "vae_name": "ae.safetensors"
+  },
+  "class_type": "VAELoader",
+  "_meta": {
+   "title": "Load VAE"
+  }
+ },
+ "12": {
+  "inputs": {
+   "clip_name": "qwen_3_4b.safetensors",
+   "type": "qwen_image",
+   "device": "default"
+  },
+  "class_type": "CLIPLoader",
+  "_meta": {
+   "title": "Load CLIP"
+  }
+ },
+ "14": {
+  "inputs": {
+   "lora_name": "Zimage/Z-Image-Fun-Lora-Distill-8-Steps-2603-ComfyUI.safetensors",
+   "strength_model": 0.5,
+   "model": [
+    "33",
+    0
+   ]
+  },
+  "class_type": "LoraLoaderModelOnly",
+  "_meta": {
+   "title": "Load LoRA"
+  }
+ },
+ "16": {
+  "inputs": {
+   "text": "泛黄，发绿，模糊，低分辨率，低质量图像，扭曲的肢体，诡异的外观，丑陋，AI感，噪点，网格感，JPEG压缩条纹，异常的肢体，水印，乱码，意义不明的字符，泛蓝",
+   "clip": [
+    "12",
+    0
+   ]
+  },
+  "class_type": "CLIPTextEncode",
+  "_meta": {
+   "title": "CLIP Text Encode (Prompt)"
+  }
+ },
+ "17": {
+  "inputs": {
+   "samples": [
+    "22",
+    0
+   ],
+   "vae": [
+    "11",
+    0
+   ]
+  },
+  "class_type": "VAEDecode",
+  "_meta": {
+   "title": "VAE Decode"
+  }
+ },
+ "18": {
+  "inputs": {
+   "unet_name": "Zimage/z_image_bf16.safetensors",
+   "weight_dtype": "default"
+  },
+  "class_type": "UNETLoader",
+  "_meta": {
+   "title": "Load Diffusion Model"
+  }
+ },
+ "21": {
+  "inputs": {
+   "width": [
+    "60",
+    0
+   ],
+   "height": [
+    "61",
+    0
+   ],
+   "batch_size": 1
+  },
+  "class_type": "EmptyLatentImage",
+  "_meta": {
+   "title": "Empty Latent Image"
+  }
+ },
+ "22": {
+  "inputs": {
+   "seed": 34341318406080,
+   "steps": 8,
+   "cfg": 1,
+   "sampler_name": "res_2s_ode",
+   "scheduler": "kl_optimal",
+   "denoise": 1,
+   "model": [
+    "14",
+    0
+   ],
+   "positive": [
+    "24",
+    0
+   ],
+   "negative": [
+    "16",
+    0
+   ],
+   "latent_image": [
+    "21",
+    0
+   ]
+  },
+  "class_type": "KSampler",
+  "_meta": {
+   "title": "KSampler"
+  }
+ },
+ "23": {
+  "inputs": {
+   "lora_name": "Zimage/Kook_Zimage_瑶光.safetensors",
+   "strength_model": 0.5000000000000001,
+   "model": [
+    "18",
+    0
+   ]
+  },
+  "class_type": "LoraLoaderModelOnly",
+  "_meta": {
+   "title": "Load LoRA"
+  }
+ },
+ "24": {
+  "inputs": {
+   "text": [
+    "49",
+    0
+   ],
+   "clip": [
+    "12",
+    0
+   ]
+  },
+  "class_type": "CLIPTextEncode",
+  "_meta": {
+   "title": "CLIP Text Encode (Prompt)"
+  }
+ },
+ "33": {
+  "inputs": {
+   "lora_name": "Zimage/Kook_Zimage_如梦似幻.safetensors",
+   "strength_model": 0.7000000000000002,
+   "model": [
+    "23",
+    0
+   ]
+  },
+  "class_type": "LoraLoaderModelOnly",
+  "_meta": {
+   "title": "Load LoRA"
+  }
+ },
+ "49": {
+  "inputs": {
+   "text": "真人写实风格，文艺电影高级构图，镜头呼吸感，沉浸式叙事氛围感拉满；柔和漫射自然光叠加经典伦勃朗光影，真实立体光影层次，光影斑驳错落，胶片颗粒质感，画面高级有故事感。景深层次自然；人物肌肤纹理真实细腻，原生真实肌肤质感，人物情态生动自然、情绪饱满。江湖故事感。侧身，古典仕女造型的少女，梳明代高发髻，点缀精致的珠花与绒花发饰，侧边一绺发束垂在前胸。身着明制汉服：复古低饱和莫兰迪色调。上身是明制复原款紫藤色暗纹柔软质感琵琶袖圆领衫，长至腿部，刺绣团花纹样，下身搭配明制浅姜黄色轻纱马面裙四季花卉纹样，裙摆垂坠飘逸。手持一柄雾蓝色缂丝团扇，扇面绣有折枝玉兰花纹样。姿态优雅，走出中式古宅，视线低垂含着一丝温婉的笑意。旁边秀丽双鬟侍女（明制交领衫外搭圆领长比甲下着百褶裙）轻撩珠帘，昏暗散光营造出宁静、怀旧的氛围，大光圈虚化背景，突出人物的立体轮廓与温婉气质，营造出慵懒随性的氛围感与沉浸式的现场感。"
+  },
+  "class_type": "CR Text",
+  "_meta": {
+   "title": "🔤 CR Text"
+  }
+ },
+ "50": {
+  "inputs": {
+   "upscale_method": "lanczos",
+   "megapixels": 0.30000000000000004,
+   "resolution_steps": 1,
+   "image": [
+    "17",
+    0
+   ]
+  },
+  "class_type": "ImageScaleToTotalPixels",
+  "_meta": {
+   "title": "Scale Image to Total Pixels"
+  }
+ },
+ "53": {
+  "inputs": {
+   "model": "seedvr2_ema_3b_fp8_e4m3fn.safetensors",
+   "device": "cuda:0",
+   "blocks_to_swap": 32,
+   "swap_io_components": true,
+   "offload_device": "cpu",
+   "cache_model": "sdpa",
+   "attention_mode": "sageattn_2"
+  },
+  "class_type": "SeedVR2LoadDiTModel",
+  "_meta": {
+   "title": "SeedVR2 (Down)Load DiT Model"
+  }
+ },
+ "54": {
+  "inputs": {
+   "model": "ema_vae_fp16.safetensors",
+   "device": "cuda:0",
+   "encode_tiled": true,
+   "encode_tile_size": 1024,
+   "encode_tile_overlap": 128,
+   "decode_tiled": true,
+   "decode_tile_size": 1024,
+   "decode_tile_overlap": 128,
+   "tile_debug": "false",
+   "offload_device": "cpu",
+   "cache_model": false
+  },
+  "class_type": "SeedVR2LoadVAEModel",
+  "_meta": {
+   "title": "SeedVR2 (Down)Load VAE Model"
+  }
+ },
+ "58": {
+  "inputs": {
+   "filename_prefix": "comfyui",
+   "images": [
+    "72",
+    0
+   ]
+  },
+  "class_type": "SaveImage",
+  "_meta": {
+   "title": "Save Image"
+  }
+ },
+ "60": {
+  "inputs": {
+   "value": 1920
+  },
+  "class_type": "INTConstant",
+  "_meta": {
+   "title": "INT Constant"
+  }
+ },
+ "61": {
+  "inputs": {
+   "value": 1024
+  },
+  "class_type": "INTConstant",
+  "_meta": {
+   "title": "INT Constant"
+  }
+ },
+ "63": {
+  "inputs": {
+   "text": "情绪氛围感拉满，暗朦，光朦，胶片颗粒质感，层次丰富，，朦胧美学，光的美学,POV视角，对焦模糊，缤纷泛影，质感和肌理，透射暖金微光，超广角，强透视，延伸感，灰青橙黄褪色胶片粗颗粒，低光与高曝，低饱和，高对比反差，光影模糊、弱印象派，超现实，朦胧渐变，暗灰色调氛围，逆朦，过曝，泛朦，模糊弥散渐变，粒子高噪点、光影层次，复古，抽象，空灵，梦幻，大张力角度+故事感，印象派技法，虚实结合的油画，模糊颗粒肌理，模糊感+颗粒感+肌理感+朦胧感，清新淡雅，治愈配色，色彩冷暖对比强烈，强调梦幻温暖的氛围感，微光，隐约看出形态，非传统构图方式，自序，艺术，高级的氛围感，梦幻，缪斯，复古风格，超强复古颗粒感，低饱和"
+  },
+  "class_type": "CR Text",
+  "_meta": {
+   "title": "🔤 CR Text"
+  }
+ },
+ "72": {
+  "inputs": {
+   "seed": 2346985954,
+   "resolution": 1080,
+   "max_resolution": 0,
+   "batch_size": 5,
+   "uniform_batch_size": false,
+   "color_correction": "lab",
+   "temporal_overlap": 0,
+   "prepend_frames": 0,
+   "input_noise_scale": 0,
+   "latent_noise_scale": 0,
+   "offload_device": "cpu",
+   "enable_debug": false,
+   "image": [
+    "50",
+    0
+   ],
+   "dit": [
+    "53",
+    0
+   ],
+   "vae": [
+    "54",
+    0
+   ]
+  },
+  "class_type": "SeedVR2VideoUpscaler",
+  "_meta": {
+   "title": "SeedVR2视频放大器"
+  }
+ }
+}

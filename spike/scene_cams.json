@@ -1,0 +1,174 @@
+{
+  "title": "归来 (The Return)",
+  "language": "zh-CN",
+  "style": "The target video is a photorealistic live-action Chinese vertical short drama in 9:16 with cinematic composition, shallow depth of field, a 50mm-equivalent lens look, warm tungsten lamp key light against a cool blue night skyline, subtle film grain, and finely detailed faces with natural skin texture.",
+  "characters": {
+    "linxia": {
+      "name": "Lin Xia",
+      "role": "woman",
+      "look": "a 28-year-old Chinese woman with an oval face, softly arched brows, almond-shaped dark-brown eyes with long curled eyelashes, a small beauty mark under her left eye, refined makeup with soft brown eyeshadow, thin eyeliner and a muted rose-red lip, long wavy dark-brown hair falling past her shoulders with a side part on the right, wearing a deep-red satin slip evening gown with thin straps and small pearl stud earrings.",
+      "keep": "beauty mark under the left eye, long wavy dark-brown hair with the right side part, rose-red lip makeup, deep-red satin slip gown and pearl stud earrings",
+      "face_detail": "long curled eyelashes, a small beauty mark under the left eye, fine skin texture with a natural sheen, soft brown eyeshadow and a muted rose-red lip.",
+      "voice_en": "in a warm, slightly low female voice",
+      "voice_design": "二十八岁左右的成年女性，音色温暖、略偏低沉，普通话标准，语速中等偏慢，压抑着愤怒与委屈，尾音带一点颤抖。",
+      "voice_sample": "我等了你整整三年，每天晚上都站在这扇窗前，看着这座城市的灯一盏一盏地熄灭。",
+      "hair": "long wavy dark-brown hair falling past the shoulders with a side part on her right, worn loose",
+      "costume": "a deep-red satin slip evening gown with thin straps, ankle length, black pointed-toe high heels, small pearl stud earrings, no other jewellery"
+    },
+    "luchen": {
+      "name": "Lu Chen",
+      "role": "man",
+      "look": "a 32-year-old Chinese man with a lean face, a sharp jawline, straight thick brows, narrow dark eyes, a thin pale diagonal scar across his left eyebrow, short black hair neatly swept back, clearly visible light stubble on his jaw and upper lip, wearing a black two-piece suit over a white shirt with an open collar and no tie.",
+      "keep": "thin scar across the left eyebrow, swept-back short black hair, light stubble, black suit and open-collar white shirt",
+      "face_detail": "a thin pale thin scar across the left eyebrow, light stubble, fine skin texture, and dark eyes catching a small lamp highlight.",
+      "voice_en": "in a deep, calm male voice",
+      "voice_design": "三十二岁左右的成年男性，音色低沉、沉稳，普通话标准，语速偏慢，克制冷静，几乎没有情绪起伏，句尾干脆利落。",
+      "voice_sample": "有些事情你不需要知道，你只需要相信我。今晚跟着我走，别回头，也别出声。",
+      "hair": "short black hair neatly swept back, light stubble",
+      "costume": "a black two-piece slim suit, white shirt with an open collar and no tie, black leather oxford shoes, no jewellery"
+    }
+  },
+  "locations": {
+    "penthouse": {
+      "name": "penthouse living room",
+      "look": "a luxury penthouse living room at night with floor-to-ceiling windows showing the glittering Shanghai skyline with the Lujiazui towers, including the Oriental Pearl Tower, across the Huangpu River, low warm brass table lamps, a dark grey marble floor, a charcoal velvet sofa, and a dark wooden doorway on the right leading into shadow.",
+      "keep": "the floor-to-ceiling windows, the Shanghai Lujiazui night skyline, the brass table lamps, the dark grey marble floor, the charcoal velvet sofa and the doorway position",
+      "time": "night",
+      "blockout": "blockout/penthouse_cams.blend"
+    }
+  },
+  "clips": [
+    {
+      "id": "K1",
+      "location": "penthouse",
+      "summary": "At night in {loc}, {linxia} turns from the window to face {luchen}, who steps out of the dark doorway. She tells him she believed he was dead for three years; he answers that the man she married is gone.",
+      "soundscape": "Quiet penthouse room tone continues throughout, with a faint muffled city hum through the glass and a soft electrical buzz from the lamps.",
+      "cuts": [
+        {
+          "type": "MS",
+          "subjects": [
+            "linxia",
+            "luchen"
+          ],
+          "composition": "Vertical rule-of-thirds frame: {linxia} stands in the left third in front of the floor-to-ceiling window with the skyline behind her, while {luchen} stands half in shadow in the doorway in the right background of {loc}.",
+          "action": "{linxia}, holding {wine_glass} low in her right hand, slowly turns from the window toward the doorway, the satin gown catching the lamplight. {luchen} takes one measured step out of the shadow into the warm lamplight.",
+          "camera": "Slow push in, with small amplitude, at slow speed.",
+          "sound": "Her heel clicks once on the marble; his single footstep follows.",
+          "end": "Both hold still, eyes locked across the room.",
+          "props": [
+            "wine_glass"
+          ]
+        },
+        {
+          "type": "CU",
+          "subjects": [
+            "linxia"
+          ],
+          "speaker": "linxia",
+          "line": "整整三年，我以为你死了。",
+          "delivery": "low and trembling, holding back anger and tears",
+          "composition": "Tight close-up with her face in the right two-thirds of the frame, warm lamp key light from screen left, cool blue skyline bokeh behind her.",
+          "action": "Her eyes glisten with tears that do not fall; her fingers tighten around the stem of {wine_glass} at the bottom edge of the frame, and her jaw tightens just before she speaks.",
+          "camera": "Static camera with a barely perceptible handheld breathing.",
+          "end": "She keeps staring at him, lips pressed together.",
+          "props": [
+            "wine_glass"
+          ]
+        },
+        {
+          "type": "OTS",
+          "over": "linxia",
+          "subjects": [
+            "luchen"
+          ],
+          "speaker": "luchen",
+          "line": "我确实死过一次。",
+          "delivery": "quiet and controlled, almost gentle",
+          "composition": "Her bare shoulder and the edge of her wavy dark hair blur in the left foreground; he faces the camera in the right third, lit by the warm lamp with the dark doorway behind him.",
+          "action": "He holds her gaze without blinking; a faint muscle moves in his jaw.",
+          "camera": "Static camera, focus held on his eyes.",
+          "end": "He does not look away."
+        },
+        {
+          "type": "CU",
+          "subjects": [
+            "luchen"
+          ],
+          "speaker": "luchen",
+          "line": "你嫁的那个人，回不来了。",
+          "delivery": "low and flat, as a final statement",
+          "composition": "Tight close-up with his face in the left two-thirds of the frame, lamp light raking across the scar on his left eyebrow, the doorway falling to black behind him.",
+          "action": "He lowers his eyes for a moment, then lifts them back to her.",
+          "camera": "Very slow push in, with small amplitude, at slow speed.",
+          "end": "He stays perfectly still as the line ends."
+        }
+      ]
+    },
+    {
+      "id": "K2",
+      "location": "penthouse",
+      "summary": "Moments later in {loc}, {linxia} closes the distance to {luchen} and demands to know who he is; he says he is the only one who can keep her alive tonight, and her inner voice concludes he did not come back for her.",
+      "soundscape": "The same quiet penthouse room tone and muffled city hum continue throughout, with soft fabric rustle as she moves.",
+      "cuts": [
+        {
+          "type": "MS",
+          "subjects": [
+            "linxia",
+            "luchen"
+          ],
+          "composition": "Profile two-shot in front of the window: {linxia} on the left, {luchen} on the right, the skyline glittering between them.",
+          "action": "{linxia} closes the distance with two sharp steps and stops one step from him; he does not move back.",
+          "camera": "Slow lateral track to the right, with small amplitude, at slow speed.",
+          "sound": "Two quick heel clicks on the marble.",
+          "end": "They stand face to face, one step apart."
+        },
+        {
+          "type": "OTS",
+          "over": "luchen",
+          "subjects": [
+            "linxia"
+          ],
+          "speaker": "linxia",
+          "line": "那你到底是谁？",
+          "delivery": "sharp and breathless, demanding",
+          "composition": "His black-suited shoulder and the back of his swept-back hair blur in the right foreground; she faces the camera in the left third, the window skyline soft behind her.",
+          "action": "She lifts her chin and searches his face, her breath unsteady.",
+          "camera": "Static camera, focus held on her eyes.",
+          "end": "She waits for his answer."
+        },
+        {
+          "type": "CU",
+          "subjects": [
+            "luchen"
+          ],
+          "speaker": "luchen",
+          "line": "今晚唯一能让你活下来的人。",
+          "delivery": "quiet and urgent, every word deliberate",
+          "composition": "Tight close-up, his face filling the centre-left of the frame, warm lamp light on one side and cool skyline light on the other.",
+          "action": "He leans in a few centimetres; his eyes flick once toward the door, then back to her.",
+          "camera": "Static camera with a barely perceptible handheld breathing.",
+          "end": "His expression gives nothing away."
+        },
+        {
+          "type": "VO",
+          "subjects": [
+            "linxia"
+          ],
+          "speaker": "linxia",
+          "line": "他回来，不是为了我。",
+          "delivery": "cold and certain, barely above a whisper",
+          "composition": "Close-up of {linxia} in three-quarter profile, lamplight on her cheek, the skyline a soft blue blur behind her.",
+          "action": "A single tear finally slides down her cheek; she does not wipe it away.",
+          "end": "The shot ends on her eyes in extreme close-up, the tear catching the light."
+        }
+      ]
+    }
+  ],
+  "props": {
+    "wine_glass": {
+      "name": "crystal wine glass",
+      "look": "a tall, thin-stemmed crystal Bordeaux glass, one-third filled with dark red wine, no markings.",
+      "keep": "the tall thin stem, clear crystal bowl and the one-third fill of dark red wine"
+    }
+  }
+}
