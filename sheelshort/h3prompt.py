@@ -357,7 +357,9 @@ def build(scene: dict, clip: dict, refs: Refs, cameras: dict[int, dict] | None =
                 voice = f" with the voice timbre of <Audio {aud[c]}>" if c in aud else f", {chars[c]['voice_en']}"
             said = cut.get("say") or cut["line"]   # the acted form keeps its punctuation (…… —— ！) verbatim
             if typ == "VO":
-                parts.append(f"{S(c)} (S{sid[c]}) off-screen, as inner voice-over{voice}, {cut['delivery']}, <d>[{lang}] {said}</d> {S(c)}'s lips stay closed throughout the line.")
+                # never "off-screen" here: H3 then leaves the speaker out of the picture (E02 C3 rendered an empty set)
+                parts.append(f"{S(c)} stays in frame, silent, lips closed, while {S(c)}'s (S{sid[c]}) inner voice-over is heard"
+                             f"{voice}, {cut['delivery']}, <d>[{lang}] {said}</d> {S(c)}'s lips stay closed throughout the line.")
             else:
                 parts.append(f"{S(c)} (S{sid[c]}){voice}, {cut['delivery']}, <d>[{lang}] {said}</d>")
         if typ == "RX":

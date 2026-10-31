@@ -136,7 +136,10 @@ def tile(images: list[Path], dest: Path, cols: int, cell: tuple[int, int] = (270
     scaled = ";".join(f"[{i}:v]scale={w}:{h}:force_original_aspect_ratio=decrease,crop=min(iw\\,{w}):min(ih\\,{h}),pad={w}:{h}:-1:-1[s{i}]"
                       for i in range(len(images)))
     layout = "|".join(f"{(i % cols) * w}_{(i // cols) * h}" for i in range(len(images)))
-    graph = f"{scaled};{''.join(f'[s{i}]' for i in range(len(images)))}xstack=inputs={len(images)}:layout={layout}:fill=black[v]"
+    if len(images) == 1:   # xstack needs two inputs at least (a one-shot clip, e.g. a voice-over, has one panel)
+        graph = scaled[:-len("[s0]")] + "[v]"
+    else:
+        graph = f"{scaled};{''.join(f'[s{i}]' for i in range(len(images)))}xstack=inputs={len(images)}:layout={layout}:fill=black[v]"
     _run(args + ["-filter_complex", graph, "-map", "[v]", "-frames:v", "1", "-q:v", "3", str(dest)])
     return dest
 
