@@ -36,7 +36,8 @@ python -m sheelshort review myshow E01                # edit/E01/review.html: ma
 
 ## Autoscaling (AutoDL)
 The servers are AutoDL.Art instances of one app, so `[fleet]` in `sheelshort.toml` can add identical servers during a
-render: when clips wait beyond what the pool holds, it powers on a stopped `sheelshort-bj-*` instance or creates one
+render: when one more server would save at least `min_gain_minutes` (time-based rule, see `docs/DESIGN.md` §0.8),
+it powers on a stopped `sheelshort-bj-*` instance or creates one
 (Beijing only, 5090 first), adds it to the pool once ComfyUI answers, and powers it off when idle and at the end of the
 run (also after a crash). It never touches other instances. Start with `dry_run = true`.
 `python -m sheelshort fleet <project>` lists the managed servers; `... fleet <project> off` powers them all off.

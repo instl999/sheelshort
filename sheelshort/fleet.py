@@ -167,11 +167,8 @@ class Fleet:
     # ---------- decisions ----------
 
     def tick(self) -> None:
-        servers = self.p.cfg["comfy"]["servers"]
-        per = int(self.c.get("jobs_per_server", 2))
-        waiting = self.pending - len(servers) * per
-        if (waiting >= int(self.c.get("scale_up_waiting", 2)) and len(self.managed) < int(self.c["max_extra"])
-                and not self.starting and self.clock() >= self.backoff_until):
+        if (len(self.managed) < int(self.c["max_extra"]) and not self.starting and self.clock() >= self.backoff_until
+                and self.gain_minutes() >= float(self.c.get("min_gain_minutes", 3))):
             self.starting = True
             self._up = threading.Thread(target=self._scale_up, daemon=True)
             self._up.start()
@@ -184,6 +181,14 @@ class Fleet:
             idle_for = 0 if m["idle_since"] is None else self.clock() - m["idle_since"]
             if not busy and (self.pending == 0 or idle_for >= 60 * float(self.c.get("idle_off_minutes", 10))):
                 self._retire(uuid, f"idle {idle_for / 60:.0f} min" if self.pending else "no work left")
+
+    def gain_minutes(self) -> float:
+        """Minutes one more server would take off this run: with n servers working, W minutes of GPU work left and a
+        startup cost of S minutes, (W - n*S) / (n*(n+1)). Positive only when the work left outlasts the startup."""
+        n = max(1, len(self.p.cfg["comfy"]["servers"]))
+        w = self.pending * float(self.c.get("clip_minutes", 5))
+        s = float(self.c.get("startup_minutes", 5))
+        return (w - n * s) / (n * (n + 1))
 
     def _busy(self, url: str) -> bool:
         if self.p._assigned.get(url, 0) > 0:
@@ -199,7 +204,8 @@ class Fleet:
     def _scale_up(self) -> None:
         try:
             if self.dry:
-                self.log(f"would add a server ({self.pending} job(s) for {len(self.p.cfg['comfy']['servers'])} server(s))")
+                self.log(f"would add a server ({self.pending} job(s) for {len(self.p.cfg['comfy']['servers'])} server(s), "
+                         f"saves ~{self.gain_minutes():.1f} min)")
                 self.backoff_until = self.clock() + 600
                 return
             uuid = self._power_on_stopped() or self._create()
@@ -220,6 +226,8 @@ class Fleet:
                 return
             if self._stop.is_set():
                 return   # the run ended meanwhile: `stop` powers it off
+            took = (self.clock() - t0) / 60 + 1.5   # + H3's first model load on a fresh server
+            self.c["startup_minutes"] = round(0.5 * float(self.c.get("startup_minutes", 5)) + 0.5 * took, 1)  # learn S
             self.managed[uuid]["url"] = url
             with self.p.lock:
                 self.p.cfg["comfy"]["servers"].append(url)
@@ -251,7 +259,7 @@ class Fleet:
             try:
                 uuid = self.api.create(self.c["application_uuid"], self.c["application_version"], spec,
                                        f"{self.c['name_prefix']}-{n}", self.c.get("data_centers") or None)
-                self.log(f"{uuid}: created ({spec})")
+                self.log(f"{uuid}: created ({spec}); expected to save ~{self.gain_minutes():.1f} min")
                 return uuid
             except AutoDLError as e:
                 self.log(f"create {spec} failed: {e}")

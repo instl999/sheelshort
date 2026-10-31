@@ -203,6 +203,15 @@ create call; the owner observed ComfyUI ready under 3 minutes after each power-o
 - Beijing B had no free 5090 when the test instance was created.
 - The Northwest region's addresses are not reachable from this network.
 
+**Scaling rule (time-based, owner-approved).** Let n be the servers working, W the remaining GPU work (clips left ×
+`clip_minutes`) and S the startup cost of a new server, which is updated from each real scale-up. One more server
+saves (W − n·S) / (n·(n+1)) minutes, and the fleet adds one only when that saving is at least `min_gain_minutes`.
+The rule follows clip length and startup cost, and each additional server must save more than the last.
+
+**Job hand-out.** A server holds at most `[comfy] in_flight` = 2 of the run's jobs, one running and one queued, and
+the rest wait locally. Before this, the live E04 run queued all 7 clips onto the two existing servers at once, which
+would have left nothing for an added server.
+
 The owner's decision: **Beijing only.** The fleet adds servers while a render has clips waiting and powers off what
 it added when idle and at the end of the run. It never touches other instances.
 

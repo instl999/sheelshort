@@ -4,6 +4,7 @@
 [comfy]
 servers = ["https://your-comfyui-server-1:8443", "https://your-comfyui-server-2:8443"]
 auth_header_env = ""            # e.g. "COMFY_TOKEN" if a server needs a Bearer token
+in_flight = 2                   # jobs per server at once (one running, one queued); the rest wait locally
 
 [workflows]
 t2i = "c01.api.json"            # C01 Z-Image: close-ups, props, location plates
@@ -74,8 +75,11 @@ data_centers = ["beijingDC2"]        # Beijing B only (the Northwest region is n
 region_names = ["北京"]
 name_prefix = "sheelshort-bj"
 max_extra = 2                        # at most this many extra servers
-jobs_per_server = 2                  # clips a server holds at once (one running, one queued)
-scale_up_waiting = 2                 # add a server when at least this many clips wait beyond that
+# Scale up when one more server saves at least `min_gain_minutes`: with n servers, W = clips left x clip_minutes and
+# startup S, the saving is (W - n*S) / (n*(n+1)). S is updated from each real scale-up.
+min_gain_minutes = 3
+clip_minutes = 5                     # GPU minutes per clip (measured median ~5 on RTX 5090)
+startup_minutes = 5                  # boot + ComfyUI + H3's first model load on a fresh server
 idle_off_minutes = 10
 retry_minutes = 5                    # after "no stock" or a failed start
 tick_s = 20

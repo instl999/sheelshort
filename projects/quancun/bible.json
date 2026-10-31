@@ -109,6 +109,13 @@
       "keep": "the glass revolving door, the granite facade, the black SUV at the kerb, the plane tree on the pavement",
       "time": "day",
       "light": "soft overcast afternoon daylight in the city"
+    },
+    "village_tree": {
+      "name": "dirt square under the old locust tree at the village entrance",
+      "look": "a packed-dirt square in a northern Chinese village dominated by a huge gnarled old locust tree with a thick trunk and a wide leafy canopy, a low stone ring around its base, a few wooden benches, low brick houses with grey tiled roofs and tall green cornfields in the distance.",
+      "keep": "the huge gnarled locust tree with the stone ring at its base, the packed-dirt square, the brick houses and cornfields beyond",
+      "time": "day",
+      "light": "bright late-morning sunlight dappled through the tree's leaves, soft shadows"
     }
   },
   "props": {
@@ -121,6 +128,11 @@
       "name": "supplementary contract",
       "look": "a thin stapled contract booklet of white A4 pages with a red seal stamp on the cover and dense printed paragraphs, slightly crumpled from handling.",
       "keep": "the thin stapled white booklet with the red seal stamp"
+    },
+    "phone_app": {
+      "name": "smartphone with a finance app",
+      "look": "a large black smartphone held up screen-forward, showing a glossy finance app with a big green rising line chart and a gold coin icon, no legible text.",
+      "keep": "the large black smartphone with the green rising chart on screen"
     }
   }
 }

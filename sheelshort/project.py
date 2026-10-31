@@ -182,22 +182,32 @@ class Project:
         return c.object_info(REPO / ".cache" / f"object_info_{urlparse(c.base_url).hostname}.json")
 
     def pick(self) -> comfy.ComfyClient:
-        """The least busy server, counting the jobs this run has already handed it."""
-        with self.lock:
-            best, best_load = None, None
-            for url in self.cfg["comfy"]["servers"]:
-                try:
-                    running, pending = self.client(url).queue_info()
-                except Exception as e:  # noqa: BLE001 - an unreachable server is skipped
-                    log(f"server {urlparse(url).hostname} unavailable: {e}")
-                    continue
-                load = running + pending + self._assigned.get(url, 0)
-                if best_load is None or load < best_load:
-                    best, best_load = url, load
-            if best is None:
-                raise comfy.ComfyError("no ComfyUI server reachable")
-            self._assigned[best] = self._assigned.get(best, 0) + 1
-            return self.client(best)
+        """The least busy server with a free slot. A server holds at most `[comfy] in_flight` of this run's jobs (one
+        running, one queued behind it); the others wait here, not in a server's queue, so a server the fleet adds
+        mid-run gets work at once instead of finding everything already queued elsewhere."""
+        cap = int(self.cfg["comfy"].get("in_flight", 2))
+        while True:
+            with self.lock:
+                best, best_load, reachable = None, None, 0
+                for url in list(self.cfg["comfy"]["servers"]):
+                    if self._assigned.get(url, 0) >= cap:
+                        reachable += 1
+                        continue
+                    try:
+                        running, pending = self.client(url).queue_info()
+                    except Exception as e:  # noqa: BLE001 - an unreachable server is skipped
+                        log(f"server {urlparse(url).hostname} unavailable: {e}")
+                        continue
+                    reachable += 1
+                    load = running + pending + self._assigned.get(url, 0)
+                    if best_load is None or load < best_load:
+                        best, best_load = url, load
+                if best is not None:
+                    self._assigned[best] = self._assigned.get(best, 0) + 1
+                    return self.client(best)
+                if not reachable:
+                    raise comfy.ComfyError("no ComfyUI server reachable")
+            time.sleep(3)   # every server is full: wait for a slot (or for the fleet to add a server)
 
     def release(self, c: comfy.ComfyClient) -> None:
         with self.lock:

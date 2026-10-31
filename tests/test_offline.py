@@ -166,10 +166,11 @@ def test_fleet_scales_up_and_down():
                        {"uuid": "pro-mine", "name": "", "status": "running", "region_name": "北京B区"}])
     p = _FakeProject()
     fl = Fleet(p, api=api, clock=lambda: 1000.0)
-    fl.pending = 3                               # 2 servers hold 4 clips: nothing waits
+    fl.pending = 4                               # 20 min of work on 2 servers: (20 - 10) / 6 = 1.7 min saved < 3
     _scaled(fl)
     assert api.calls == []
-    fl.pending = 9                               # 5 clips wait: add a server
+    assert round(fl.gain_minutes(), 1) == 1.7
+    fl.pending = 9                               # 45 min of work: (45 - 10) / 6 = 5.8 min saved: add a server
     _scaled(fl)
     assert api.calls == [("create", "5090-p", "sheelshort-bj-1", ("beijingDC2",))]   # never the stopped west one
     url = fl.managed["pro-new2"]["url"]
@@ -194,6 +195,23 @@ def test_fleet_reuses_a_stopped_server_and_cleans_up():
     assert api.calls == [("power_on", "pro-old")]
     fl.stop()
     assert api.calls[-1] == ("power_off", "pro-old") and len(p.cfg["comfy"]["servers"]) == 2
+
+
+def test_pick_waits_for_a_free_slot():
+    import threading
+    from sheelshort.project import Project
+    with tempfile.TemporaryDirectory() as tmp:
+        p = _scratch_project(tmp, {})
+        p.cfg["comfy"]["servers"] = ["https://a"]
+        p.client = lambda url: type("C", (), {"queue_info": lambda self: (0, 0), "base_url": url})()
+        p.pick(), p.pick()                                   # the server's 2 slots are taken
+        got = []
+        t = threading.Thread(target=lambda: got.append(p.pick().base_url), daemon=True)
+        t.start(); t.join(1)
+        assert not got                                       # a third job waits locally
+        p.cfg["comfy"]["servers"].append("https://new")      # the fleet adds a server
+        t.join(5)
+        assert got == ["https://new"]
 
 
 def test_fleet_dry_run_changes_nothing():
