@@ -124,10 +124,10 @@ def run(p: Project, ep: str, only: set[str] | None = None, takes: int | None = N
         if acted:
             tm = load_json(p.root / "perform" / ep / "timing.json")[clip["id"]]
             track = Path(tm["track"]) if tm["track"] else None
-        for t in range(1, n + 1):
-            key = f"render/{ep}/{stem(p, clip['id'], t)}"
-            jobs.append(lambda key=key, clip=clip, t=t, text=text, refs=refs, files=files, seconds=seconds, track=track:
-                        _render(p, ep, key, clip, t, text, refs, files, seconds, track))
+        job = (lambda clip=clip, text=text, refs=refs, files=files, seconds=seconds, track=track:
+               _clip(p, ep, clip, n, text, refs, files, seconds, track))
+        job.renders = not clip_path(p, ep, clip["id"], 1).exists()   # a take on disk only needs its quick QC check
+        jobs.append(job)
     if p.cfg["edit"].get("music") == "auto" and not only:
         from . import assemble
         jobs.insert(0, lambda: assemble.score(p, ep))   # the music bed renders alongside the clips, not after them
@@ -137,14 +137,14 @@ def run(p: Project, ep: str, only: set[str] | None = None, takes: int | None = N
     if p.cfg.get("fleet", {}).get("enabled") and not p.dry:
         from .fleet import Fleet
         fl = Fleet(p)
-        fl.start(len(jobs))
+        fl.start(sum(1 for j in jobs if getattr(j, "renders", False)))   # only real renders are work worth a server
     workers = 2 * (len(p.cfg["comfy"]["servers"]) + (int(p.cfg["fleet"]["max_extra"]) if fl else 0))
 
     def run_one(job):
         try:
             job()
         finally:
-            if fl:
+            if fl and getattr(job, "renders", False):
                 fl.job_done()
 
     try:
@@ -153,6 +153,36 @@ def run(p: Project, ep: str, only: set[str] | None = None, takes: int | None = N
     finally:
         if fl:
             fl.stop()   # every server the fleet added is powered off, also after a crash
+
+
+def _clip(p, ep, clip, n, text, refs, files, seconds, track) -> None:
+    """Render `n` takes of a clip; with clip QC on (H3 dialogue), check each and re-take while the best still has
+    problems, up to `qc.max_takes`, then record the best take in edit/<EP>/picks.json for assembly."""
+    from . import clipqc
+    qcfg = p.cfg.get("qc", {})
+    check = qcfg.get("clips", True) and track is None
+    results = []
+    t = 0
+    while True:
+        t += 1
+        _render(p, ep, f"render/{ep}/{stem(p, clip['id'], t)}", clip, t, text, refs, files, seconds, track)
+        dest = clip_path(p, ep, clip["id"], t)
+        if check and dest.exists():
+            results.append((t, clipqc.check(p, ep, clip, dest)))
+        if t >= n and (not check or not results or not results[-1][1]["problems"]
+                       or t >= int(qcfg.get("max_takes", 2))):
+            break
+        if check and results and results[-1][1]["problems"]:
+            log(f"{ep} {clip['id']}: take {t} has problems; rendering take {t + 1}")
+    if results:
+        best = clipqc.best_take(results)
+        with p.lock:
+            picks_path = p.d("edit", ep) / "picks.json"
+            picks = load_json(picks_path) if picks_path.exists() else {}
+            picks[clip["id"]] = best
+            save_json(picks_path, picks)
+        left = next(r for tk, r in results if tk == best)["problems"]
+        log(f"{ep} {clip['id']}: using take {best}" + (f" (still: {'; '.join(left)})" if left else ""))
 
 
 def _render(p, ep, key, clip, t, text, refs, files, seconds, track) -> None:

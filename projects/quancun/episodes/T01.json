@@ -1,0 +1,89 @@
+{
+  "id": "T01",
+  "title": "反应镜头测试",
+  "music": "rural Chinese drama underscore, erhu, plucked strings, tension, instrumental, no vocals",
+  "logline": "Pacing test: lines continue over the listener's reaction shot, ~2.2 s per shot.",
+  "clips": [
+    {
+      "id": "C1",
+      "location": "village_tree",
+      "summary": "Under {loc}, {dahua} sneers at {xiaokang}; he answers that no honest investment pays that much, and she bristles.",
+      "soundscape": "Outdoor village ambience: leaves rustling, a crowd murmuring.",
+      "cuts": [
+        {
+          "type": "CU",
+          "subjects": [
+            "dahua"
+          ],
+          "speaker": "dahua",
+          "line": "李小康，你是属苍蝇的吗？哪儿有好事你就往哪儿叮！",
+          "say": "李小康，你是属苍蝇的吗？哪儿有好事……你就往哪儿叮！",
+          "act": "尖酸刻薄地挖苦",
+          "emotion": "contempt",
+          "delivery": "sneering, jabbing a finger",
+          "composition": "Close-up of {dahua}, centre-left of the frame; a loose crowd of unnamed villagers in simple rural clothes fills the background.",
+          "action": "{dahua} jabs her finger forward.",
+          "camera": "Static camera.",
+          "end": "",
+          "dur": 2.6
+        },
+        {
+          "type": "RX",
+          "subjects": [
+            "xiaokang"
+          ],
+          "composition": "Close-up of {xiaokang}, centre-right of the frame, dappled sunlight.",
+          "action": "{xiaokang} flinches slightly, jaw tightening, eyes fixed on her.",
+          "camera": "Static camera.",
+          "end": "",
+          "dur": 2.4
+        },
+        {
+          "type": "CU",
+          "subjects": [
+            "xiaokang"
+          ],
+          "speaker": "xiaokang",
+          "line": "银行定期才不到百分之三，哪有这么高的收益？",
+          "say": "银行定期才不到百分之三……哪有这么高的收益？",
+          "act": "耐着性子讲道理",
+          "emotion": "plead",
+          "delivery": "frowning, reasoning",
+          "composition": "Close-up of {xiaokang}, centre frame.",
+          "action": "{xiaokang} spreads one open hand.",
+          "camera": "Static camera.",
+          "end": "",
+          "dur": 2.4
+        },
+        {
+          "type": "RX",
+          "subjects": [
+            "dahua"
+          ],
+          "composition": "Close-up of {dahua}, centre-left of the frame.",
+          "action": "{dahua}'s face twists with irritation; she folds her arms.",
+          "camera": "Static camera.",
+          "end": "",
+          "dur": 2.2
+        },
+        {
+          "type": "CU",
+          "subjects": [
+            "dahua"
+          ],
+          "speaker": "dahua",
+          "line": "你懂个屁！",
+          "say": "你懂个屁！",
+          "act": "破口大骂",
+          "emotion": "anger",
+          "delivery": "spitting the words",
+          "composition": "Close-up of {dahua}, centre frame.",
+          "action": "{dahua} snaps at him.",
+          "camera": "Static camera.",
+          "end": "",
+          "dur": 1.8
+        }
+      ]
+    }
+  ]
+}

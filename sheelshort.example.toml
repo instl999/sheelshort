@@ -31,6 +31,15 @@ attempts = 3
 vlm_model = "Qwen3.8-27B-Q4_K_M.gguf"
 vlm_mmproj = "Qwen3.8-mmproj-BF16.gguf"
 vlm_chat_handler = "Qwen3.8"
+# Clip QC (clipqc.py): every rendered clip is checked (lines heard, on-screen text, day/night, wrong person, glitches);
+# a clip with problems is re-rendered with a new seed up to `max_takes`, and the best take goes into the episode.
+clips = true
+max_takes = 2
+max_line_cer = 0.35
+clip_vision = true
+clip_vlm_model = "Qwen3-VL-8B-Instruct-abliterated-v2.0.Q8_0.gguf"
+clip_vlm_mmproj = "Qwen3-VL-8B-Instruct-abliterated-v2.0.mmproj-Q8_0.gguf"
+clip_vlm_chat_handler = "Qwen3-VL"
 
 [perform]
 # Performance first: every line is acted by a speech engine in the character's cast voice, several takes are scored
@@ -58,6 +67,7 @@ width = 1080
 height = 1920
 fps = 30
 loudness = -14                   # LUFS integrated
+upscale = "rtx"                  # "rtx": NVIDIA RTX Video Super Resolution on the servers to 1080x1920; "" = plain resize
 font = "Heiti SC"            # libass family name; must have CJK glyphs
 music = "auto"                   # "auto": ACE-Step bed from the episode's `music` tags; a file path; or "" for none
 
