@@ -369,6 +369,48 @@ def test_tile_of_one_image():
     assert out.exists() and out.stat().st_size > 0
 
 
+
+def test_fleet_keeps_a_server_that_was_just_handed_a_job():
+    from sheelshort.fleet import Fleet
+    api = _FakeAutoDL()
+    p = _FakeProject()
+    fl = Fleet(p, api=api, clock=lambda: 1000.0)
+    fl.pending = 9
+    _scaled(fl)
+    url = fl.managed["pro-new0"]["url"]
+    fl.pending = 0
+    p._assigned[url] = 1                         # a vision check picked it after the last render finished
+    fl.tick()
+    assert url in p.cfg["comfy"]["servers"] and not any(c[0] == "power_off" for c in api.calls)
+    p._assigned[url] = 0
+    fl.tick()
+    assert url not in p.cfg["comfy"]["servers"] and ("power_off", "pro-new0") in api.calls
+    fl.stop()
+
+
+
+def test_clipqc_lamp_lit_room_is_a_night_scene():
+    from sheelshort import clipqc
+    chars = {"sd": {"name": "Li Shoudi", "role": "old man", "look": "an old man"}}
+    cu = {"type": "CU", "subjects": ["sd"]}
+    lamp = {"people": 1, "main_person_sex": "man", "light": "lamp"}
+    assert clipqc.judge_panel(chars, 1, cu, lamp, True, False) == []
+    assert clipqc.judge_panel(chars, 1, cu, {**lamp, "light": "daylight"}, True, False) == ["cut 1: daylight in a night scene"]
+    assert clipqc.judge_panel(chars, 1, cu, {**lamp, "light": "night"}, False, True) == ["cut 1: night look in a day scene"]
+
+
+
+def test_clipqc_text_on_a_prop_is_not_a_caption():
+    from sheelshort import clipqc
+    chars = {"fg": {"name": "Fugui", "role": "man", "look": "a man"}}
+    props = {"card": {"look": "a small white business card with a few lines of tiny printed characters"},
+             "cup": {"look": "a plain white cup"}}
+    pan = {"people": 1, "main_person_sex": "man", "text_or_subtitles": True}
+    assert clipqc.judge_panel(chars, 2, {"type": "CU", "subjects": ["fg"], "props": ["card"]}, pan, False, False, props) == []
+    assert clipqc.judge_panel(chars, 2, {"type": "CU", "subjects": ["fg"], "props": ["cup"]}, pan, False, False, props) == \
+        ["cut 2: on-screen text"]
+
+
 if __name__ == "__main__":
     for name, fn in list(globals().items()):
         if name.startswith("test_"):

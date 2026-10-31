@@ -208,7 +208,7 @@ class Fleet:
             self.log("waiting for a starting server before powering everything off")
             self._up.join(timeout=1500)
         for uuid in list(self.managed):
-            self._retire(uuid, "run finished")
+            self._retire(uuid, "run finished", force=True)
 
     def _adopt_orphans(self) -> None:
         """Servers left running by a run that died are taken into this run's pool (they are ours, and already warm);
@@ -266,9 +266,8 @@ class Fleet:
                 m["idle_since"] = self.clock()
             idle_for = 0 if m["idle_since"] is None else self.clock() - m["idle_since"]
             if not busy and (self.pending == 0 or idle_for >= 60 * float(self.c.get("idle_off_minutes", 10))):
-                if self.pending:   # work is waiting but this server got none: another server would sit idle too
-                    self.hold_pending = self.pending
-                self._retire(uuid, f"idle {idle_for / 60:.0f} min" if self.pending else "no work left")
+                if self._retire(uuid, f"idle {idle_for / 60:.0f} min" if self.pending else "no work left") and self.pending:
+                    self.hold_pending = self.pending   # work is waiting but this server got none: another would sit idle too
 
     def gain_minutes(self) -> float:
         """Minutes one more server would take off this run: with n servers working, W minutes of GPU work left and a
@@ -323,7 +322,7 @@ class Fleet:
                     time.sleep(10)
             if not url:
                 self.log(f"{uuid}: ComfyUI never answered; powering it off")
-                self._retire(uuid, "not reachable")
+                self._retire(uuid, "not reachable", force=True)
                 return
             if self._stop.is_set():
                 return   # the run ended meanwhile: `stop` powers it off
@@ -366,21 +365,27 @@ class Fleet:
                 self.log(f"create {spec} failed: {e}")
         return None
 
-    def _retire(self, uuid: str, why: str) -> None:
-        m = self.managed.pop(uuid, None)
+    def _retire(self, uuid: str, why: str, force: bool = False) -> bool:
+        """Take the server out of the pool and power it off. Under the lock `pick` takes, so a job handed to the server
+        after it was judged idle (a vision check, say) keeps it alive: returns False then."""
+        m = self.managed.get(uuid)
         if m and m.get("url"):
             with self.p.lock:
+                if not force and self.p._assigned.get(m["url"], 0) > 0:
+                    return False
                 if m["url"] in self.p.cfg["comfy"]["servers"]:
                     self.p.cfg["comfy"]["servers"].remove(m["url"])
+        self.managed.pop(uuid, None)
         if self.dry:
             self.log(f"would power off {uuid} ({why})")
-            return
+            return True
         try:
             self.api.power_off(uuid)
             _own(uuid, None)
             self.log(f"{uuid}: powered off ({why})")
         except AutoDLError as e:
             self.log(f"{uuid}: power off FAILED ({e}); run `sheelshort fleet <project> off`")
+        return True
 
     def log(self, msg: str) -> None:
         from .project import log

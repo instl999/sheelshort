@@ -21,11 +21,11 @@ from .project import Project, load_json, log, save_json
 STRIP_PROMPT = """This image is a strip of {n} video frames side by side, panel 1 on the left to panel {n} on the right.
 For each panel, answer in order. Answer with ONE JSON object and nothing else:
 {{"panels": [{{"panel": <number>, "people": <number of people clearly visible>, "main_person_sex": "woman" | "man" | "none",
-  "text_or_subtitles": <true only if text is OVERLAID on the picture: subtitles, captions, titles, watermarks or logos; text printed on objects inside the scene (documents, contracts, signs, phone screens) does not count>,
-  "night": <true if it is clearly night or dark, false if daylight or a brightly lit day scene>,
+  "text_or_subtitles": <true only if text is OVERLAID on the picture: subtitles, captions, titles, watermarks or logos; text printed on objects inside the scene (documents, contracts, business cards, signs, phone screens) does not count>,
+  "light": "daylight" if the scene is lit by the sun or a bright sky (outdoors by day, or daylight coming through windows) | "night" if it is dark outside or moonlit | "lamp" if it is indoors, lit by lamps or bulbs, with no daylight visible,
   "glitch": <true if a face or body is clearly malformed, melted or duplicated>}}]}}"""
 
-RULES = 3   # bump when the rules change: cached results are re-judged (the vision answers stay cached in qc.ask)
+RULES = 5   # bump when the rules change: cached results are re-judged (the vision answers stay cached in qc.ask)
 NIGHT = re.compile(r"\bnight|moonlight|dark\b|midnight", re.I)
 DAY = re.compile(r"\bday(light)?\b|sunlight|morning|afternoon|noon", re.I)
 
@@ -69,16 +69,25 @@ def strip(p: Project, ep: str, video: Path, times: list[float]) -> Path:
     return media.tile(frames, tmp / "strip.jpg", cols=len(frames), cell=(288, 512))
 
 
-def judge_panel(chars: dict, i: int, cut: dict, pan: dict, want_night: bool, want_day: bool) -> list[str]:
-    """Problems with cut `i`, from the vision model's blind description `pan` of its middle frame."""
+PRINTED = re.compile(r"\b(print(ed)?|characters|text|writing|screen|paragraphs?)\b", re.I)
+
+
+def judge_panel(chars: dict, i: int, cut: dict, pan: dict, want_night: bool, want_day: bool,
+                props: dict | None = None) -> list[str]:
+    """Problems with cut `i`, from the vision model's blind description `pan` of its middle frame. A cut that holds a
+    prop with printed text (a business card, a contract, a phone screen) is not judged on text: the model reads the
+    prop's text as a caption however the question is put (E03's business card, three takes)."""
     out = []
-    if pan.get("text_or_subtitles") is True:
+    printed = any(PRINTED.search((props or {}).get(pr, {}).get("look", "")) for pr in cut.get("props", []))
+    if pan.get("text_or_subtitles") is True and not printed:
         out.append(f"cut {i}: on-screen text")
     if pan.get("glitch") is True:
         out.append(f"cut {i}: malformed face or body")
-    if want_night and pan.get("night") is False:
+    # a lamp-lit room is a night interior, not "daylight": asking "is it dark?" flagged every warm-lit night scene
+    light = str(pan.get("light", "")).lower() or {True: "night", False: "daylight"}.get(pan.get("night"), "")
+    if want_night and light == "daylight":
         out.append(f"cut {i}: daylight in a night scene")
-    if want_day and pan.get("night") is True:
+    if want_day and light == "night":
         out.append(f"cut {i}: night look in a day scene")
     subj = cut.get("subjects", [])
     if cut["type"] != "ECU" and subj and pan.get("people") == 0:   # an ECU may be hands or a prop
@@ -121,7 +130,8 @@ def check(p: Project, ep: str, clip: dict, video: Path) -> dict:
             want_day = bool(DAY.search(light)) and not NIGHT.search(light)
             for t, pan in zip(times, panels):
                 k = cut_at(clip, t)
-                for prob in judge_panel(p.chars, k + 1, clip["cuts"][k], pan, want_night, want_day):
+                for prob in judge_panel(p.chars, k + 1, clip["cuts"][k], pan, want_night, want_day,
+                                        p.bible.get("props", {})):
                     if prob not in problems:
                         problems.append(prob)
         except Exception as e:  # noqa: BLE001 - a failed vision call must not fail the render
