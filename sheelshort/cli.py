@@ -175,12 +175,14 @@ def main(argv: list[str] | None = None) -> None:
     if a.command in ("cast", "make"):
         cast.images(p)
         cast.voices(p)
-    for ep in eps if a.command != "cast" else []:
+    eps = eps if a.command != "cast" else []
+    for ep in eps:
         if a.command == "perform" or (a.command == "make" and (p.cfg["render"]["dialogue"] == "acted"
                                                              or p.cfg["render"].get("voice_ref") == "acted")):
             perform.run(p, ep, only)
-        if a.command in ("render", "make"):
-            render.run(p, ep, only, a.takes)
+    if eps and a.command in ("render", "make"):
+        render.run(p, eps, only, a.takes)   # all episodes in one queue: no idle servers between episodes
+    for ep in eps:
         if a.command in ("assemble", "make"):
             assemble.run(p, ep)
         if a.command in ("review", "make"):

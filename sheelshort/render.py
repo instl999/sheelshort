@@ -111,29 +111,34 @@ def clip_path(p: Project, ep: str, clip_id: str, take: int) -> Path:
     return p.root / "clips" / ep / f"{stem(p, clip_id, take)}.mp4"
 
 
-def run(p: Project, ep: str, only: set[str] | None = None, takes: int | None = None) -> None:
-    """Render an episode in three phases, so the vision model and H3 do not keep evicting each other from the GPUs:
+def run(p: Project, eps: str | list[str], only: set[str] | None = None, takes: int | None = None) -> None:
+    """Render one or more episodes in three phases, so the vision model and H3 do not keep evicting each other from
+    the GPUs:
     1. render every clip (`takes` each);
     2. check every take (clipqc: dialogue locally, one vision call per clip, all together);
     3. re-take the clips whose best take still has problems (up to `qc.max_takes`), check those, and record the best
-       take of every clip in edit/<EP>/picks.json."""
+       take of every clip in edit/<EP>/picks.json.
+    Several episodes share one job queue, so the servers (and any the fleet adds) stay busy from the first clip of the
+    first episode to the last clip of the last one."""
     from . import clipqc
+    eps = [eps] if isinstance(eps, str) else list(eps)
     rc, qcfg = p.cfg["render"], p.cfg.get("qc", {})
     acted = rc["dialogue"] == "acted"
     n = takes or int(rc["takes"])
     specs = []
-    for clip in p.clips(ep):
-        if only and clip["id"] not in only:
-            continue
-        text, refs, files, seconds = prompt_for(p, ep, clip, acted)
-        track = None
-        if acted:
-            tm = load_json(p.root / "perform" / ep / "timing.json")[clip["id"]]
-            track = Path(tm["track"]) if tm["track"] else None
-        specs.append((clip, text, refs, files, seconds, track))
+    for ep in eps:
+        for clip in p.clips(ep):
+            if only and clip["id"] not in only:
+                continue
+            text, refs, files, seconds = prompt_for(p, ep, clip, acted)
+            track = None
+            if acted:
+                tm = load_json(p.root / "perform" / ep / "timing.json")[clip["id"]]
+                track = Path(tm["track"]) if tm["track"] else None
+            specs.append((ep, clip, text, refs, files, seconds, track))
 
     def take_job(spec, t):
-        clip, text, refs, files, seconds, track = spec
+        ep, clip, text, refs, files, seconds, track = spec
         job = lambda: _render(p, ep, f"render/{ep}/{stem(p, clip['id'], t)}", clip, t, text, refs, files, seconds, track)  # noqa: E731
         dest = clip_path(p, ep, clip["id"], t)
         meta = dest.with_suffix(".json")
@@ -144,7 +149,8 @@ def run(p: Project, ep: str, only: set[str] | None = None, takes: int | None = N
     jobs = [take_job(sp, t) for sp in specs for t in range(1, n + 1)]
     if p.cfg["edit"].get("music") == "auto" and not only:
         from . import assemble
-        jobs.insert(0, lambda: assemble.score(p, ep))   # the music bed renders alongside the clips, not after them
+        for i, ep in enumerate(eps):   # each music bed renders alongside the clips, not after them
+            jobs.insert(i, lambda ep=ep: assemble.score(p, ep))
     fl = None
     if p.cfg.get("fleet", {}).get("enabled") and not p.dry:
         from .fleet import Fleet
@@ -173,17 +179,18 @@ def run(p: Project, ep: str, only: set[str] | None = None, takes: int | None = N
         pool(run_one, jobs)                                              # 1. render
         if not (qcfg.get("clips", True) and not acted):
             return
-        results: dict[str, list[tuple[int, dict]]] = {}
+        results: dict[tuple[str, str], list[tuple[int, dict]]] = {}
 
         def check(item):
             spec, t = item
-            dest = clip_path(p, ep, spec[0]["id"], t)
+            ep, clip = spec[0], spec[1]
+            dest = clip_path(p, ep, clip["id"], t)
             if dest.exists():
-                results.setdefault(spec[0]["id"], []).append((t, clipqc.check(p, ep, spec[0], dest)))
+                results.setdefault((ep, clip["id"]), []).append((t, clipqc.check(p, ep, clip, dest)))
 
         def existing(spec):
             t, out = 1, []
-            while clip_path(p, ep, spec[0]["id"], t).exists():
+            while clip_path(p, spec[0], spec[1]["id"], t).exists():
                 out.append(t)
                 t += 1
             return out
@@ -192,9 +199,9 @@ def run(p: Project, ep: str, only: set[str] | None = None, takes: int | None = N
         for _round in range(int(qcfg.get("max_takes", 2))):
             retake = []
             for sp in specs:
-                rs = sorted(results.get(sp[0]["id"], []))
+                rs = sorted(results.get((sp[0], sp[1]["id"]), []))
                 if rs and all(r["problems"] for _, r in rs) and len(rs) < int(qcfg.get("max_takes", 2)):
-                    log(f"{ep} {sp[0]['id']}: no clean take yet; rendering take {len(rs) + 1}")
+                    log(f"{sp[0]} {sp[1]['id']}: no clean take yet; rendering take {len(rs) + 1}")
                     retake.append(take_job(sp, len(rs) + 1))
                     retake[-1].spec, retake[-1].t = sp, len(rs) + 1
             if not retake:
@@ -204,14 +211,17 @@ def run(p: Project, ep: str, only: set[str] | None = None, takes: int | None = N
             pool(run_one, retake)                                         # 3. re-take
             pool(check, [(j.spec, j.t) for j in retake])
         with p.lock:
-            picks_path = p.d("edit", ep) / "picks.json"
-            picks = load_json(picks_path) if picks_path.exists() else {}
-            for cid, rs in results.items():
-                best = clipqc.best_take(rs)
-                picks[cid] = best
-                left = dict(rs)[best]["problems"]
-                log(f"{ep} {cid}: using take {best}" + (f" (still: {'; '.join(left)})" if left else ""))
-            save_json(picks_path, picks)
+            for ep in eps:
+                picks_path = p.d("edit", ep) / "picks.json"
+                picks = load_json(picks_path) if picks_path.exists() else {}
+                for (e, cid), rs in results.items():
+                    if e != ep:
+                        continue
+                    best = clipqc.best_take(rs)
+                    picks[cid] = best
+                    left = dict(rs)[best]["problems"]
+                    log(f"{ep} {cid}: using take {best}" + (f" (still: {'; '.join(left)})" if left else ""))
+                save_json(picks_path, picks)
     finally:
         if fl:
             fl.stop()   # every server the fleet added is powered off, also after a crash
