@@ -47,7 +47,8 @@ head, as in the reference series. Write that shot as a held chest-up close-up co
 
 **Shot grammar (enforced by `check`):** speaking character → `CU`; two-person dialogue → `OTS` (`over` = whose
 shoulder, never the speaker); positioning and movement → `MS`; reactions and actions → `CU`; inner voice → `VO`
-(close-up pushing in, lips closed); listener reacting while a line continues → `RX` (one listener, no line). Dialogue never in an `MS`. One line per cut, one speaker per cut.
+(close-up pushing in, lips closed; `subjects` is who is on screen: the speaker, or someone the speaker is thinking
+about, never empty); listener reacting while a line continues → `RX` (one listener, no line). Dialogue never in an `MS`. One line per cut, one speaker per cut.
 
 **Micro-drama structure:** the first cut of every episode is the most dramatic moment (a slap, an accusation, a
 reveal, a face mid-reaction), never an establishing shot. Something changes every 8–10 s. The episode ends on a

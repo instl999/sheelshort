@@ -1,15 +1,28 @@
 {
   "id": "E03",
   "title": "八万六",
-  "music": "warm emotional rural drama underscore turning suspenseful, soft piano, erhu, gentle strings, then low pulsing tension, instrumental, no vocals",
-  "logline": "His father gives Xiaokang his life savings to start a farm-produce shop; in the city, Xiaokang secretly films Gao Liang paying off the village chief.",
+  "music": "rural Chinese drama underscore, erhu and soft piano, warm and bittersweet, turning tense, instrumental, no vocals",
+  "logline": "His father gives Xiaokang his life savings to start a farm-produce shop; in the city, Xiaokang secretly films Gao Liang buying off the village chief.",
   "clips": [
     {
       "id": "C1",
       "location": "lijia_home",
-      "summary": "That night in {loc}, {shoudi} asks if they were rash; {xiaokang} says the contract is a contract of servitude.",
-      "soundscape": "Quiet farmhouse night: crickets outside, a bulb buzzing faintly.",
+      "summary": "At night in {loc}, {shoudi} fiddles with an unlit pipe and asks {xiaokang} if they were too rash today.",
+      "soundscape": "Quiet night indoors in a farmhouse: a bulb hums faintly, crickets outside the window.",
       "cuts": [
+        {
+          "type": "MS",
+          "subjects": [
+            "shoudi",
+            "xiaokang"
+          ],
+          "composition": "Medium shot of {loc}: {shoudi} sits at the square table in the left third under the bare bulb; {xiaokang} steps in through the doorway in the right third.",
+          "action": "{shoudi} turns an unlit long pipe in his fingers, frowning, then looks up as his son enters.",
+          "camera": "Slow push in, with small amplitude.",
+          "sound": "The door creaks.",
+          "end": "",
+          "dur": 2.2
+        },
         {
           "type": "CU",
           "subjects": [
@@ -18,14 +31,14 @@
           "speaker": "shoudi",
           "line": "儿啊，咱们今天，是不是冲动了些？",
           "say": "儿啊……咱们今天，是不是冲动了些？",
-          "act": "欲言又止，低声，满是担忧",
-          "emotion": "plead",
-          "delivery": "worried, hesitant, turning an unlit pipe in his fingers",
-          "composition": "Close-up of {shoudi} sitting at the square table under the bare bulb, centre-left of the frame.",
-          "action": "{shoudi} turns an unlit pipe in his fingers and looks up at his son.",
+          "act": "欲言又止，压低声音，带着担忧",
+          "emotion": "worry",
+          "delivery": "hesitant, worried",
+          "composition": "Close-up of {shoudi}, off-centre, the dim room behind soft and out of focus.",
+          "action": "{shoudi} looks up at his son, the pipe still in his hand.",
           "camera": "Static camera with a barely perceptible handheld breathing.",
           "end": "",
-          "dur": 4
+          "dur": 3.3
         },
         {
           "type": "CU",
@@ -33,24 +46,52 @@
             "xiaokang"
           ],
           "speaker": "xiaokang",
-          "line": "爸，这哪是合同，分明就是卖身契！",
-          "say": "爸，这哪是合同……分明就是卖身契！",
-          "act": "压着火气，越说越激动",
-          "emotion": "anger",
-          "delivery": "angry and certain",
-          "composition": "Close-up of {xiaokang} standing in the doorway, warm bulb light on his face.",
-          "action": "{xiaokang} slaps the contract down on the table.",
+          "line": "爸，我没冲动。",
+          "say": "爸，我没冲动。",
+          "act": "平静而坚定",
+          "emotion": "calm",
+          "delivery": "steady",
+          "composition": "Close-up of {xiaokang}, off-centre, the dim room behind soft and out of focus.",
+          "action": "{xiaokang} sits down opposite him.",
           "camera": "Static camera with a barely perceptible handheld breathing.",
           "end": "",
-          "dur": 4
+          "dur": 1.6
+        },
+        {
+          "type": "CU",
+          "subjects": [
+            "shoudi"
+          ],
+          "speaker": "shoudi",
+          "line": "全村人都签了补充协议，就咱家没签。",
+          "say": "全村人都签了补充协议……就咱家没签。",
+          "act": "叹气，忧心忡忡",
+          "emotion": "worry",
+          "delivery": "troubled",
+          "composition": "Close-up of {shoudi}, off-centre, the dim room behind soft and out of focus.",
+          "action": "{shoudi} sets the pipe down on the table.",
+          "camera": "Static camera with a barely perceptible handheld breathing.",
+          "end": "",
+          "dur": 2.4
+        },
+        {
+          "type": "RX",
+          "subjects": [
+            "xiaokang"
+          ],
+          "composition": "Close-up of {xiaokang}, centre frame, the background soft.",
+          "action": "{xiaokang} lowers his eyes.",
+          "camera": "Static camera.",
+          "end": "",
+          "dur": 1.4
         }
       ]
     },
     {
       "id": "C2",
       "location": "lijia_home",
-      "summary": "{shoudi} worries that with the land gone they only have the shares; {xiaokang} goes to the window, looks at the moonlit jujube tree and says he has a plan.",
-      "soundscape": "Quiet farmhouse night: crickets outside.",
+      "summary": "{shoudi} fears Wang Dahua will brand the family traitors; {xiaokang} says the contract is a deed of servitude.",
+      "soundscape": "Quiet night indoors in a farmhouse: a bulb hums faintly, crickets outside the window.",
       "cuts": [
         {
           "type": "CU",
@@ -58,28 +99,152 @@
             "shoudi"
           ],
           "speaker": "shoudi",
-          "line": "这地要是被征了，咱家就剩那几张股票了。",
-          "say": "这地要是被征了……咱家，就剩那几张股票了。",
-          "act": "叹气，声音发沉，很无奈",
-          "emotion": "sad",
-          "delivery": "sighing, heavy-hearted",
-          "composition": "Close-up of {shoudi} at the table, the bulb casting deep shadows on his lined face.",
-          "action": "{shoudi} puts the pipe down and sighs.",
+          "line": "王大花那嘴你是知道的，明天全村都得传遍。",
+          "say": "王大花那嘴你是知道的……明天全村都得传遍。",
+          "act": "愁眉苦脸",
+          "emotion": "worry",
+          "delivery": "anxious",
+          "composition": "Close-up of {shoudi}, off-centre, the dim room behind soft and out of focus.",
+          "action": "{shoudi} shakes his head.",
           "camera": "Static camera with a barely perceptible handheld breathing.",
           "end": "",
-          "dur": 5
+          "dur": 4.4
+        },
+        {
+          "type": "CU",
+          "subjects": [
+            "shoudi"
+          ],
+          "speaker": "shoudi",
+          "line": "说咱老李家，出了个叛徒。",
+          "say": "说咱老李家……出了个叛徒。",
+          "act": "声音发涩，很难受",
+          "emotion": "sad",
+          "delivery": "pained",
+          "composition": "Close-up of {shoudi}, off-centre, the dim room behind soft and out of focus.",
+          "action": "{shoudi} rubs his face with a rough hand.",
+          "camera": "Static camera with a barely perceptible handheld breathing.",
+          "end": "",
+          "dur": 1.8
+        },
+        {
+          "type": "RX",
+          "subjects": [
+            "xiaokang"
+          ],
+          "composition": "Close-up of {xiaokang}, centre frame, the background soft.",
+          "action": "{xiaokang}'s jaw tightens.",
+          "camera": "Static camera.",
+          "end": "",
+          "dur": 1.3
+        },
+        {
+          "type": "CU",
+          "subjects": [
+            "xiaokang"
+          ],
+          "speaker": "xiaokang",
+          "line": "让她们说去吧，签了就要一辈子给高亮打工！",
+          "say": "让她们说去吧！签了……就要一辈子给高亮打工！",
+          "act": "压着火气",
+          "emotion": "anger",
+          "delivery": "firm, restrained anger",
+          "composition": "Close-up of {xiaokang}, off-centre, the dim room behind soft and out of focus.",
+          "action": "{xiaokang} leans forward over the table.",
+          "camera": "Static camera with a barely perceptible handheld breathing.",
+          "end": "",
+          "dur": 4.4
+        },
+        {
+          "type": "CU",
+          "subjects": [
+            "xiaokang"
+          ],
+          "speaker": "xiaokang",
+          "line": "这哪是合同，分明就是卖身契！",
+          "say": "这哪是合同……分明就是卖身契！",
+          "act": "一字一顿，咬牙",
+          "emotion": "anger",
+          "delivery": "biting, emphatic",
+          "composition": "Close-up of {xiaokang}, off-centre, the dim room behind soft and out of focus.",
+          "action": "{xiaokang} taps the table with one finger.",
+          "camera": "Static camera with a barely perceptible handheld breathing.",
+          "end": "",
+          "dur": 3.1
+        }
+      ]
+    },
+    {
+      "id": "C3",
+      "location": "lijia_home",
+      "summary": "{shoudi} says he believes in his son, but worries how they will live now the land will be taken.",
+      "soundscape": "Quiet night indoors in a farmhouse: a bulb hums faintly, crickets outside the window.",
+      "cuts": [
+        {
+          "type": "CU",
+          "subjects": [
+            "shoudi"
+          ],
+          "speaker": "shoudi",
+          "line": "可是咱往后咋办？你工作还没着落……",
+          "say": "可是咱往后咋办？你工作还没着落……",
+          "act": "发愁",
+          "emotion": "worry",
+          "delivery": "worried",
+          "composition": "Close-up of {shoudi}, off-centre, the dim room behind soft and out of focus.",
+          "action": "{shoudi} looks at his son.",
+          "camera": "Static camera with a barely perceptible handheld breathing.",
+          "end": "",
+          "dur": 2.4
+        },
+        {
+          "type": "RX",
+          "subjects": [
+            "xiaokang"
+          ],
+          "composition": "Close-up of {xiaokang}, centre frame, the background soft.",
+          "action": "{xiaokang} listens, saying nothing.",
+          "camera": "Static camera.",
+          "end": "",
+          "dur": 1.2
+        },
+        {
+          "type": "CU",
+          "subjects": [
+            "shoudi"
+          ],
+          "speaker": "shoudi",
+          "line": "这地要是被征了，咱家就剩那几张股票了。",
+          "say": "这地要是被征了……咱家就剩那几张股票了。",
+          "act": "苦笑",
+          "emotion": "sad",
+          "delivery": "bitter half-smile",
+          "composition": "Close-up of {shoudi}, off-centre, the dim room behind soft and out of focus.",
+          "action": "{shoudi} gives a bitter half-smile.",
+          "camera": "Static camera with a barely perceptible handheld breathing.",
+          "end": "",
+          "dur": 4.2
         },
         {
           "type": "MS",
           "subjects": [
             "xiaokang"
           ],
-          "composition": "Medium shot of {xiaokang} walking to the old wooden window of {loc}; moonlight and the jujube tree's shadow fall across him.",
-          "action": "{xiaokang} stops at the window and looks out at the moonlit courtyard.",
-          "camera": "Slow push in, with small amplitude, at slow speed.",
-          "sound": "Crickets chirp.",
-          "end": "He turns back toward the room."
-        },
+          "composition": "Medium shot of {xiaokang} from behind at the old wooden window, the moonlit courtyard and the old jujube tree beyond.",
+          "action": "{xiaokang} stands and walks to the window, gazing at the jujube tree's shadow in the moonlight.",
+          "camera": "Static camera.",
+          "sound": "A dog barks far away.",
+          "end": "",
+          "dur": 2.6
+        }
+      ]
+    },
+    {
+      "id": "C4",
+      "location": "lijia_home",
+      "summary": "{xiaokang} turns from the window: he has a plan. He studied agriculture and knows this land better than anyone.",
+      "soundscape": "Quiet night indoors in a farmhouse: a bulb hums faintly, crickets outside the window.",
+      "cuts": [
         {
           "type": "CU",
           "subjects": [
@@ -88,21 +253,84 @@
           "speaker": "xiaokang",
           "line": "爸，我有打算。",
           "say": "爸……我有打算。",
-          "act": "转过身，眼神坚定，语气沉稳",
-          "emotion": "firm",
-          "delivery": "steady and resolute",
-          "composition": "Close-up of {xiaokang} by the window, moonlight on one side of his face, bulb light on the other.",
-          "action": "{xiaokang} turns to his father, eyes steady.",
+          "act": "转过身，眼神坚定",
+          "emotion": "calm",
+          "delivery": "resolute",
+          "composition": "Close-up of {xiaokang} by the window, cold moonlight on one side of his face, warm bulb light on the other.",
+          "action": "{xiaokang} turns from the window, eyes steady.",
           "camera": "Static camera with a barely perceptible handheld breathing.",
-          "end": ""
+          "end": "",
+          "dur": 1.8
+        },
+        {
+          "type": "CU",
+          "subjects": [
+            "shoudi"
+          ],
+          "speaker": "shoudi",
+          "line": "啥打算？",
+          "say": "啥打算？",
+          "act": "愣了一下，追问",
+          "emotion": "surprise",
+          "delivery": "puzzled",
+          "composition": "Close-up of {shoudi}, off-centre, the dim room behind soft and out of focus.",
+          "action": "{shoudi} raises his head.",
+          "camera": "Static camera with a barely perceptible handheld breathing.",
+          "end": "",
+          "dur": 1.3
+        },
+        {
+          "type": "CU",
+          "subjects": [
+            "xiaokang"
+          ],
+          "speaker": "xiaokang",
+          "line": "我大学学的就是农学。",
+          "say": "我大学学的……就是农学。",
+          "act": "认真，有底气",
+          "emotion": "calm",
+          "delivery": "earnest, confident",
+          "composition": "Close-up of {xiaokang}, off-centre, the dim room behind soft and out of focus.",
+          "action": "{xiaokang} walks back towards the table.",
+          "camera": "Static camera with a barely perceptible handheld breathing.",
+          "end": "",
+          "dur": 2.6
+        },
+        {
+          "type": "CU",
+          "subjects": [
+            "xiaokang"
+          ],
+          "speaker": "xiaokang",
+          "line": "咱这的土是啥成色，水是啥滋味，我心里比谁都清楚。",
+          "say": "咱这的土是啥成色，水是啥滋味……我心里比谁都清楚。",
+          "act": "越说越有底气",
+          "emotion": "calm",
+          "delivery": "growing conviction",
+          "composition": "Close-up of {xiaokang}, off-centre, the dim room behind soft and out of focus.",
+          "action": "{xiaokang} sits, eyes bright.",
+          "camera": "Static camera with a barely perceptible handheld breathing.",
+          "end": "",
+          "dur": 3.6
+        },
+        {
+          "type": "RX",
+          "subjects": [
+            "shoudi"
+          ],
+          "composition": "Close-up of {shoudi}, centre frame, the background soft.",
+          "action": "{shoudi}'s eyes light up for a moment.",
+          "camera": "Static camera.",
+          "end": "",
+          "dur": 1.5
         }
       ]
     },
     {
-      "id": "C3",
+      "id": "C5",
       "location": "lijia_home",
-      "summary": "{xiaokang} says he will open a farm-produce shop in the city and work for himself; {shoudi} silently gets up and goes into the inner room.",
-      "soundscape": "Quiet farmhouse night: crickets outside.",
+      "summary": "{xiaokang} explains why Huanggu's land grows sweet crops, and announces he will open a farm-produce shop in the city.",
+      "soundscape": "Quiet night indoors in a farmhouse: a bulb hums faintly, crickets outside the window.",
       "cuts": [
         {
           "type": "CU",
@@ -110,16 +338,61 @@
             "xiaokang"
           ],
           "speaker": "xiaokang",
-          "line": "我要去城里开一家农产品直销店。",
-          "say": "我要去城里……开一家农产品直销店。",
-          "act": "认真，充满希望",
-          "emotion": "firm",
-          "delivery": "earnest and hopeful",
-          "composition": "Close-up of {xiaokang} at the table, leaning toward his father.",
-          "action": "{xiaokang} leans forward, hands flat on the table.",
+          "line": "咱黄谷村昼夜温差大，沙壤土，种啥啥甜。",
+          "say": "咱黄谷村昼夜温差大……沙壤土，种啥啥甜。",
+          "act": "如数家珍",
+          "emotion": "joy",
+          "delivery": "animated",
+          "composition": "Close-up of {xiaokang}, off-centre, the dim room behind soft and out of focus.",
+          "action": "{xiaokang} counts on his fingers.",
           "camera": "Static camera with a barely perceptible handheld breathing.",
           "end": "",
-          "dur": 4
+          "dur": 4.0
+        },
+        {
+          "type": "CU",
+          "subjects": [
+            "shoudi"
+          ],
+          "speaker": "shoudi",
+          "line": "你是想种地？",
+          "say": "你是想……种地？",
+          "act": "迟疑地问",
+          "emotion": "surprise",
+          "delivery": "uncertain",
+          "composition": "Close-up of {shoudi}, off-centre, the dim room behind soft and out of focus.",
+          "action": "{shoudi} leans in.",
+          "camera": "Static camera with a barely perceptible handheld breathing.",
+          "end": "",
+          "dur": 1.6
+        },
+        {
+          "type": "CU",
+          "subjects": [
+            "xiaokang"
+          ],
+          "speaker": "xiaokang",
+          "line": "我要去城里开一家农产品直销店！",
+          "say": "我要去城里……开一家农产品直销店！",
+          "act": "斩钉截铁",
+          "emotion": "calm",
+          "delivery": "decisive",
+          "composition": "Close-up of {xiaokang}, off-centre, the dim room behind soft and out of focus.",
+          "action": "{xiaokang} plants both hands on the table.",
+          "camera": "Static camera with a barely perceptible handheld breathing.",
+          "end": "",
+          "dur": 2.2
+        },
+        {
+          "type": "RX",
+          "subjects": [
+            "shoudi"
+          ],
+          "composition": "Close-up of {shoudi}, centre frame, the background soft.",
+          "action": "{shoudi} stares at him.",
+          "camera": "Static camera.",
+          "end": "",
+          "dur": 1.4
         },
         {
           "type": "CU",
@@ -128,45 +401,62 @@
           ],
           "speaker": "xiaokang",
           "line": "咱不给他打工，咱给自己打工！",
-          "say": "咱不给他打工——咱给自己打工！",
-          "act": "斩钉截铁，眼里有光",
-          "emotion": "firm",
-          "delivery": "fierce determination",
-          "composition": "Close-up of {xiaokang}, centre frame, eyes bright.",
-          "action": "{xiaokang} taps the table with his knuckle on the last word.",
+          "say": "咱不给他打工……咱给自己打工！",
+          "act": "铿锵有力",
+          "emotion": "joy",
+          "delivery": "fierce, proud",
+          "composition": "Close-up of {xiaokang}, off-centre, the dim room behind soft and out of focus.",
+          "action": "{xiaokang} smiles with fierce resolve.",
           "camera": "Static camera with a barely perceptible handheld breathing.",
-          "end": ""
+          "end": "",
+          "dur": 3.1
+        }
+      ]
+    },
+    {
+      "id": "C6",
+      "location": "lijia_home",
+      "summary": "{shoudi} silently fetches an old tin from the inner room and opens it: his life savings, 86,000 yuan.",
+      "soundscape": "Quiet night indoors in a farmhouse: a bulb hums faintly, crickets outside the window.",
+      "cuts": [
+        {
+          "type": "CU",
+          "subjects": [
+            "shoudi"
+          ],
+          "composition": "Close-up of {shoudi}, centre frame, the bulb above him.",
+          "action": "{shoudi} is silent for a long moment, then abruptly stands up.",
+          "camera": "Static camera.",
+          "sound": "",
+          "end": "",
+          "dur": 1.8
         },
         {
           "type": "MS",
           "subjects": [
             "shoudi"
           ],
-          "composition": "Medium shot of {shoudi} at the square table in {loc}.",
-          "action": "{shoudi} stares at his son in silence, then gets up and goes through the cloth curtain into the inner room.",
-          "camera": "Static camera.",
-          "sound": "The stool scrapes; the curtain rustles.",
-          "end": ""
-        }
-      ]
-    },
-    {
-      "id": "C4",
-      "location": "lijia_home",
-      "summary": "{shoudi} comes back with an old iron tin full of banknotes, his savings for his son's wedding, and gives it to him; {xiaokang} refuses, near tears.",
-      "soundscape": "Quiet farmhouse night: crickets outside.",
-      "cuts": [
-        {
-          "type": "MS",
-          "subjects": [
-            "shoudi",
-            "xiaokang"
-          ],
-          "composition": "Medium shot at the square table of {loc}: {shoudi} sets {money_box} down in front of {xiaokang} and opens the lid.",
-          "action": "Crumpled banknotes and passbooks fill the tin.",
-          "camera": "Static camera.",
-          "sound": "The tin lid clinks.",
+          "composition": "Medium shot of {loc}: {shoudi} pushes through the faded curtain into the inner room and returns carrying {money_box}.",
+          "action": "{shoudi} goes into the inner room and comes back holding the tin in both hands.",
+          "camera": "Slow push in, with small amplitude.",
+          "sound": "Footsteps on the earth floor, the curtain rustles.",
           "end": "",
+          "dur": 2.8,
+          "props": [
+            "money_box"
+          ]
+        },
+        {
+          "type": "ECU",
+          "subjects": [
+            "shoudi"
+          ],
+          "composition": "Extreme close-up of {shoudi}'s weathered hands opening {money_box} on the table.",
+          "action": "The lid comes off to reveal stacks of crumpled banknotes and a few passbooks.",
+          "camera": "Static camera.",
+          "sound": "The tin lid scrapes open.",
+          "end": "",
+          "dur": 2.0,
           "props": [
             "money_box"
           ]
@@ -177,60 +467,254 @@
             "shoudi"
           ],
           "speaker": "shoudi",
-          "line": "这是你爸攒了半辈子的，八万六，拿去！",
-          "say": "这是你爸攒了半辈子的……八万六。拿去！",
-          "act": "声音发颤又硬撑着，最后两个字很重",
-          "emotion": "broken",
-          "delivery": "voice trembling but firm, pushing the tin forward",
-          "composition": "Close-up of {shoudi} under the bulb, eyes wet.",
-          "action": "{shoudi} pushes the tin toward his son with both hands.",
+          "line": "这是你爸攒了半辈子的，八万六。",
+          "say": "这是你爸……攒了半辈子的，八万六。",
+          "act": "声音低沉，郑重",
+          "emotion": "warm",
+          "delivery": "solemn",
+          "composition": "Close-up of {shoudi}, off-centre, the dim room behind soft and out of focus.",
+          "action": "{shoudi} pushes the tin across the table.",
           "camera": "Static camera with a barely perceptible handheld breathing.",
           "end": "",
-          "dur": 5
+          "dur": 3.3,
+          "props": [
+            "money_box"
+          ]
         },
+        {
+          "type": "CU",
+          "subjects": [
+            "shoudi"
+          ],
+          "speaker": "shoudi",
+          "line": "原想着给你娶媳妇用的。你要干正事，拿去！",
+          "say": "原想着给你娶媳妇用的。你要干正事……拿去！",
+          "act": "朴实，带点心酸",
+          "emotion": "warm",
+          "delivery": "gruff tenderness",
+          "composition": "Close-up of {shoudi}, off-centre, the dim room behind soft and out of focus.",
+          "action": "{shoudi} nods at the tin.",
+          "camera": "Static camera with a barely perceptible handheld breathing.",
+          "end": "",
+          "dur": 4.2,
+          "props": [
+            "money_box"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "C7",
+      "location": "lijia_home",
+      "summary": "{xiaokang} refuses the money; {shoudi} slams it into his hands and tells him to go out and fight.",
+      "soundscape": "Quiet night indoors in a farmhouse: a bulb hums faintly, crickets outside the window.",
+      "cuts": [
         {
           "type": "CU",
           "subjects": [
             "xiaokang"
           ],
           "speaker": "xiaokang",
-          "line": "爸，这钱我不能要……",
-          "say": "爸……这钱，我不能要……",
-          "act": "哽咽，眼泪在眼眶里打转",
-          "emotion": "sob",
-          "delivery": "choked up, eyes brimming",
-          "composition": "Close-up of {xiaokang}, centre-right of the frame.",
-          "action": "{xiaokang} shakes his head, tears welling but not falling.",
+          "line": "爸，这钱我不能要，你留着养老。",
+          "say": "爸……这钱我不能要，你留着养老。",
+          "act": "哽咽着推回去",
+          "emotion": "plead",
+          "delivery": "choked, pushing it back",
+          "composition": "Close-up of {xiaokang}, off-centre, the dim room behind soft and out of focus.",
+          "action": "{xiaokang} pushes the tin back.",
           "camera": "Static camera with a barely perceptible handheld breathing.",
-          "end": ""
-        }
-      ]
-    },
-    {
-      "id": "C5",
-      "location": "lijia_home",
-      "summary": "{shoudi} presses the tin into his hands and tells him he is no traitor but the village's best son; Xiaokang's inner voice says he was not abandoned, he was pushed forward.",
-      "soundscape": "Quiet farmhouse night: crickets outside.",
-      "cuts": [
+          "end": "",
+          "dur": 3.1,
+          "props": [
+            "money_box"
+          ]
+        },
         {
           "type": "CU",
           "subjects": [
             "shoudi"
           ],
           "speaker": "shoudi",
-          "line": "你是我李守地的儿子，你不是叛徒！",
-          "say": "你是我李守地的儿子……你不是叛徒！",
-          "act": "把盒子重重按在儿子手上，声音拔高，老泪纵横",
+          "line": "拿着！",
+          "say": "拿着！",
+          "act": "一声吼，把盒子重重按在儿子手上",
           "emotion": "shout",
-          "delivery": "fierce, tears in his eyes, pressing the tin into his son's hands",
-          "composition": "Close-up of {shoudi}, centre-left of the frame.",
-          "action": "{shoudi} presses the tin hard into his son's hands.",
+          "delivery": "forceful",
+          "composition": "Close-up of {shoudi}, off-centre, the dim room behind soft and out of focus.",
+          "action": "{shoudi} slams the tin into his son's hands.",
           "camera": "Static camera with a barely perceptible handheld breathing.",
           "end": "",
-          "dur": 4,
+          "dur": 1.2,
           "props": [
             "money_box"
           ]
+        },
+        {
+          "type": "RX",
+          "subjects": [
+            "xiaokang"
+          ],
+          "composition": "Close-up of {xiaokang}, centre frame, the background soft.",
+          "action": "{xiaokang} startles, clutching the tin.",
+          "camera": "Static camera.",
+          "end": "",
+          "dur": 1.2,
+          "props": [
+            "money_box"
+          ]
+        },
+        {
+          "type": "CU",
+          "subjects": [
+            "shoudi"
+          ],
+          "speaker": "shoudi",
+          "line": "地是刨食的，人是闯路的！",
+          "say": "地是刨食的……人是闯路的！",
+          "act": "一字一顿，铿锵",
+          "emotion": "warm",
+          "delivery": "emphatic",
+          "composition": "Close-up of {shoudi}, off-centre, the dim room behind soft and out of focus.",
+          "action": "{shoudi} grips harder.",
+          "camera": "Static camera with a barely perceptible handheld breathing.",
+          "end": "",
+          "dur": 2.7
+        },
+        {
+          "type": "CU",
+          "subjects": [
+            "shoudi"
+          ],
+          "speaker": "shoudi",
+          "line": "你认准了这条路，就甩开膀子去闯！",
+          "say": "你认准了这条路……就甩开膀子去闯！",
+          "act": "鼓劲",
+          "emotion": "warm",
+          "delivery": "rousing",
+          "composition": "Close-up of {shoudi}, off-centre, the dim room behind soft and out of focus.",
+          "action": "{shoudi} shakes his son's hands once.",
+          "camera": "Static camera with a barely perceptible handheld breathing.",
+          "end": "",
+          "dur": 3.6
+        }
+      ]
+    },
+    {
+      "id": "C8",
+      "location": "lijia_home",
+      "summary": "{shoudi} tells his son he is no traitor but the village's finest; {xiaokang} fights back tears.",
+      "soundscape": "Quiet night indoors in a farmhouse: a bulb hums faintly, crickets outside the window.",
+      "cuts": [
+        {
+          "type": "OTS",
+          "subjects": [
+            "shoudi"
+          ],
+          "speaker": "shoudi",
+          "line": "你记住，你是我李守地的儿子，你不是叛徒！",
+          "say": "你记住……你是我李守地的儿子，你不是叛徒！",
+          "act": "声音发颤，眼眶发红",
+          "emotion": "warm",
+          "delivery": "voice trembling with pride",
+          "composition": "{xiaokang}'s shoulder blurs in the right foreground; {shoudi} faces the camera in the left third, under the bulb.",
+          "action": "{shoudi}'s eyes redden.",
+          "camera": "Static camera, focus held on the speaker's eyes.",
+          "end": "",
+          "dur": 4.2,
+          "over": "xiaokang"
+        },
+        {
+          "type": "CU",
+          "subjects": [
+            "shoudi"
+          ],
+          "speaker": "shoudi",
+          "line": "你是咱黄谷村最有出息的娃！",
+          "say": "你是咱黄谷村……最有出息的娃！",
+          "act": "含泪微笑",
+          "emotion": "warm",
+          "delivery": "tearful smile",
+          "composition": "Close-up of {shoudi}, off-centre, the dim room behind soft and out of focus.",
+          "action": "{shoudi} smiles through tears.",
+          "camera": "Static camera with a barely perceptible handheld breathing.",
+          "end": "",
+          "dur": 2.0
+        },
+        {
+          "type": "RX",
+          "subjects": [
+            "xiaokang"
+          ],
+          "composition": "Close-up of {xiaokang}, centre frame, the background soft.",
+          "action": "{xiaokang} grips the tin until his knuckles whiten; tears well in his eyes but do not fall.",
+          "camera": "Static camera.",
+          "end": "",
+          "dur": 1.6,
+          "props": [
+            "money_box"
+          ]
+        },
+        {
+          "type": "ECU",
+          "subjects": [
+            "xiaokang"
+          ],
+          "composition": "Extreme close-up of {xiaokang}'s hands clutching {money_box}, knuckles white.",
+          "action": "His fingers tighten on the dented tin.",
+          "camera": "Static camera.",
+          "sound": "",
+          "end": "",
+          "dur": 2.2,
+          "props": [
+            "money_box"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "C9",
+      "location": "lijia_home",
+      "summary": "Voice-over: that night {xiaokang} realised he had not been abandoned, but pushed forward by his father.",
+      "soundscape": "Quiet night indoors in a farmhouse: a bulb hums faintly, crickets outside the window.",
+      "cuts": [
+        {
+          "type": "VO",
+          "subjects": [
+            "xiaokang"
+          ],
+          "speaker": "xiaokang",
+          "line": "那个晚上我突然觉得，我不是被全村人抛弃了，而是被我爸用他攒下的所有力气，往前推了一把。",
+          "say": "那个晚上……我突然觉得，我不是被全村人抛弃了。而是被我爸，用他攒下的所有力气……往前推了一把。",
+          "act": "低沉的内心独白，温热而坚定",
+          "emotion": "calm",
+          "delivery": "reflective inner monologue",
+          "composition": "Close-up of {xiaokang} at the table holding {money_box}, the bulb behind him, his eyes wet.",
+          "action": "{xiaokang} looks up at his father and slowly nods.",
+          "end": "The shot ends on a slow push in to his eyes.",
+          "dur": 9.1,
+          "props": [
+            "money_box"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "C10",
+      "location": "shop_street",
+      "summary": "Days later at {loc}, {xiaokang} stands before an empty shop to let; voice-over on his plan.",
+      "soundscape": "Busy city street ambience: footsteps, chatter, distant traffic.",
+      "cuts": [
+        {
+          "type": "MS",
+          "subjects": [
+            "xiaokang"
+          ],
+          "composition": "Medium shot of {xiaokang} at {loc}, standing in front of the empty shop unit with the red paper notice on its glass door, passers-by crossing behind.",
+          "action": "{xiaokang} looks up at the empty shopfront, hands on his hips.",
+          "camera": "Slow push in, with small amplitude.",
+          "sound": "Passers-by chatter.",
+          "end": "",
+          "dur": 2.0
         },
         {
           "type": "VO",
@@ -238,37 +722,113 @@
             "xiaokang"
           ],
           "speaker": "xiaokang",
-          "line": "那一刻我才明白，我不是被全村抛弃了。",
-          "say": "那一刻我才明白……我不是被全村抛弃了。",
-          "act": "低沉的内心独白，压着哭腔，温热",
-          "emotion": "broken",
-          "delivery": "moved, tears held back",
-          "composition": "Close-up of {xiaokang} gripping {money_box}, knuckles white, eyes brimming.",
-          "action": "A single tear rolls down his cheek.",
-          "end": "The shot ends on his eyes in extreme close-up.",
-          "dur": 5,
-          "props": [
-            "money_box"
-          ]
+          "line": "靠着原始股和我爸的资助，我开始在城里做农产品直销。",
+          "say": "靠着原始股和我爸的资助……我开始在城里做农产品直销。",
+          "act": "平静的内心独白，带着希望",
+          "emotion": "calm",
+          "delivery": "reflective inner monologue",
+          "composition": "Close-up of {xiaokang} at {loc} squinting up at the shop.",
+          "action": "{xiaokang} takes out his phone and photographs the shopfront.",
+          "end": "",
+          "dur": 5.6
+        },
+        {
+          "type": "VO",
+          "subjects": [
+            "xiaokang"
+          ],
+          "speaker": "xiaokang",
+          "line": "只要包装做得好，价格公道，我家的玉米根本不愁卖！",
+          "say": "只要包装做得好，价格公道……我家的玉米根本不愁卖！",
+          "act": "信心满满",
+          "emotion": "calm",
+          "delivery": "reflective inner monologue",
+          "composition": "Close-up of {xiaokang} at {loc} lowering the phone, eyes bright, a confident smile.",
+          "action": "He lowers the phone and grins.",
+          "end": "",
+          "dur": 5.1
         }
       ]
     },
     {
-      "id": "C6",
+      "id": "C11",
       "location": "restaurant_door",
-      "summary": "In the city, {xiaokang} hides behind a tree and films {gaoliang} scolding the village chief on the restaurant steps.",
-      "soundscape": "City street ambience: passing traffic, footsteps, the revolving door turning.",
+      "summary": "Outside an upscale restaurant, {xiaokang} freezes: {gaoliang} and village chief {fugui} come out together. He hides behind a tree and films.",
+      "soundscape": "City street ambience outside a restaurant: passing traffic, footsteps, the revolving door turning.",
       "cuts": [
         {
           "type": "MS",
           "subjects": [
             "xiaokang"
           ],
-          "composition": "Medium shot of {xiaokang} half hidden behind the plane tree at {loc}, holding up his phone to film the restaurant entrance.",
-          "action": "{xiaokang} raises his phone and starts recording, eyes narrowed.",
+          "composition": "Medium shot of {xiaokang} walking along the pavement at {loc} carrying a bundle of empty packaging bags.",
+          "action": "{xiaokang} walks past, then stops dead, staring at the entrance.",
+          "camera": "Slow push in, with small amplitude.",
+          "sound": "A bus pulls away.",
+          "end": "",
+          "dur": 2.2
+        },
+        {
+          "type": "MS",
+          "subjects": [
+            "gaoliang",
+            "fugui"
+          ],
+          "composition": "Medium shot of the glass revolving door at {loc}: {gaoliang} in his suit steps out first, {fugui} follows, head bowed, smiling ingratiatingly.",
+          "action": "The revolving door turns; the two men come out onto the steps, {fugui} bowing and nodding.",
+          "camera": "Slow push in, with small amplitude.",
+          "sound": "",
+          "end": "",
+          "dur": 2.8
+        },
+        {
+          "type": "MS",
+          "subjects": [
+            "xiaokang"
+          ],
+          "composition": "Medium shot of {xiaokang} half hidden behind the plane tree on the pavement at {loc}.",
+          "action": "{xiaokang} ducks behind the tree trunk, pulls out his phone and starts recording.",
+          "camera": "Slow push in, with small amplitude.",
+          "sound": "",
+          "end": "",
+          "dur": 2.4
+        },
+        {
+          "type": "ECU",
+          "subjects": [
+            "xiaokang"
+          ],
+          "composition": "Extreme close-up of {xiaokang}'s narrowed eyes peering past the bark of the plane tree.",
+          "action": "His eyes track the two men.",
           "camera": "Static camera.",
-          "sound": "Traffic passes.",
-          "end": ""
+          "sound": "",
+          "end": "",
+          "dur": 1.6
+        }
+      ]
+    },
+    {
+      "id": "C12",
+      "location": "restaurant_door",
+      "summary": "{gaoliang} curses that the villagers took his money and the chief did nothing; {fugui} grovels.",
+      "soundscape": "City street ambience outside a restaurant: passing traffic, footsteps, the revolving door turning.",
+      "cuts": [
+        {
+          "type": "CU",
+          "subjects": [
+            "gaoliang"
+          ],
+          "speaker": "gaoliang",
+          "line": "妈的，老子的钱就这么被你们村那群王八蛋弄走了！",
+          "say": "妈的……老子的钱，就这么被你们村那群王八蛋弄走了！",
+          "act": "压低声音，咬牙切齿",
+          "emotion": "anger",
+          "delivery": "snarling",
+          "composition": "Close-up of {gaoliang}, off-centre, the restaurant facade behind soft.",
+          "action": "{gaoliang} jabs a finger at the chief's chest.",
+          "camera": "Static camera with a barely perceptible handheld breathing.",
+          "end": "",
+          "dur": 5.1
         },
         {
           "type": "CU",
@@ -276,25 +836,186 @@
             "gaoliang"
           ],
           "speaker": "gaoliang",
-          "line": "老子的钱就这么被弄走了，你这个村长一点办法没有？",
-          "say": "老子的钱……就这么被弄走了！你这个村长，一点办法没有？",
-          "act": "压低声音，咬牙切齿，凶狠",
+          "line": "你这个村长就一点办法没有？",
+          "say": "你这个村长……就一点办法没有？",
+          "act": "阴着脸逼问",
           "emotion": "anger",
-          "delivery": "snarling, jabbing a finger",
-          "composition": "Close-up of {gaoliang} on the restaurant steps, revolving door behind him.",
-          "action": "{gaoliang} jabs a finger at the village chief's chest.",
+          "delivery": "menacing",
+          "composition": "Close-up of {gaoliang}, off-centre, the restaurant facade behind soft.",
+          "action": "{gaoliang} glares down at him.",
           "camera": "Static camera with a barely perceptible handheld breathing.",
           "end": "",
-          "dur": 6
+          "dur": 3.1
+        },
+        {
+          "type": "CU",
+          "subjects": [
+            "fugui"
+          ],
+          "speaker": "fugui",
+          "line": "您别着急……",
+          "say": "您别着急……",
+          "act": "点头哈腰，赔笑",
+          "emotion": "fear",
+          "delivery": "fawning, nervous",
+          "composition": "Close-up of {fugui}, off-centre, the restaurant facade behind soft.",
+          "action": "{fugui} bows, smiling anxiously.",
+          "camera": "Static camera with a barely perceptible handheld breathing.",
+          "end": "",
+          "dur": 1.4
+        },
+        {
+          "type": "OTS",
+          "subjects": [
+            "gaoliang"
+          ],
+          "speaker": "gaoliang",
+          "line": "那你倒是说说，我怎么能不着急？",
+          "say": "那你倒是说说……我怎么能不着急？",
+          "act": "冷笑",
+          "emotion": "anger",
+          "delivery": "sneering",
+          "composition": "{fugui}'s shoulder blurs in the left foreground; {gaoliang} faces the camera in the right third.",
+          "action": "{gaoliang} leans in close.",
+          "camera": "Static camera, focus held on the speaker's eyes.",
+          "end": "",
+          "dur": 3.3,
+          "over": "fugui"
+        },
+        {
+          "type": "CU",
+          "subjects": [
+            "fugui"
+          ],
+          "speaker": "fugui",
+          "line": "这……",
+          "say": "这……",
+          "act": "支支吾吾，满头汗",
+          "emotion": "fear",
+          "delivery": "stammering",
+          "composition": "Close-up of {fugui}, off-centre, the restaurant facade behind soft.",
+          "action": "{fugui} wipes sweat from his forehead.",
+          "camera": "Static camera with a barely perceptible handheld breathing.",
+          "end": "",
+          "dur": 1.3
         }
       ]
     },
     {
-      "id": "C7",
+      "id": "C13",
       "location": "restaurant_door",
-      "summary": "{fugui} fawns over {gaoliang} as he hands over a business card; behind the tree, {xiaokang} keeps filming as the SUV pulls away.",
-      "soundscape": "City street ambience: passing traffic, footsteps, the revolving door turning.",
+      "summary": "{gaoliang} signals his {suicong}, who hands {fugui} a business card and explains the scheme.",
+      "soundscape": "City street ambience outside a restaurant: passing traffic, footsteps, the revolving door turning.",
       "cuts": [
+        {
+          "type": "CU",
+          "subjects": [
+            "gaoliang"
+          ],
+          "speaker": "gaoliang",
+          "line": "算了。",
+          "say": "算了。",
+          "act": "不耐烦地一摆手",
+          "emotion": "cold",
+          "delivery": "dismissive",
+          "composition": "Close-up of {gaoliang}, off-centre, the restaurant facade behind soft.",
+          "action": "{gaoliang} flicks his hand and gives a meaningful glance to the side.",
+          "camera": "Static camera with a barely perceptible handheld breathing.",
+          "end": "",
+          "dur": 1.4
+        },
+        {
+          "type": "MS",
+          "subjects": [
+            "suicong",
+            "fugui"
+          ],
+          "composition": "Medium shot at {loc}: {suicong} steps forward from the left third and holds out {card} to {fugui} in the right third.",
+          "action": "{suicong} hands over the card with a smooth smile; {fugui} takes it in both hands.",
+          "camera": "Slow push in, with small amplitude.",
+          "sound": "",
+          "end": "",
+          "dur": 2.4,
+          "props": [
+            "card"
+          ]
+        },
+        {
+          "type": "CU",
+          "subjects": [
+            "fugui"
+          ],
+          "speaker": "fugui",
+          "line": "赵经理？这个人是……？",
+          "say": "赵经理？这个人是……？",
+          "act": "盯着名片，疑惑",
+          "emotion": "surprise",
+          "delivery": "puzzled",
+          "composition": "Close-up of {fugui}, off-centre, the restaurant facade behind soft.",
+          "action": "{fugui} squints at the card.",
+          "camera": "Static camera with a barely perceptible handheld breathing.",
+          "end": "",
+          "dur": 2.0,
+          "props": [
+            "card"
+          ]
+        },
+        {
+          "type": "CU",
+          "subjects": [
+            "suicong"
+          ],
+          "speaker": "suicong",
+          "line": "回去找赵经理，他会给你们介绍赚钱项目。",
+          "say": "回去找赵经理……他会给你们介绍赚钱项目。",
+          "act": "圆滑地笑着，压低声音",
+          "emotion": "calm",
+          "delivery": "smooth, oily",
+          "composition": "Close-up of {suicong}, off-centre, the restaurant facade behind soft.",
+          "action": "{suicong} smiles thinly behind his glasses.",
+          "camera": "Static camera with a barely perceptible handheld breathing.",
+          "end": "",
+          "dur": 2.6
+        },
+        {
+          "type": "RX",
+          "subjects": [
+            "fugui"
+          ],
+          "composition": "Close-up of {fugui}, centre frame, the background soft.",
+          "action": "{fugui}'s small eyes widen with interest.",
+          "camera": "Static camera.",
+          "end": "",
+          "dur": 1.6,
+          "props": [
+            "card"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "C14",
+      "location": "restaurant_door",
+      "summary": "The aide says they need only pay Gao a fee afterwards; {fugui} is overjoyed; {gaoliang} cuts him off.",
+      "soundscape": "City street ambience outside a restaurant: passing traffic, footsteps, the revolving door turning.",
+      "cuts": [
+        {
+          "type": "CU",
+          "subjects": [
+            "suicong"
+          ],
+          "speaker": "suicong",
+          "line": "你们赚到了，再给高老板介绍费就行。",
+          "say": "你们赚到了……再给高老板介绍费就行。",
+          "act": "轻描淡写",
+          "emotion": "calm",
+          "delivery": "casual, smooth",
+          "composition": "Close-up of {suicong}, off-centre, the restaurant facade behind soft.",
+          "action": "{suicong} straightens his cuffs.",
+          "camera": "Static camera with a barely perceptible handheld breathing.",
+          "end": "",
+          "dur": 3.8
+        },
         {
           "type": "CU",
           "subjects": [
@@ -303,24 +1024,110 @@
           "speaker": "fugui",
           "line": "高老板，您可真是我们黄谷村的大恩人啊！",
           "say": "高老板……您可真是我们黄谷村的大恩人啊！",
-          "act": "点头哈腰，满脸堆笑，谄媚",
+          "act": "喜出望外，连连作揖",
           "emotion": "joy",
-          "delivery": "fawning, bowing, gold tooth flashing in a grin",
-          "composition": "Close-up of {fugui} on the restaurant steps, clutching a business card.",
-          "action": "{fugui} bows repeatedly, grinning.",
+          "delivery": "overjoyed, fawning",
+          "composition": "Close-up of {fugui}, off-centre, the restaurant facade behind soft.",
+          "action": "{fugui} bows repeatedly, gold tooth flashing in a wide grin.",
           "camera": "Static camera with a barely perceptible handheld breathing.",
           "end": "",
-          "dur": 5
+          "dur": 4.2,
+          "props": [
+            "card"
+          ]
+        },
+        {
+          "type": "CU",
+          "subjects": [
+            "gaoliang"
+          ],
+          "speaker": "gaoliang",
+          "line": "打住，废话少说。",
+          "say": "打住……废话少说。",
+          "act": "冷冷打断",
+          "emotion": "cold",
+          "delivery": "curt",
+          "composition": "Close-up of {gaoliang}, off-centre, the restaurant facade behind soft.",
+          "action": "{gaoliang} holds up a palm.",
+          "camera": "Static camera with a barely perceptible handheld breathing.",
+          "end": "",
+          "dur": 1.8
+        },
+        {
+          "type": "CU",
+          "subjects": [
+            "gaoliang"
+          ],
+          "speaker": "gaoliang",
+          "line": "你回去好好宣传宣传，就算帮我了。",
+          "say": "你回去好好宣传宣传……就算帮我了。",
+          "act": "居高临下",
+          "emotion": "cold",
+          "delivery": "condescending",
+          "composition": "Close-up of {gaoliang}, off-centre, the restaurant facade behind soft.",
+          "action": "{gaoliang} pats {fugui}'s shoulder twice.",
+          "camera": "Static camera with a barely perceptible handheld breathing.",
+          "end": "",
+          "dur": 3.6
+        }
+      ]
+    },
+    {
+      "id": "C15",
+      "location": "restaurant_door",
+      "summary": "{gaoliang} drives off in his SUV; {fugui} glances around furtively and hurries away; {xiaokang} lowers his phone, frowning.",
+      "soundscape": "City street ambience outside a restaurant: passing traffic, footsteps, the revolving door turning.",
+      "cuts": [
+        {
+          "type": "MS",
+          "subjects": [
+            "gaoliang"
+          ],
+          "composition": "Medium shot at {loc}: {gaoliang} walks to the black SUV at the kerb and gets in.",
+          "action": "{gaoliang} climbs into the SUV and the door slams; the SUV pulls away.",
+          "camera": "Slow push in, with small amplitude.",
+          "sound": "A car door slams, an engine revs.",
+          "end": "",
+          "dur": 2.6
+        },
+        {
+          "type": "CU",
+          "subjects": [
+            "fugui"
+          ],
+          "composition": "Close-up of {fugui} on the restaurant steps, the revolving door behind.",
+          "action": "{fugui} keeps smiling after the car, then the smile drops; he glances left and right, tucks the card into his jacket and hurries off.",
+          "camera": "Static camera.",
+          "sound": "",
+          "end": "",
+          "dur": 3.0,
+          "props": [
+            "card"
+          ]
         },
         {
           "type": "CU",
           "subjects": [
             "xiaokang"
           ],
-          "composition": "Close-up of {xiaokang} behind the tree, phone raised, the restaurant entrance blurred behind him.",
-          "action": "{xiaokang} keeps filming as a black SUV pulls away; his eyes narrow.",
-          "camera": "Static camera, slow push in, with small amplitude.",
-          "end": "He lowers the phone slowly."
+          "composition": "Close-up of {xiaokang} behind the plane tree, holding up his phone.",
+          "action": "{xiaokang} lowers the phone slowly, frowning hard.",
+          "camera": "Slow push in, with small amplitude.",
+          "sound": "",
+          "end": "",
+          "dur": 2.4
+        },
+        {
+          "type": "ECU",
+          "subjects": [
+            "xiaokang"
+          ],
+          "composition": "Extreme close-up of {xiaokang}'s eyes, hard and suspicious.",
+          "action": "His eyes narrow.",
+          "camera": "Static camera.",
+          "sound": "",
+          "end": "",
+          "dur": 1.6
         }
       ]
     }

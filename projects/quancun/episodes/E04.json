@@ -7,25 +7,181 @@
     {
       "id": "C1",
       "location": "village_tree",
-      "summary": "Under {loc}, village chief {fugui} holds up his phone and boasts his 50,000 became 68,000 in twenty days; {cunmin} can't believe it.",
-      "soundscape": "Outdoor village ambience: leaves rustling in the locust tree, a crowd murmuring, a rooster far off.",
+      "summary": "Under {loc}, a crowd gathers round village chief {fugui}, who holds up his phone and announces great news.",
+      "soundscape": "Outdoor village ambience under a big tree: a murmuring crowd, cicadas, wind in the leaves.",
       "cuts": [
+        {
+          "type": "MS",
+          "subjects": [
+            "fugui"
+          ],
+          "composition": "Medium shot of {fugui} standing in the middle of a crowd of unnamed villagers under the great locust tree at {loc}, holding up {phone_app}.",
+          "action": "{fugui} raises the phone high above his head; the crowd presses in.",
+          "camera": "Slow push in, with small amplitude.",
+          "sound": "The crowd murmurs.",
+          "end": "",
+          "dur": 2.4,
+          "props": [
+            "phone_app"
+          ]
+        },
         {
           "type": "CU",
           "subjects": [
             "fugui"
           ],
           "speaker": "fugui",
-          "line": "我上个月投了五万，这才二十天，已经变成六万八了！",
-          "say": "我上个月投了五万……这才二十天，已经变成六万八了！",
-          "act": "得意洋洋，嗓门洪亮，故意卖关子",
+          "line": "各位乡亲！今天叫大伙来，是有个天大的好事！",
+          "say": "各位乡亲！今天叫大伙来……是有个天大的好事！",
+          "act": "声音洪亮，满面春风",
           "emotion": "joy",
-          "delivery": "gloating, holding the phone high, gold tooth flashing",
-          "composition": "Close-up of {fugui} holding up {phone_app}; a loose crowd of unnamed villagers in simple rural clothes fills the background, craning to look.",
-          "action": "{fugui} waves {phone_app} above his head.",
+          "delivery": "booming, beaming",
+          "composition": "Close-up of {fugui}, off-centre, a crowd of unnamed villagers under the great locust tree behind, soft and out of focus.",
+          "action": "{fugui} waves the phone, gold tooth flashing.",
           "camera": "Static camera with a barely perceptible handheld breathing.",
           "end": "",
-          "dur": 6,
+          "dur": 4.4,
+          "props": [
+            "phone_app"
+          ]
+        },
+        {
+          "type": "CU",
+          "subjects": [
+            "fugui"
+          ],
+          "speaker": "fugui",
+          "line": "我上个月投了五万块钱进去，你们猜怎么着？",
+          "say": "我上个月投了五万块钱进去……你们猜怎么着？",
+          "act": "卖关子，压低声音",
+          "emotion": "joy",
+          "delivery": "teasing, conspiratorial",
+          "composition": "Close-up of {fugui}, off-centre, a crowd of unnamed villagers under the great locust tree behind, soft and out of focus.",
+          "action": "{fugui} leans in towards the crowd.",
+          "camera": "Static camera with a barely perceptible handheld breathing.",
+          "end": "",
+          "dur": 3.1,
+          "props": [
+            "phone_app"
+          ]
+        },
+        {
+          "type": "RX",
+          "subjects": [
+            "cunmin"
+          ],
+          "composition": "Close-up of {cunmin}, centre frame, the background soft.",
+          "action": "{cunmin} holds his breath, eyes wide.",
+          "camera": "Static camera.",
+          "end": "",
+          "dur": 1.3
+        },
+        {
+          "type": "CU",
+          "subjects": [
+            "fugui"
+          ],
+          "speaker": "fugui",
+          "line": "这才二十天，已经变成六万八了！",
+          "say": "这才二十天……已经变成六万八了！",
+          "act": "得意地宣布",
+          "emotion": "joy",
+          "delivery": "triumphant",
+          "composition": "Close-up of {fugui}, off-centre, a crowd of unnamed villagers under the great locust tree behind, soft and out of focus.",
+          "action": "{fugui} turns the phone screen to the crowd.",
+          "camera": "Static camera with a barely perceptible handheld breathing.",
+          "end": "",
+          "dur": 2.2,
+          "props": [
+            "phone_app"
+          ]
+        },
+        {
+          "type": "RX",
+          "subjects": [
+            "cunfu"
+          ],
+          "composition": "Close-up of {cunfu}, centre frame, the background soft.",
+          "action": "{cunfu} gasps, hand over her mouth.",
+          "camera": "Static camera.",
+          "end": "",
+          "dur": 1.2
+        }
+      ]
+    },
+    {
+      "id": "C2",
+      "location": "village_tree",
+      "summary": "The crowd erupts; {cunmin} and {cunfu} can't believe it; {fugui} swears he has never lied and shows the withdrawal record.",
+      "soundscape": "Outdoor village ambience under a big tree: a murmuring crowd, cicadas, wind in the leaves.",
+      "cuts": [
+        {
+          "type": "CU",
+          "subjects": [
+            "cunmin"
+          ],
+          "speaker": "cunmin",
+          "line": "二十天赚一万八？这是真的假的？",
+          "say": "二十天赚一万八？这是……真的假的？",
+          "act": "惊得瞪大眼",
+          "emotion": "surprise",
+          "delivery": "astonished",
+          "composition": "Close-up of {cunmin}, off-centre, a crowd of unnamed villagers under the great locust tree behind, soft and out of focus.",
+          "action": "{cunmin} gapes.",
+          "camera": "Static camera with a barely perceptible handheld breathing.",
+          "end": "",
+          "dur": 3.3
+        },
+        {
+          "type": "CU",
+          "subjects": [
+            "cunfu"
+          ],
+          "speaker": "cunfu",
+          "line": "村长你可别哄俺们！",
+          "say": "村长……你可别哄俺们！",
+          "act": "将信将疑，尖声",
+          "emotion": "surprise",
+          "delivery": "suspicious, shrill",
+          "composition": "Close-up of {cunfu}, off-centre, a crowd of unnamed villagers under the great locust tree behind, soft and out of focus.",
+          "action": "{cunfu} squints at the phone.",
+          "camera": "Static camera with a barely perceptible handheld breathing.",
+          "end": "",
+          "dur": 2.2
+        },
+        {
+          "type": "CU",
+          "subjects": [
+            "fugui"
+          ],
+          "speaker": "fugui",
+          "line": "我哄你们干啥？我当了十几年村长，什么时候骗过大家？",
+          "say": "我哄你们干啥？我当了十几年村长……什么时候骗过大家？",
+          "act": "拍着胸脯",
+          "emotion": "joy",
+          "delivery": "chest-thumping",
+          "composition": "Close-up of {fugui}, off-centre, a crowd of unnamed villagers under the great locust tree behind, soft and out of focus.",
+          "action": "{fugui} slaps his chest.",
+          "camera": "Static camera with a barely perceptible handheld breathing.",
+          "end": "",
+          "dur": 5.3
+        },
+        {
+          "type": "CU",
+          "subjects": [
+            "fugui"
+          ],
+          "speaker": "fugui",
+          "line": "你们看，这是提现记录！",
+          "say": "你们看……这是提现记录！",
+          "act": "得意地展示",
+          "emotion": "joy",
+          "delivery": "showing off",
+          "composition": "Close-up of {fugui}, off-centre, a crowd of unnamed villagers under the great locust tree behind, soft and out of focus.",
+          "action": "{fugui} swipes on the phone and holds it out.",
+          "camera": "Static camera with a barely perceptible handheld breathing.",
+          "end": "",
+          "dur": 2.4,
           "props": [
             "phone_app"
           ]
@@ -36,16 +192,44 @@
             "cunmin"
           ],
           "speaker": "cunmin",
-          "line": "二十天赚一万八？这是真的假的？",
-          "say": "二十天赚一万八？！这是真的假的？",
-          "act": "瞪大眼睛，不敢相信，又惊又馋",
-          "emotion": "shock",
-          "delivery": "jaw dropping, eyes wide",
-          "composition": "Close-up of {cunmin} in the right two-thirds of the frame; a loose crowd of unnamed villagers in simple rural clothes fills the background.",
-          "action": "{cunmin} pushes his straw hat back and gapes.",
+          "line": "还真能提出来！",
+          "say": "还真能……提出来！",
+          "act": "凑近看，眼睛发亮",
+          "emotion": "joy",
+          "delivery": "dazzled",
+          "composition": "Close-up of {cunmin}, off-centre, a crowd of unnamed villagers under the great locust tree behind, soft and out of focus.",
+          "action": "{cunmin} leans in, eyes shining.",
           "camera": "Static camera with a barely perceptible handheld breathing.",
           "end": "",
-          "dur": 4
+          "dur": 1.8
+        }
+      ]
+    },
+    {
+      "id": "C3",
+      "location": "village_tree",
+      "summary": "{fugui} pitches a 300% 'rural benefit' finance plan; {dahua} pushes out of the crowd to invest her family's 100,000.",
+      "soundscape": "Outdoor village ambience under a big tree: a murmuring crowd, cicadas, wind in the leaves.",
+      "cuts": [
+        {
+          "type": "CU",
+          "subjects": [
+            "fugui"
+          ],
+          "speaker": "fugui",
+          "line": "这是专门面向农村的惠民理财，年化收益百分之三百！",
+          "say": "这是专门面向农村的惠民理财……年化收益百分之三百！",
+          "act": "神神秘秘，又极力鼓动",
+          "emotion": "joy",
+          "delivery": "salesman's patter",
+          "composition": "Close-up of {fugui}, off-centre, a crowd of unnamed villagers under the great locust tree behind, soft and out of focus.",
+          "action": "{fugui} spreads his hands wide.",
+          "camera": "Static camera with a barely perceptible handheld breathing.",
+          "end": "",
+          "dur": 5.3,
+          "props": [
+            "phone_app"
+          ]
         },
         {
           "type": "CU",
@@ -53,28 +237,31 @@
             "fugui"
           ],
           "speaker": "fugui",
-          "line": "年化收益百分之三百，投十万，一个月就是近三万！",
-          "say": "年化收益……百分之三百！投十万，一个月就是近三万！",
-          "act": "压低声音又突然拔高，像在推销",
+          "line": "投十万，一个月就是近三万的利息啊！",
+          "say": "投十万……一个月就是近三万的利息啊！",
+          "act": "越说越激动",
           "emotion": "joy",
-          "delivery": "salesman's grin, tapping the phone screen",
-          "composition": "Close-up of {fugui}, centre frame, the locust tree behind him.",
-          "action": "{fugui} taps the screen of {phone_app} with his finger.",
+          "delivery": "excited",
+          "composition": "Close-up of {fugui}, off-centre, a crowd of unnamed villagers under the great locust tree behind, soft and out of focus.",
+          "action": "{fugui} jabs the air with the phone.",
           "camera": "Static camera with a barely perceptible handheld breathing.",
           "end": "",
-          "dur": 5,
+          "dur": 2.6,
           "props": [
             "phone_app"
           ]
-        }
-      ]
-    },
-    {
-      "id": "C2",
-      "location": "village_tree",
-      "summary": "{dahua} pushes forward to invest her family's 100,000; the villagers crowd in with their phones; {xiaokang} pushes through and says it is not reliable.",
-      "soundscape": "Outdoor village ambience: leaves rustling in the locust tree, a crowd murmuring, a rooster far off. Excited voices overlap.",
-      "cuts": [
+        },
+        {
+          "type": "RX",
+          "subjects": [
+            "dahua"
+          ],
+          "composition": "Close-up of {dahua}, centre frame, the background soft.",
+          "action": "{dahua}'s eyes gleam; she shoves forward.",
+          "camera": "Static camera.",
+          "end": "",
+          "dur": 1.2
+        },
         {
           "type": "CU",
           "subjects": [
@@ -83,110 +270,213 @@
           "speaker": "dahua",
           "line": "村长，我投！我家存折上正好有十万！",
           "say": "村长，我投！我家存折上……正好有十万！",
-          "act": "挤出人群，抢着说，兴奋又急切",
+          "act": "从人群中挤出来，抢着喊",
           "emotion": "joy",
-          "delivery": "eager, elbowing forward",
-          "composition": "Close-up of {dahua} pushing through the crowd, centre-left of the frame; a loose crowd of unnamed villagers in simple rural clothes fills the background.",
-          "action": "{dahua} raises her hand high.",
+          "delivery": "eager, shouting",
+          "composition": "Close-up of {dahua}, off-centre, a crowd of unnamed villagers under the great locust tree behind, soft and out of focus.",
+          "action": "{dahua} elbows her way to the front.",
           "camera": "Static camera with a barely perceptible handheld breathing.",
           "end": "",
-          "dur": 5
-        },
-        {
-          "type": "MS",
-          "subjects": [
-            "xiaokang"
-          ],
-          "composition": "Medium shot of {loc}: a loose crowd of unnamed villagers in simple rural clothes fills the background, jostling forward holding up their phones, while {xiaokang} squeezes in from the edge.",
-          "action": "{xiaokang} shoulders his way into the middle of the excited crowd.",
-          "camera": "Slow push in, with small amplitude.",
-          "sound": "Excited chatter.",
-          "end": ""
-        },
-        {
-          "type": "CU",
-          "subjects": [
-            "xiaokang"
-          ],
-          "speaker": "xiaokang",
-          "line": "等等！大家听我说，这件事不靠谱！",
-          "say": "等等！大家听我说……这件事，不靠谱！",
-          "act": "大声喊住众人，焦急",
-          "emotion": "shout",
-          "delivery": "urgent, arms raised to stop them",
-          "composition": "Close-up of {xiaokang} in the middle of the crowd, centre frame; a loose crowd of unnamed villagers in simple rural clothes fills the background, turning toward him.",
-          "action": "{xiaokang} spreads both arms wide.",
-          "camera": "Static camera with a barely perceptible handheld breathing.",
-          "end": "",
-          "dur": 4
-        }
-      ]
-    },
-    {
-      "id": "C3",
-      "location": "village_tree",
-      "summary": "{dahua} sneers that {xiaokang} is a fly that lands on every good thing; he asks how any project can pay so much when the bank pays under three percent.",
-      "soundscape": "Outdoor village ambience: leaves rustling in the locust tree, a crowd murmuring, a rooster far off.",
-      "cuts": [
-        {
-          "type": "OTS",
-          "over": "xiaokang",
-          "subjects": [
-            "dahua"
-          ],
-          "speaker": "dahua",
-          "line": "李小康，你是属苍蝇的吗？哪儿有好事你就往哪儿叮！",
-          "say": "李小康，你是属苍蝇的吗？哪儿有好事……你就往哪儿叮！",
-          "act": "脸一沉，尖酸刻薄地挖苦",
-          "emotion": "contempt",
-          "delivery": "face darkening, sneering",
-          "composition": "{xiaokang}'s shoulder blurs in the right foreground; {dahua} faces the camera in the left third.",
-          "action": "{dahua} jabs a finger at him.",
-          "camera": "Static camera, focus held on the speaker's eyes.",
-          "end": "",
-          "dur": 6
-        },
-        {
-          "type": "CU",
-          "subjects": [
-            "xiaokang"
-          ],
-          "speaker": "xiaokang",
-          "line": "银行定期才不到百分之三，哪有这么高的收益？",
-          "say": "银行定期才不到百分之三……哪有这么高的收益？",
-          "act": "皱着眉，耐着性子讲道理，句尾追问",
-          "emotion": "plead",
-          "delivery": "frowning, reasoning with them",
-          "composition": "Close-up of {xiaokang}, centre-right of the frame, dappled sunlight on his face.",
-          "action": "{xiaokang} looks from face to face.",
-          "camera": "Static camera with a barely perceptible handheld breathing.",
-          "end": "",
-          "dur": 5
+          "dur": 3.6
         }
       ]
     },
     {
       "id": "C4",
       "location": "village_tree",
-      "summary": "{fugui}'s smile freezes and he asks if {xiaokang} is accusing him; old {erdaye} quietly tells Xiaokang to apologise; he refuses.",
-      "soundscape": "Outdoor village ambience: leaves rustling in the locust tree, a crowd murmuring, a rooster far off. The crowd goes quiet.",
+      "summary": "{cunfu} shouts thirty thousand; {xiaokang} pushes in and says it doesn't feel right; {dahua} sneers that he is a fly that lands on every good thing.",
+      "soundscape": "Outdoor village ambience under a big tree: a murmuring crowd, cicadas, wind in the leaves.",
       "cuts": [
+        {
+          "type": "CU",
+          "subjects": [
+            "cunfu"
+          ],
+          "speaker": "cunfu",
+          "line": "我投三万！",
+          "say": "我投三万！",
+          "act": "尖声抢着喊",
+          "emotion": "joy",
+          "delivery": "shrill, eager",
+          "composition": "Close-up of {cunfu}, off-centre, a crowd of unnamed villagers under the great locust tree behind, soft and out of focus.",
+          "action": "{cunfu} waves her phone in the air.",
+          "camera": "Static camera with a barely perceptible handheld breathing.",
+          "end": "",
+          "dur": 1.2
+        },
+        {
+          "type": "MS",
+          "subjects": [
+            "xiaokang"
+          ],
+          "composition": "Medium shot of {xiaokang} shouldering through the edge of the crowd at {loc}.",
+          "action": "{xiaokang} pushes his way into the crowd, frowning.",
+          "camera": "Slow push in, with small amplitude.",
+          "sound": "The crowd jostles.",
+          "end": "",
+          "dur": 1.8
+        },
+        {
+          "type": "CU",
+          "subjects": [
+            "xiaokang"
+          ],
+          "speaker": "xiaokang",
+          "line": "等等！大家听我说，这件事有点不靠谱！",
+          "say": "等等！大家听我说……这件事有点不靠谱！",
+          "act": "急切地高喊",
+          "emotion": "shout",
+          "delivery": "urgent",
+          "composition": "Close-up of {xiaokang}, off-centre, a crowd of unnamed villagers under the great locust tree behind, soft and out of focus.",
+          "action": "{xiaokang} raises a hand.",
+          "camera": "Static camera with a barely perceptible handheld breathing.",
+          "end": "",
+          "dur": 3.8
+        },
+        {
+          "type": "CU",
+          "subjects": [
+            "dahua"
+          ],
+          "speaker": "dahua",
+          "line": "李小康，你是属苍蝇的吗？哪儿有好事你就往哪儿叮！",
+          "say": "李小康，你是属苍蝇的吗？哪儿有好事……你就往哪儿叮！",
+          "act": "尖酸刻薄，翻白眼",
+          "emotion": "contempt",
+          "delivery": "acid, sneering",
+          "composition": "Close-up of {dahua}, off-centre, a crowd of unnamed villagers under the great locust tree behind, soft and out of focus.",
+          "action": "{dahua} turns, her face darkening, and sneers.",
+          "camera": "Static camera with a barely perceptible handheld breathing.",
+          "end": "",
+          "dur": 5.1
+        }
+      ]
+    },
+    {
+      "id": "C5",
+      "location": "village_tree",
+      "summary": "{xiaokang} asks how any plan can pay hundreds of times a bank's interest; {fugui}'s smile freezes and he asks if he is being accused.",
+      "soundscape": "Outdoor village ambience under a big tree: a murmuring crowd, cicadas, wind in the leaves.",
+      "cuts": [
+        {
+          "type": "CU",
+          "subjects": [
+            "xiaokang"
+          ],
+          "speaker": "xiaokang",
+          "line": "村长，银行定期才不到百分之三，",
+          "say": "村长，银行定期……才不到百分之三，",
+          "act": "皱眉，压着火讲道理",
+          "emotion": "calm",
+          "delivery": "reasoning, firm",
+          "composition": "Close-up of {xiaokang}, off-centre, a crowd of unnamed villagers under the great locust tree behind, soft and out of focus.",
+          "action": "{xiaokang} faces the chief.",
+          "camera": "Static camera with a barely perceptible handheld breathing.",
+          "end": "",
+          "dur": 3.3
+        },
+        {
+          "type": "CU",
+          "subjects": [
+            "xiaokang"
+          ],
+          "speaker": "xiaokang",
+          "line": "你这什么项目能有几百倍的收益？",
+          "say": "你这什么项目……能有几百倍的收益？",
+          "act": "追问",
+          "emotion": "anger",
+          "delivery": "pressing",
+          "composition": "Close-up of {xiaokang}, off-centre, a crowd of unnamed villagers under the great locust tree behind, soft and out of focus.",
+          "action": "{xiaokang} points at the phone.",
+          "camera": "Static camera with a barely perceptible handheld breathing.",
+          "end": "",
+          "dur": 2.2,
+          "props": [
+            "phone_app"
+          ]
+        },
+        {
+          "type": "RX",
+          "subjects": [
+            "fugui"
+          ],
+          "composition": "Close-up of {fugui}, centre frame, the background soft.",
+          "action": "{fugui}'s smile freezes on his face.",
+          "camera": "Static camera.",
+          "end": "",
+          "dur": 1.4
+        },
+        {
+          "type": "OTS",
+          "subjects": [
+            "fugui"
+          ],
+          "speaker": "fugui",
+          "line": "小康啊，听你这意思，你是在怀疑我骗乡亲们？",
+          "say": "小康啊……听你这意思，你是在怀疑我骗乡亲们？",
+          "act": "笑容僵住，阴阳怪气",
+          "emotion": "cold",
+          "delivery": "frozen smile, menacing",
+          "composition": "{xiaokang}'s shoulder blurs in the left foreground; {fugui} faces the camera in the right third.",
+          "action": "{fugui} narrows his small eyes.",
+          "camera": "Static camera, focus held on the speaker's eyes.",
+          "end": "",
+          "dur": 4.4,
+          "over": "xiaokang"
+        }
+      ]
+    },
+    {
+      "id": "C6",
+      "location": "village_tree",
+      "summary": "Old {erdaye} tries to smooth things over; {fugui} turns cold; {erdaye} quietly tells {xiaokang} to apologise.",
+      "soundscape": "Outdoor village ambience under a big tree: a murmuring crowd, cicadas, wind in the leaves.",
+      "cuts": [
+        {
+          "type": "CU",
+          "subjects": [
+            "erdaye"
+          ],
+          "speaker": "erdaye",
+          "line": "小康不是那个意思……",
+          "say": "小康不是那个意思……",
+          "act": "赶紧打圆场",
+          "emotion": "worry",
+          "delivery": "placating",
+          "composition": "Close-up of {erdaye}, off-centre, a crowd of unnamed villagers under the great locust tree behind, soft and out of focus.",
+          "action": "{erdaye} raises a trembling hand.",
+          "camera": "Static camera with a barely perceptible handheld breathing.",
+          "end": "",
+          "dur": 2.2
+        },
         {
           "type": "CU",
           "subjects": [
             "fugui"
           ],
           "speaker": "fugui",
-          "line": "小康啊，你是在怀疑我骗乡亲们？",
-          "say": "小康啊……你是在怀疑，我骗乡亲们？",
-          "act": "笑容僵住，慢慢冷下来，话里带刺",
+          "line": "不是那个意思，那是什么意思？",
+          "say": "不是那个意思……那是什么意思？",
+          "act": "冷下脸",
           "emotion": "cold",
-          "delivery": "smile freezing into a cold stare",
-          "composition": "Close-up of {fugui}, centre frame.",
-          "action": "{fugui}'s grin fades; he lowers the phone.",
+          "delivery": "cold",
+          "composition": "Close-up of {fugui}, off-centre, a crowd of unnamed villagers under the great locust tree behind, soft and out of focus.",
+          "action": "{fugui}'s face goes cold.",
           "camera": "Static camera with a barely perceptible handheld breathing.",
           "end": "",
-          "dur": 4
+          "dur": 3.1
+        },
+        {
+          "type": "ECU",
+          "subjects": [
+            "erdaye"
+          ],
+          "composition": "Extreme close-up of {erdaye}'s cane striking the packed dirt.",
+          "action": "The cane taps the ground once.",
+          "camera": "Static camera.",
+          "sound": "The cane thumps on the dirt.",
+          "end": "",
+          "dur": 1.2
         },
         {
           "type": "CU",
@@ -195,14 +485,15 @@
           ],
           "speaker": "erdaye",
           "line": "这孩子……快给村长道歉。",
-          "say": "这孩子……快，给村长道歉。",
-          "act": "拐杖敲了下地，压低声音劝，着急",
-          "emotion": "plead",
-          "delivery": "anxious, whispering, tapping his cane",
-          "composition": "Close-up of {erdaye} leaning toward Xiaokang, centre-left of the frame.",
-          "action": "{erdaye} taps his cane on the ground and whispers.",
+          "say": "这孩子……快给村长道歉。",
+          "act": "压低声音，急切地劝",
+          "emotion": "worry",
+          "delivery": "whispering urgently",
+          "composition": "Close-up of {erdaye}, off-centre, a crowd of unnamed villagers under the great locust tree behind, soft and out of focus.",
+          "action": "{erdaye} tugs at {xiaokang}'s sleeve.",
           "camera": "Static camera with a barely perceptible handheld breathing.",
-          "end": ""
+          "end": "",
+          "dur": 2.4
         },
         {
           "type": "CU",
@@ -210,23 +501,35 @@
             "xiaokang"
           ],
           "speaker": "xiaokang",
-          "line": "我没错，我为什么要道歉！",
-          "say": "我没错……我为什么要道歉！",
-          "act": "倔强，咬着牙，声音发硬",
+          "line": "我没错，我为什么要给他道歉！",
+          "say": "我没错……我为什么要给他道歉！",
+          "act": "倔强，声音发硬",
           "emotion": "anger",
-          "delivery": "stubborn, jaw clenched",
-          "composition": "Close-up of {xiaokang}, centre-right of the frame.",
-          "action": "{xiaokang} shakes his head, eyes blazing.",
+          "delivery": "stubborn",
+          "composition": "Close-up of {xiaokang}, off-centre, a crowd of unnamed villagers under the great locust tree behind, soft and out of focus.",
+          "action": "{xiaokang} pulls his sleeve free.",
           "camera": "Static camera with a barely perceptible handheld breathing.",
-          "end": ""
+          "end": "",
+          "dur": 2.2
+        },
+        {
+          "type": "RX",
+          "subjects": [
+            "erdaye"
+          ],
+          "composition": "Close-up of {erdaye}, centre frame, the background soft.",
+          "action": "{erdaye} sighs and shakes his head.",
+          "camera": "Static camera.",
+          "end": "",
+          "dur": 1.2
         }
       ]
     },
     {
-      "id": "C5",
+      "id": "C7",
       "location": "village_tree",
-      "summary": "{dahua} says the chief brought them a fortune and Xiaokang has no right to doubt him; {cunmin} says he just can't stand others getting rich; Xiaokang clenches his fists.",
-      "soundscape": "Outdoor village ambience: leaves rustling in the locust tree, a crowd murmuring, a rooster far off. Angry muttering grows.",
+      "summary": "{dahua} shrieks that the chief works day and night for the village and accuses {xiaokang} of sour grapes; {cunmin} piles on.",
+      "soundscape": "Outdoor village ambience under a big tree: a murmuring crowd, cicadas, wind in the leaves.",
       "cuts": [
         {
           "type": "CU",
@@ -234,16 +537,44 @@
             "dahua"
           ],
           "speaker": "dahua",
-          "line": "村长给咱们村拉来这么大的项目，你有什么资格怀疑他？",
-          "say": "村长给咱们村拉来这么大的项目……你有什么资格怀疑他？",
-          "act": "上前一步，指着他鼻子，越骂越凶",
+          "line": "好你个李小康，在你眼里我们就都有问题是不是？",
+          "say": "好你个李小康！在你眼里……我们就都有问题是不是？",
+          "act": "尖声叫嚷",
           "emotion": "anger",
-          "delivery": "furious, finger in his face",
-          "composition": "Close-up of {dahua}, centre frame; a loose crowd of unnamed villagers in simple rural clothes fills the background.",
-          "action": "{dahua} steps forward, finger pointed at his nose.",
+          "delivery": "shrill fury",
+          "composition": "Close-up of {dahua}, off-centre, a crowd of unnamed villagers under the great locust tree behind, soft and out of focus.",
+          "action": "{dahua} jabs a finger.",
           "camera": "Static camera with a barely perceptible handheld breathing.",
           "end": "",
-          "dur": 6
+          "dur": 4.9
+        },
+        {
+          "type": "CU",
+          "subjects": [
+            "dahua"
+          ],
+          "speaker": "dahua",
+          "line": "你眼看自己的计划没得逞，着急了？",
+          "say": "你眼看自己的计划没得逞……着急了？",
+          "act": "冷笑",
+          "emotion": "contempt",
+          "delivery": "mocking",
+          "composition": "Close-up of {dahua}, off-centre, a crowd of unnamed villagers under the great locust tree behind, soft and out of focus.",
+          "action": "{dahua} smirks.",
+          "camera": "Static camera with a barely perceptible handheld breathing.",
+          "end": "",
+          "dur": 2.4
+        },
+        {
+          "type": "RX",
+          "subjects": [
+            "xiaokang"
+          ],
+          "composition": "Close-up of {xiaokang}, centre frame, the background soft.",
+          "action": "{xiaokang} clenches his jaw.",
+          "camera": "Static camera.",
+          "end": "",
+          "dur": 1.2
         },
         {
           "type": "CU",
@@ -251,50 +582,53 @@
             "cunmin"
           ],
           "speaker": "cunmin",
-          "line": "自己没本事赚钱，还看不得别人发财！",
-          "say": "自己没本事赚钱……还看不得别人发财！",
-          "act": "撇嘴冷笑，阴阳怪气",
+          "line": "自己没本事赚钱，还看不得别人发财！你爸是怎么教你的？",
+          "say": "自己没本事赚钱，还看不得别人发财！你爸……是怎么教你的？",
+          "act": "起哄，嚷嚷",
           "emotion": "contempt",
-          "delivery": "sneering",
-          "composition": "Close-up of {cunmin}, right two-thirds of the frame; a loose crowd of unnamed villagers in simple rural clothes fills the background, nodding.",
-          "action": "{cunmin} spits to the side and sneers.",
+          "delivery": "jeering",
+          "composition": "Close-up of {cunmin}, off-centre, a crowd of unnamed villagers under the great locust tree behind, soft and out of focus.",
+          "action": "{cunmin} shouts over the crowd.",
           "camera": "Static camera with a barely perceptible handheld breathing.",
           "end": "",
-          "dur": 4
+          "dur": 4.4
         },
         {
-          "type": "CU",
+          "type": "RX",
           "subjects": [
             "xiaokang"
           ],
-          "composition": "Close-up of {xiaokang}, centre frame, the jeering crowd blurred behind him.",
-          "action": "{xiaokang} clenches both fists, his eyes reddening.",
-          "camera": "Static camera, slow push in, with small amplitude.",
-          "end": ""
+          "composition": "Close-up of {xiaokang}, centre frame, the background soft.",
+          "action": "{xiaokang} flinches at the mention of his father.",
+          "camera": "Static camera.",
+          "end": "",
+          "dur": 1.2
         }
       ]
     },
     {
-      "id": "C6",
+      "id": "C8",
       "location": "village_tree",
-      "summary": "{xiaokang}'s inner voice remembers selling the village's unsold corn while the chief took the credit; {dahua} calls on everyone who wants to get rich to raise a hand.",
-      "soundscape": "Outdoor village ambience: leaves rustling in the locust tree, a crowd murmuring, a rooster far off.",
+      "summary": "{dahua} jabs a finger at his nose: he only sells broken corn; {cunfu} calls him stupid and wicked; the jeers grow.",
+      "soundscape": "Outdoor village ambience under a big tree: a murmuring crowd, cicadas, wind in the leaves.",
       "cuts": [
         {
-          "type": "VO",
+          "type": "OTS",
           "subjects": [
-            "xiaokang"
+            "dahua"
           ],
-          "speaker": "xiaokang",
-          "line": "去年玉米滞销，是我把玉米卖出去的，到头来功劳全算在了富贵头上。",
-          "say": "去年玉米滞销……是我把玉米卖出去的。到头来，功劳全算在了富贵头上。",
-          "act": "低沉的内心独白，苦涩，寒心",
-          "emotion": "sad",
-          "delivery": "bitter and quiet",
-          "composition": "Close-up of {xiaokang} in three-quarter profile under the tree, eyes lowered.",
-          "action": "His eyes drop; he breathes out slowly.",
-          "end": "The shot ends on his eyes in extreme close-up.",
-          "dur": 8
+          "speaker": "dahua",
+          "line": "村长给咱们拉来这么大的项目，你呢？就知道卖那些破玉米！",
+          "say": "村长给咱们拉来这么大的项目……你呢？就知道卖那些破玉米！",
+          "act": "上前一步，指着鼻子骂",
+          "emotion": "anger",
+          "delivery": "jabbing finger, scornful",
+          "composition": "{xiaokang}'s shoulder blurs in the right foreground; {dahua} faces the camera in the left third, her finger thrust forward.",
+          "action": "{dahua} steps up and points at his nose.",
+          "camera": "Static camera, focus held on the speaker's eyes.",
+          "end": "",
+          "dur": 5.8,
+          "over": "xiaokang"
         },
         {
           "type": "CU",
@@ -302,36 +636,134 @@
             "dahua"
           ],
           "speaker": "dahua",
-          "line": "想跟着村长发财的，举手！",
-          "say": "想跟着村长发财的……举手！",
-          "act": "振臂一呼，得意又挑衅地瞟他一眼",
-          "emotion": "joy",
-          "delivery": "triumphant, raising her own hand",
-          "composition": "Close-up of {dahua}, centre frame; a loose crowd of unnamed villagers in simple rural clothes fills the background.",
-          "action": "{dahua} throws her hand up and glances at Xiaokang.",
+          "line": "照你这死脑筋，我们几百年才能发财！",
+          "say": "照你这死脑筋……我们几百年才能发财！",
+          "act": "鄙夷",
+          "emotion": "contempt",
+          "delivery": "contemptuous",
+          "composition": "Close-up of {dahua}, off-centre, a crowd of unnamed villagers under the great locust tree behind, soft and out of focus.",
+          "action": "{dahua} flicks her hand.",
           "camera": "Static camera with a barely perceptible handheld breathing.",
           "end": "",
-          "dur": 4
+          "dur": 3.8
+        },
+        {
+          "type": "CU",
+          "subjects": [
+            "cunfu"
+          ],
+          "speaker": "cunfu",
+          "line": "又蠢又坏，说的就是李小康这种人！",
+          "say": "又蠢又坏……说的就是李小康这种人！",
+          "act": "尖声附和",
+          "emotion": "contempt",
+          "delivery": "shrill, jeering",
+          "composition": "Close-up of {cunfu}, off-centre, a crowd of unnamed villagers under the great locust tree behind, soft and out of focus.",
+          "action": "{cunfu} cackles and points.",
+          "camera": "Static camera with a barely perceptible handheld breathing.",
+          "end": "",
+          "dur": 3.6
+        },
+        {
+          "type": "ECU",
+          "subjects": [
+            "xiaokang"
+          ],
+          "composition": "Extreme close-up of {xiaokang}'s hand clenching into a fist at his side.",
+          "action": "His knuckles whiten as the jeers rise.",
+          "camera": "Static camera.",
+          "sound": "Jeering voices overlap.",
+          "end": "",
+          "dur": 1.4
         }
       ]
     },
     {
-      "id": "C7",
+      "id": "C9",
       "location": "village_tree",
-      "summary": "Everyone raises a hand, even {erdaye}, slowly; {xiaokang} asks if even he doesn't believe him, then says he will never again concern himself with their affairs.",
-      "soundscape": "Outdoor village ambience: leaves rustling in the locust tree, a crowd murmuring, a rooster far off. The crowd falls silent.",
+      "summary": "{xiaokang}'s inner voice: last year he sold the village's unsold corn, and the chief took the credit; what chills him is {dahua} knows it.",
+      "soundscape": "Outdoor village ambience under a big tree: a murmuring crowd, cicadas, wind in the leaves.",
       "cuts": [
+        {
+          "type": "VO",
+          "subjects": [
+            "xiaokang"
+          ],
+          "speaker": "xiaokang",
+          "line": "去年玉米滞销，是我求爷爷告奶奶卖出去的，到头来功劳全算在了富贵头上。",
+          "say": "去年玉米滞销……是我求爷爷告奶奶卖出去的。到头来，功劳全算在了富贵头上。",
+          "act": "压抑着委屈的内心独白",
+          "emotion": "calm",
+          "delivery": "reflective inner monologue",
+          "composition": "Close-up of {xiaokang} in the jeering crowd, eyes red, jaw clenched.",
+          "action": "The crowd mouths insults around him, unheard; {xiaokang} stares at {dahua}.",
+          "end": "",
+          "dur": 7.3
+        },
+        {
+          "type": "VO",
+          "subjects": [
+            "dahua"
+          ],
+          "speaker": "xiaokang",
+          "line": "最让我寒心的是，王大花明明都知道。",
+          "say": "最让我寒心的是……王大花明明都知道。",
+          "act": "心寒",
+          "emotion": "calm",
+          "delivery": "reflective inner monologue",
+          "composition": "Close-up of {dahua} laughing with the crowd, as {xiaokang} sees her.",
+          "action": "{dahua} throws back her head, laughing.",
+          "end": "",
+          "dur": 3.8
+        }
+      ]
+    },
+    {
+      "id": "C10",
+      "location": "village_tree",
+      "summary": "{dahua} calls a show of hands for following the chief; everyone raises a hand, even old {erdaye}, slowly.",
+      "soundscape": "Outdoor village ambience under a big tree: a murmuring crowd, cicadas, wind in the leaves.",
+      "cuts": [
+        {
+          "type": "CU",
+          "subjects": [
+            "dahua"
+          ],
+          "speaker": "dahua",
+          "line": "咱们村没你更好！想跟着村长发财的，举手！",
+          "say": "咱们村没你更好！想跟着村长发财的……举手！",
+          "act": "高声煽动",
+          "emotion": "joy",
+          "delivery": "rabble-rousing",
+          "composition": "Close-up of {dahua}, off-centre, a crowd of unnamed villagers under the great locust tree behind, soft and out of focus.",
+          "action": "{dahua} thrusts her own hand into the air.",
+          "camera": "Static camera with a barely perceptible handheld breathing.",
+          "end": "",
+          "dur": 4.2
+        },
         {
           "type": "MS",
           "subjects": [
-            "erdaye",
-            "xiaokang"
+            "dahua"
           ],
-          "composition": "Medium shot under {loc}: hands shoot up all around while a loose crowd of unnamed villagers in simple rural clothes fills the background; {erdaye} in the left third glances around and slowly raises his hand too; {xiaokang} in the right third stares at him.",
-          "action": "{erdaye} raises his trembling hand, avoiding Xiaokang's eyes.",
-          "camera": "Static camera.",
-          "sound": "Rustling sleeves, murmurs.",
-          "end": ""
+          "composition": "Medium shot under the great locust tree at {loc}: {dahua} stands in the centre, her own hand high, as a forest of unnamed villagers' hands shoots up around her.",
+          "action": "Hands go up all around; {dahua} grins triumphantly.",
+          "camera": "Slow push in, with small amplitude.",
+          "sound": "Cheers and clapping.",
+          "end": "",
+          "dur": 2.2
+        },
+        {
+          "type": "CU",
+          "subjects": [
+            "erdaye"
+          ],
+          "composition": "Close-up of {erdaye}, the raised hands of the crowd around him.",
+          "action": "{erdaye} glances around timidly, then slowly, shakily raises his hand.",
+          "camera": "Slow push in, with small amplitude.",
+          "sound": "",
+          "end": "",
+          "dur": 2.6
         },
         {
           "type": "CU",
@@ -341,14 +773,83 @@
           "speaker": "xiaokang",
           "line": "二大爷！怎么你也不相信我？",
           "say": "二大爷！怎么……你也不相信我？",
-          "act": "难以置信，声音一下子哽住",
+          "act": "难以置信，声音发颤",
           "emotion": "broken",
-          "delivery": "stunned, voice breaking",
-          "composition": "Close-up of {xiaokang}, centre-right of the frame, eyes red.",
-          "action": "{xiaokang} stares at the old man's raised hand.",
+          "delivery": "stunned, voice cracking",
+          "composition": "Close-up of {xiaokang}, off-centre, a crowd of unnamed villagers under the great locust tree behind, soft and out of focus.",
+          "action": "{xiaokang} stares at the old man.",
           "camera": "Static camera with a barely perceptible handheld breathing.",
           "end": "",
-          "dur": 4
+          "dur": 2.0
+        },
+        {
+          "type": "RX",
+          "subjects": [
+            "erdaye"
+          ],
+          "composition": "Close-up of {erdaye}, centre frame, the background soft.",
+          "action": "{erdaye} looks away, ashamed.",
+          "camera": "Static camera.",
+          "end": "",
+          "dur": 1.4
+        }
+      ]
+    },
+    {
+      "id": "C11",
+      "location": "village_tree",
+      "summary": "{cunmin} and {cunfu} mock him; {xiaokang}, eyes red, swears he will never meddle in their affairs again.",
+      "soundscape": "Outdoor village ambience under a big tree: a murmuring crowd, cicadas, wind in the leaves.",
+      "cuts": [
+        {
+          "type": "CU",
+          "subjects": [
+            "cunmin"
+          ],
+          "speaker": "cunmin",
+          "line": "切，傻子才信你呢，我跟着村长！",
+          "say": "切……傻子才信你呢，我跟着村长！",
+          "act": "嗤笑",
+          "emotion": "contempt",
+          "delivery": "scoffing",
+          "composition": "Close-up of {cunmin}, off-centre, a crowd of unnamed villagers under the great locust tree behind, soft and out of focus.",
+          "action": "{cunmin} waves him off.",
+          "camera": "Static camera with a barely perceptible handheld breathing.",
+          "end": "",
+          "dur": 3.1
+        },
+        {
+          "type": "CU",
+          "subjects": [
+            "cunfu"
+          ],
+          "speaker": "cunfu",
+          "line": "以前种玉米那是没办法，傻子才种玉米呢！",
+          "say": "以前种玉米那是没办法……傻子才种玉米呢！",
+          "act": "撇嘴",
+          "emotion": "contempt",
+          "delivery": "sneering",
+          "composition": "Close-up of {cunfu}, off-centre, a crowd of unnamed villagers under the great locust tree behind, soft and out of focus.",
+          "action": "{cunfu} rolls her eyes.",
+          "camera": "Static camera with a barely perceptible handheld breathing.",
+          "end": "",
+          "dur": 4.2
+        },
+        {
+          "type": "VO",
+          "subjects": [
+            "xiaokang"
+          ],
+          "speaker": "xiaokang",
+          "line": "我的心彻底凉了。",
+          "say": "我的心……彻底凉了。",
+          "act": "冰冷的内心独白",
+          "emotion": "calm",
+          "delivery": "reflective inner monologue",
+          "composition": "Close-up of {xiaokang}, centre frame, the crowd blurred.",
+          "action": "{xiaokang} breathes out slowly.",
+          "end": "",
+          "dur": 2.0
         },
         {
           "type": "CU",
@@ -357,15 +858,15 @@
           ],
           "speaker": "xiaokang",
           "line": "好，从今以后，你们的事我李小康不会再管了！",
-          "say": "好……从今以后，你们的事——我李小康，不会再管了！",
-          "act": "咬着牙，一字一顿，眼眶通红却没掉泪",
-          "emotion": "firm",
-          "delivery": "jaw set, eyes red, every word final",
-          "composition": "Close-up of {xiaokang}, centre frame, the raised hands of the crowd blurred behind him.",
+          "say": "好……从今以后，你们的事，我李小康不会再管了！",
+          "act": "一字一顿，冷而决绝",
+          "emotion": "cold",
+          "delivery": "icy, final",
+          "composition": "Close-up of {xiaokang}, off-centre, a crowd of unnamed villagers under the great locust tree behind, soft and out of focus.",
           "action": "{xiaokang} turns his back on the crowd.",
           "camera": "Static camera with a barely perceptible handheld breathing.",
-          "end": "He walks out of frame without looking back.",
-          "dur": 6
+          "end": "",
+          "dur": 4.4
         }
       ]
     }
