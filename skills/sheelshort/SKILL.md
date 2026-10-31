@@ -86,4 +86,7 @@ and look before spending GPU time on the whole episode.)
 - **Picture:** sample frames of each clip (ffmpeg `-vf fps=1`) and look: faces match the close-ups, the right
   person speaks, no extra people, no on-screen text, mouths move on the lines. A failed clip:
   `render ... --only K2 --takes 2`, then choose the take in `edit/<EP>/picks.json` (`{"K2": 2}`) and re-assemble.
+- **Long runs:** with `[fleet] enabled = true` the render adds AutoDL servers while clips wait and powers them off
+  afterwards. After any interrupted run, check `python -m sheelshort fleet <project>` and power off leftovers with
+  `... fleet <project> off`.
 - Never change a tested default without an A/B; report what you changed and why.

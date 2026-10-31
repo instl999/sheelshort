@@ -108,6 +108,104 @@ def test_offscreen_mention_uses_the_name():
     assert "Gao Liang" in text and "{gaoliang}" not in text
 
 
+class _FakeAutoDL:
+    def __init__(self, instances=()):
+        self.list = [dict(i) for i in instances]
+        self.calls = []
+
+    def instances(self):
+        return self.list
+
+    def create(self, app, version, spec, name, dcs=None):
+        self.calls.append(("create", spec, name, tuple(dcs or ())))
+        uuid = f"pro-new{len(self.list)}"
+        self.list.append({"uuid": uuid, "name": name, "status": "running", "region_name": "北京B区"})
+        return uuid
+
+    def power_on(self, uuid):
+        self.calls.append(("power_on", uuid))
+
+    def power_off(self, uuid):
+        self.calls.append(("power_off", uuid))
+
+    def wait_status(self, uuid, want, timeout_s=0):
+        return 0.0
+
+    def comfy_url(self, uuid):
+        return f"https://{uuid}.example:8443"
+
+
+class _FakeProject:
+    def __init__(self, **fleet_cfg):
+        import threading
+        from sheelshort.project import config
+        self.cfg = config()
+        self.cfg["comfy"]["servers"] = ["https://a", "https://b"]
+        self.cfg["fleet"].update({"dry_run": False, **fleet_cfg})
+        self.lock, self._assigned = threading.Lock(), {}
+        self.busy = set()
+
+    def client(self, url):
+        p = self
+
+        class C:
+            def queue_info(self):
+                return (1, 0) if url in p.busy else (0, 0)
+        return C()
+
+
+def _scaled(fl):
+    fl.tick()
+    if fl._up:
+        fl._up.join(5)
+
+
+def test_fleet_scales_up_and_down():
+    from sheelshort.fleet import Fleet
+    api = _FakeAutoDL([{"uuid": "pro-west", "name": "sheelshort-1", "status": "shutdown", "region_name": "西北B区"},
+                       {"uuid": "pro-mine", "name": "", "status": "running", "region_name": "北京B区"}])
+    p = _FakeProject()
+    fl = Fleet(p, api=api, clock=lambda: 1000.0)
+    fl.pending = 3                               # 2 servers hold 4 clips: nothing waits
+    _scaled(fl)
+    assert api.calls == []
+    fl.pending = 9                               # 5 clips wait: add a server
+    _scaled(fl)
+    assert api.calls == [("create", "5090-p", "sheelshort-bj-1", ("beijingDC2",))]   # never the stopped west one
+    url = fl.managed["pro-new2"]["url"]
+    assert url in p.cfg["comfy"]["servers"]
+    p.busy.add(url)
+    fl.pending = 0
+    fl.tick()                                    # busy: stays
+    assert url in p.cfg["comfy"]["servers"]
+    p.busy.clear()
+    fl.tick()                                    # idle and no work left: drained and powered off
+    assert url not in p.cfg["comfy"]["servers"] and ("power_off", "pro-new2") in api.calls
+    assert all(c[1] != "pro-mine" for c in api.calls if c[0] == "power_off")       # the user's own server untouched
+
+
+def test_fleet_reuses_a_stopped_server_and_cleans_up():
+    from sheelshort.fleet import Fleet
+    api = _FakeAutoDL([{"uuid": "pro-old", "name": "sheelshort-bj-1", "status": "shutdown", "region_name": "北京B区"}])
+    p = _FakeProject()
+    fl = Fleet(p, api=api, clock=lambda: 1000.0)
+    fl.pending = 9
+    _scaled(fl)
+    assert api.calls == [("power_on", "pro-old")]
+    fl.stop()
+    assert api.calls[-1] == ("power_off", "pro-old") and len(p.cfg["comfy"]["servers"]) == 2
+
+
+def test_fleet_dry_run_changes_nothing():
+    from sheelshort.fleet import Fleet
+    api = _FakeAutoDL()
+    p = _FakeProject(dry_run=True)
+    fl = Fleet(p, api=api, clock=lambda: 1000.0)
+    fl.pending = 20
+    _scaled(fl)
+    assert api.calls == [] and len(p.cfg["comfy"]["servers"]) == 2
+
+
 if __name__ == "__main__":
     for name, fn in list(globals().items()):
         if name.startswith("test_"):

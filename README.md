@@ -34,6 +34,14 @@ python -m sheelshort review myshow E01                # edit/E01/review.html: ma
 - **Resumable everywhere.** Every GPU job's server and prompt id is saved before waiting. Calls through the servers'
   tunnel retry, queueing is idempotent, renders are fingerprinted, and a changed input re-renders only that clip.
 
+## Autoscaling (AutoDL)
+The servers are AutoDL.Art instances of one app, so `[fleet]` in `sheelshort.toml` can add identical servers during a
+render: when clips wait beyond what the pool holds, it powers on a stopped `sheelshort-bj-*` instance or creates one
+(Beijing only, 5090 first), adds it to the pool once ComfyUI answers, and powers it off when idle and at the end of the
+run (also after a crash). It never touches other instances. Start with `dry_run = true`.
+`python -m sheelshort fleet <project>` lists the managed servers; `... fleet <project> off` powers them all off.
+Token: `$AUTODL_TOKEN` or `~/.config/sheelshort/autodl_token` (chmod 600).
+
 ## Layout
 | path | what |
 |---|---|

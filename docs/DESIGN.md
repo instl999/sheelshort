@@ -179,6 +179,33 @@ Scene: two 12 s clips, each four 3 s cuts, Mandarin dialogue plus one voice-over
   - **Decision:** `voice_ref = "cast"` stays the default. Acted references cost an extra Drama 3 stage per episode for
     no consistent gain. They stay available for scenes that need it.
 
+### 0.8 Throughput and autoscaling (2026-10-31)
+
+**Where the time goes.** Measured on 全村抢 E02 and E03, 13 clips:
+- **GPU generation:** about 5 min per clip (median).
+- **Getting each result back:** about 110 s per clip (median) when the server has already started its next job. The
+  file transfer itself takes 6–8 s; the rest is the server answering slowly while it starts that job.
+- **Local processing on the Mac:** small. Whisper subtitle alignment takes about 29 s per clip on the CPU; the final
+  encode takes about 30 s.
+
+**Fixes:**
+- Each server keeps one extra job queued, so the GPU never waits for a download.
+- Subtitle alignment runs while the other clips render.
+- The music bed renders alongside the clips.
+- The final encode uses a faster preset.
+
+A single episode now runs at about 3.8 min per clip on 2 servers, so it is GPU-bound.
+
+**Autoscaling (`sheelshort/fleet.py`).** The servers are AutoDL.Art instances of the app `spcwDDc6XW` (v9.48), so
+the app API can create, power on, power off and release identical servers. A test instance was running 40 s after the
+create call; the owner observed ComfyUI ready under 3 minutes after each power-on. Findings from the test:
+- A new instance may serve ComfyUI on 6008 instead of 6006, so both addresses are probed.
+- Beijing B had no free 5090 when the test instance was created.
+- The Northwest region's addresses are not reachable from this network.
+
+The owner's decision: **Beijing only.** The fleet adds servers while a render has clips waiting and powers off what
+it added when idle and at the end of the run. It never touches other instances.
+
 ---
 
 ## 1. Market research: does this already exist?

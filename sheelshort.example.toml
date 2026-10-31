@@ -59,3 +59,23 @@ fps = 30
 loudness = -14                   # LUFS integrated
 font = "Heiti SC"            # libass family name; must have CJK glyphs
 music = "auto"                   # "auto": ACE-Step bed from the episode's `music` tags; a file path; or "" for none
+
+[fleet]
+# Autoscaling with AutoDL.Art app instances (sheelshort/fleet.py). While a render runs, extra servers of the same app
+# are powered on or created when clips are waiting, and powered off when idle and at the end of the run. Only
+# instances named `name_prefix`-N in `region_names` are ever touched. Token: $AUTODL_TOKEN or
+# ~/.config/sheelshort/autodl_token. Start with dry_run = true (decisions are only logged).
+enabled = false
+dry_run = true
+application_uuid = "spcwDDc6XW"      # MINIMAX-H3提速500高画质
+application_version = "9.48"         # pinned: the version the workflows were validated against
+gpu_specs = ["5090-p"]               # tried in order when creating (e.g. add "pro6000-p" as a fallback)
+data_centers = ["beijingDC2"]        # Beijing B only (the Northwest region is not reachable from this network)
+region_names = ["北京"]
+name_prefix = "sheelshort-bj"
+max_extra = 2                        # at most this many extra servers
+jobs_per_server = 2                  # clips a server holds at once (one running, one queued)
+scale_up_waiting = 2                 # add a server when at least this many clips wait beyond that
+idle_off_minutes = 10
+retry_minutes = 5                    # after "no stock" or a failed start
+tick_s = 20

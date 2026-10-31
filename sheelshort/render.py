@@ -133,8 +133,26 @@ def run(p: Project, ep: str, only: set[str] | None = None, takes: int | None = N
         jobs.insert(0, lambda: assemble.score(p, ep))   # the music bed renders alongside the clips, not after them
     # Two jobs in flight per server: the next clip is already queued when one finishes, so the GPU never waits for a
     # result to come back through the tunnel (measured: ~110 s per clip under load, vs ~300 s of GPU time).
-    with ThreadPoolExecutor(max(1, 2 * len(p.cfg["comfy"]["servers"]))) as ex:
-        list(ex.map(lambda f: f(), jobs))
+    fl = None
+    if p.cfg.get("fleet", {}).get("enabled") and not p.dry:
+        from .fleet import Fleet
+        fl = Fleet(p)
+        fl.start(len(jobs))
+    workers = 2 * (len(p.cfg["comfy"]["servers"]) + (int(p.cfg["fleet"]["max_extra"]) if fl else 0))
+
+    def run_one(job):
+        try:
+            job()
+        finally:
+            if fl:
+                fl.job_done()
+
+    try:
+        with ThreadPoolExecutor(max(1, workers)) as ex:
+            list(ex.map(run_one, jobs))
+    finally:
+        if fl:
+            fl.stop()   # every server the fleet added is powered off, also after a crash
 
 
 def _render(p, ep, key, clip, t, text, refs, files, seconds, track) -> None:
