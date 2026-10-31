@@ -36,9 +36,18 @@ three characters (better two). Fields per cut: `type`, `subjects`, `speaker`, `o
 `emotion`, `delivery`, `composition`, `action`, `camera`, `sound`, `end`, `props`. Write character and location
 references in text as `{charid}` / `{loc}`.
 
+**Pacing like the mature series** (the original 全村抢 E01: 151 s, 73 shots, mean 2.1 s, median 1.8 s, 2 shots over
+5 s): aim for **2–2.5 s per cut, 4–6 cuts per 10–15 s clip**, and keep the script's full content (episodes of 90–150 s,
+not a summary). Long lines are split with **reaction cuts** (`RX`): the listener's close-up while the line continues
+off-screen. `check` lets a line span its own cut plus the `RX` cuts after it.
+
+**Name cards:** give every main character `name_zh` and `card` (a short role: 「黄谷村大学生」, 「强盛集团开发商」) in
+the bible. Their first solo close-up in the series (or a cut with `"intro": true`) gets a vertical name card beside the
+head, as in the reference series. Write that shot as a held chest-up close-up composed off-centre.
+
 **Shot grammar (enforced by `check`):** speaking character → `CU`; two-person dialogue → `OTS` (`over` = whose
 shoulder, never the speaker); positioning and movement → `MS`; reactions and actions → `CU`; inner voice → `VO`
-(close-up pushing in, lips closed). Dialogue never in an `MS`. One line per cut, one speaker per cut.
+(close-up pushing in, lips closed); listener reacting while a line continues → `RX` (one listener, no line). Dialogue never in an `MS`. One line per cut, one speaker per cut.
 
 **Micro-drama structure:** the first cut of every episode is the most dramatic moment (a slap, an accusation, a
 reveal, a face mid-reaction), never an establishing shot. Something changes every 8–10 s. The episode ends on a
@@ -64,8 +73,9 @@ python -m sheelshort check <project>          # fix every rule it reports before
 python -m sheelshort cast <project>           # close-ups, three-view sheets, props, plates, cast voices
 python -m sheelshort perform <project> E01    # only with render.dialogue = "acted": Drama 3 acted takes + dialogue tracks
 python -m sheelshort render <project> E01     # H3 renders each clip and voices the lines (default) from the cast voices
-python -m sheelshort assemble <project> E01   # master.mp4: clean dialogue, subtitles, music bed, -14 LUFS
+python -m sheelshort assemble <project> E01   # master.mp4 (+ master_clean.mp4): RTX 1080p upscale, subtitles, name cards, music, -14 LUFS
 python -m sheelshort review <project> E01     # edit/E01/review.html
+python -m sheelshort package <project>        # delivery/: episodes, clean cuts, SRTs, cover, thumbnails, metadata
 ```
 (`make <project> E01` runs them all. **Test first:** `make <project> E01 --seconds 20` produces only the opening
 ~20 s as a finished video (`edit/E01/master_20s.mp4`), casting only the characters in it: use it to check casting, voices
@@ -83,7 +93,10 @@ and look before spending GPU time on the whole episode.)
   (delete the file and its `cast/...` job in `state.json`) or rewrite the character.
 - **Performance:** read `perform/<EP>/choice.json`. A line marked "no take passed" needs a new `act` or `say`, or
   more takes (`perform --only K1_2` after deleting its takes). Listen to the chosen takes in the review page.
-- **Picture:** sample frames of each clip (ffmpeg `-vf fps=1`) and look: faces match the close-ups, the right
+- **Clip QC is automatic:** `render` checks every take (each line heard, on-screen text, day/night vs the location's
+  `light`, wrong person, malformed faces) and re-takes failures up to `qc.max_takes`; results are in
+  `edit/<EP>/clipqc/` and the review page. Re-running `render` on a finished episode re-checks it.
+- **Picture:** still sample frames of each clip (ffmpeg `-vf fps=1`) and look: faces match the close-ups, the right
   person speaks, no extra people, no on-screen text, mouths move on the lines. A failed clip:
   `render ... --only K2 --takes 2`, then choose the take in `edit/<EP>/picks.json` (`{"K2": 2}`) and re-assemble.
 - **Long runs:** with `[fleet] enabled = true` the render adds AutoDL servers while clips wait and powers them off

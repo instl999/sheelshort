@@ -1,11 +1,13 @@
 """Offline tests (no GPU, no servers): python -m pytest tests/ or python tests/test_offline.py"""
 import json
+import os
 import sys
 import tempfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
+os.environ["SHEELSHORT_FLEET_OWNED"] = str(Path(tempfile.gettempdir()) / "sheelshort_test_fleet_owned.json")   # never the real one
 
 from sheelshort import assemble, h3prompt, perform, qc, speech  # noqa: E402
 from sheelshort.project import Project  # noqa: E402
@@ -15,6 +17,15 @@ def test_error_rate_ignores_punctuation_and_tags():
     assert speech.error_rate("整整三年……我以为你——死了。", "整整三年,我以为你死了") == 0.0
     assert speech.error_rate("[哽咽] 求……求您。", "求求您") == 0.0
     assert speech.error_rate("你嫁的那个人回不来了", "你家的那个人回不来") == 0.2
+
+
+def test_locate_does_not_swallow_the_previous_line():
+    ws = [(0, .5, "我上个月"), (.5, 1, "投了五万"), (1, 2, "这才二十天"), (2, 3, "已经变成六万八了。"), (3.5, 4, "二十天"),
+          (4, 4.5, "赚一万八?"), (4.5, 5, "这是真的假的?"), (6, 7, "年化收益百分之三百,"), (7, 8, "投十万一个月就是近三万!")]
+    lines = ["我上个月投了五万……这才二十天，已经变成六万八了！", "二十天赚一万八？！这是真的假的？",
+             "年化收益……百分之三百！投十万，一个月就是近三万！"]
+    assert speech.locate(lines, ws) == [(0, 3), (3.5, 5), (6, 8)]
+    assert speech.locate(["完全不同的一句话"], ws) == [None]
 
 
 def test_wrap_two_lines_at_punctuation():
@@ -98,6 +109,26 @@ def test_qc_aligns_text_to_the_image():
     assert "mole on his left cheekbone" in a["look"] and "left cheekbone" in a["keep"]
     assert "scar on the nose bridge" in a["keep"] and "eyebrow" not in a["face_detail"]
     assert a["look"].startswith("a 72-year-old")
+
+
+def test_reaction_cuts():
+    scene = json.loads((ROOT / "projects/quancun/bible.json").read_text()) | json.loads((ROOT / "projects/quancun/episodes/T01.json").read_text())
+    assert h3prompt.check_rules(scene) == []                         # lines may run over the reaction cut after them
+    bad = json.loads(json.dumps(scene))
+    bad["clips"][0]["cuts"].insert(0, {"type": "RX", "subjects": ["xiaokang"], "dur": 2})
+    assert any("must follow a line" in e for e in h3prompt.check_rules(bad))
+    text = h3prompt.build(scene, scene["clips"][0], h3prompt.Refs(char_pictures={"dahua": ["a.png", "b.png"], "xiaokang": ["c.png", "d.png"]},
+                                                                  location_pictures=["loc.png"]))
+    assert "line continues off-screen over this shot" in text
+
+
+def test_name_card_goes_beside_the_face():
+    left = assemble.card_events({"name": "王大花", "role": "黄谷村村民", "start": 1, "end": 3, "face": (0.55, 0.3, 0.8, 0.45)}, 1080, 1920, "Songti SC")
+    right = assemble.card_events({"name": "王大花", "role": "黄谷村村民", "start": 1, "end": 3, "face": (0.2, 0.3, 0.45, 0.45)}, 1080, 1920, "Songti SC")
+    import re as _re
+    x = lambda ev: float(_re.search(r"\\pos\((\d+)", ev).group(1))   # noqa: E731
+    assert x(left[0]) < 540 < x(right[0])                               # face right of centre: card on the left, and back
+    assert "王\\N大\\N花" in left[0]                                  # vertical type
 
 
 def test_offscreen_mention_uses_the_name():
@@ -212,6 +243,24 @@ def test_pick_waits_for_a_free_slot():
         p.cfg["comfy"]["servers"].append("https://new")      # the fleet adds a server
         t.join(5)
         assert got == ["https://new"]
+
+
+def test_fleet_does_not_flap_after_an_idle_power_off():
+    from sheelshort.fleet import Fleet
+    api, p, now = _FakeAutoDL(), _FakeProject(), [1000.0]
+    fl = Fleet(p, api=api, clock=lambda: now[0])
+    fl.pending = 9
+    _scaled(fl)
+    now[0] += 11 * 60
+    fl.pending = 8                                # still waiting, yet the new server got no work for 11 min
+    _scaled(fl)
+    assert api.calls[-1][0] == "power_off" and not fl.managed
+    now[0] += 60
+    _scaled(fl)
+    assert sum(c[0] == "create" for c in api.calls) == 1        # no new server while the backlog has not moved
+    fl.pending = 7
+    _scaled(fl)
+    assert sum(c[0] == "create" for c in api.calls) == 2        # the backlog moves: scaling may resume
 
 
 def test_fleet_dry_run_changes_nothing():

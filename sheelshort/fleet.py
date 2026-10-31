@@ -111,6 +111,53 @@ def wait_comfy(url: str, timeout_s: float = 1800, poll_s: float = 5) -> float:
     raise TimeoutError(f"ComfyUI at {url} not answering after {timeout_s}s")
 
 
+OWNED = Path(os.environ.get("SHEELSHORT_FLEET_OWNED") or Path(__file__).resolve().parent.parent / ".cache" / "fleet_owned.json")
+
+
+def _owned() -> dict:
+    import json
+    return json.loads(OWNED.read_text()) if OWNED.exists() else {}
+
+
+def _own(uuid: str, pid: int | None) -> None:
+    import json
+    d = _owned()
+    if pid is None:
+        d.pop(uuid, None)
+    else:
+        d[uuid] = pid
+    OWNED.parent.mkdir(parents=True, exist_ok=True)
+    OWNED.write_text(json.dumps(d))
+
+
+def _alive(pid: int) -> bool:
+    try:
+        os.kill(pid, 0)
+        return True
+    except OSError:
+        return False
+
+
+def reap_orphans(api: "AutoDL", log=print) -> list[str]:
+    """Power off servers a dead sheelshort process had started (killed before it could clean up)."""
+    done = []
+    for uuid, pid in _owned().items():
+        if pid == os.getpid() or _alive(pid):
+            continue
+        try:
+            if api.status(uuid) not in ("shutdown",):
+                api.power_off(uuid)
+                log(f"fleet: powered off orphan {uuid} (its run, pid {pid}, ended without cleaning up)")
+            done.append(uuid)
+            _own(uuid, None)
+        except AutoDLError as e:
+            if "NotFound" in str(e) or "未查询到" in str(e):   # released meanwhile: nothing left to do
+                _own(uuid, None)
+            else:
+                log(f"fleet: could not power off orphan {uuid}: {e}")
+    return done
+
+
 class Fleet:
     """Grows and shrinks the render pool with extra AutoDL.Art instances of the same app while a render runs.
 
@@ -128,6 +175,7 @@ class Fleet:
         self.managed: dict[str, dict] = {}      # uuid -> {"url", "idle_since"}
         self.starting = False
         self.backoff_until = 0.0
+        self.hold_pending: int | None = None   # after an idle power-off: no scale-up until the backlog drops below this
         self.lock = threading.Lock()
         self._stop = threading.Event()
         self._thread: threading.Thread | None = None
@@ -136,6 +184,8 @@ class Fleet:
     # ---------- run lifecycle ----------
 
     def start(self, jobs: int) -> None:
+        if not self.dry:
+            reap_orphans(self.api, self.log_raw)
         self.pending = jobs
         self.log(f"start: {jobs} job(s), {len(self.p.cfg['comfy']['servers'])} server(s), up to {self.c['max_extra']} extra"
                  + (" [dry run]" if self.dry else ""))
@@ -167,8 +217,10 @@ class Fleet:
     # ---------- decisions ----------
 
     def tick(self) -> None:
+        if self.hold_pending is not None and self.pending < self.hold_pending:
+            self.hold_pending = None
         if (len(self.managed) < int(self.c["max_extra"]) and not self.starting and self.clock() >= self.backoff_until
-                and self.gain_minutes() >= float(self.c.get("min_gain_minutes", 3))):
+                and self.hold_pending is None and self.gain_minutes() >= float(self.c.get("min_gain_minutes", 3))):
             self.starting = True
             self._up = threading.Thread(target=self._scale_up, daemon=True)
             self._up.start()
@@ -180,6 +232,8 @@ class Fleet:
                 m["idle_since"] = self.clock()
             idle_for = 0 if m["idle_since"] is None else self.clock() - m["idle_since"]
             if not busy and (self.pending == 0 or idle_for >= 60 * float(self.c.get("idle_off_minutes", 10))):
+                if self.pending:   # work is waiting but this server got none: another server would sit idle too
+                    self.hold_pending = self.pending
                 self._retire(uuid, f"idle {idle_for / 60:.0f} min" if self.pending else "no work left")
 
     def gain_minutes(self) -> float:
@@ -213,6 +267,7 @@ class Fleet:
                 self.backoff_until = self.clock() + 60 * float(self.c.get("retry_minutes", 5))
                 return
             self.managed[uuid] = {"url": "", "idle_since": None}   # owned from here on, so `stop` powers it off
+            _own(uuid, os.getpid())                                # and a later run powers it off if this one dies
             t0 = self.clock()
             self.api.wait_status(uuid, "running", timeout_s=900)
             url = ""
@@ -276,6 +331,7 @@ class Fleet:
             return
         try:
             self.api.power_off(uuid)
+            _own(uuid, None)
             self.log(f"{uuid}: powered off ({why})")
         except AutoDLError as e:
             self.log(f"{uuid}: power off FAILED ({e}); run `sheelshort fleet <project> off`")
@@ -283,6 +339,10 @@ class Fleet:
     def log(self, msg: str) -> None:
         from .project import log
         log(f"fleet: {msg}")
+
+    def log_raw(self, msg: str) -> None:
+        from .project import log
+        log(msg)
 
 
 def managed(api: AutoDL, prefix: str) -> list[dict]:

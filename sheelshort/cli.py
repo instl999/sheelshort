@@ -13,6 +13,7 @@ everything deterministic. Every command is resumable: run it again after a crash
   python -m sheelshort review <project> EP             edit/<EP>/review.html (contact sheet, takes, line scores)
   python -m sheelshort make <project> EP               cast + perform + render + assemble + review
   python -m sheelshort make <project> EP --seconds 20  fast test: only the opening ~20 s, finished (edit/<EP>/master_20s.mp4)
+  python -m sheelshort package <project>               delivery/: episodes, clean cuts, SRTs, cover, thumbnails, metadata
   python -m sheelshort fleet <project> [off]           AutoDL autoscaling: list (or power off) the managed extra servers
   python -m sheelshort evaluate <project> EP           A/B per line: acted vs. H3-voiced renders (edit/<EP>/dialogue_ab.md)
 """
@@ -91,9 +92,16 @@ def doctor(p: Project) -> bool:
     return ok and not errs
 
 
+def _exit_on_signal(signum, frame):   # SIGTERM/SIGHUP end the run normally, so cleanup (the fleet's power-off) runs
+    raise SystemExit(128 + signum)
+
+
 def main(argv: list[str] | None = None) -> None:
+    import signal
+    for sig in (signal.SIGTERM, signal.SIGHUP):
+        signal.signal(sig, _exit_on_signal)
     ap = argparse.ArgumentParser(prog="sheelshort", description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("command", choices=["new", "doctor", "check", "cast", "perform", "render", "assemble", "review", "make", "free", "evaluate", "fleet"])
+    ap.add_argument("command", choices=["new", "doctor", "check", "cast", "perform", "render", "assemble", "review", "make", "free", "evaluate", "fleet", "package"])
     ap.add_argument("project")
     ap.add_argument("episode", nargs="?")
     ap.add_argument("--script")
@@ -136,12 +144,17 @@ def main(argv: list[str] | None = None) -> None:
     if a.command == "fleet":   # python -m sheelshort fleet <project> [status|off]
         from . import fleet
         api, prefix = fleet.AutoDL(), p.cfg["fleet"]["name_prefix"]
+        fleet.reap_orphans(api, log)
         for inst in fleet.managed(api, prefix):
             if a.episode == "off" and inst["status"] not in ("shutdown",):
                 api.power_off(inst["uuid"])
                 log(f"powered off {inst['uuid']}")
             else:
                 log(f"{inst['uuid']} {inst.get('name')} {inst['status']} {inst.get('region_name')} {inst.get('gpu_spec_uuid')}")
+        return
+    if a.command == "package":
+        from . import package
+        package.run(p)
         return
     if a.command == "free":
         for url in p.cfg["comfy"]["servers"]:

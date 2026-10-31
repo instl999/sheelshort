@@ -139,3 +139,27 @@ def tile(images: list[Path], dest: Path, cols: int, cell: tuple[int, int] = (270
     graph = f"{scaled};{''.join(f'[s{i}]' for i in range(len(images)))}xstack=inputs={len(images)}:layout={layout}:fill=black[v]"
     _run(args + ["-filter_complex", graph, "-map", "[v]", "-frames:v", "1", "-q:v", "3", str(dest)])
     return dest
+
+
+def face_box(video: Path, t: float) -> tuple[float, float, float, float] | None:
+    """The largest face in the frame at `t` seconds, as (x0, y0, x1, y1) fractions of the frame (OpenCV Haar cascade)."""
+    try:
+        import cv2
+        import numpy as np
+    except ImportError:
+        return None
+    p = subprocess.run(["ffmpeg", "-v", "error", "-ss", f"{max(0, t):.3f}", "-i", str(video), "-frames:v", "1",
+                        "-f", "image2pipe", "-vcodec", "png", "-"], capture_output=True)
+    img = cv2.imdecode(np.frombuffer(p.stdout, np.uint8), cv2.IMREAD_GRAYSCALE) if p.stdout else None
+    if img is None:
+        return None
+    h, w = img.shape
+    det = cv2.CascadeClassifier(cv2.data.haarcascades + "haarcascade_frontalface_default.xml")
+    faces = det.detectMultiScale(img, scaleFactor=1.1, minNeighbors=5, minSize=(w // 10, w // 10))
+    if len(faces) == 0:
+        det = cv2.CascadeClassifier(cv2.data.haarcascades + "haarcascade_profileface.xml")
+        faces = det.detectMultiScale(img, scaleFactor=1.1, minNeighbors=5, minSize=(w // 10, w // 10))
+    if len(faces) == 0:
+        return None
+    x, y, fw, fh = max(faces, key=lambda f: f[2] * f[3])
+    return (x / w, y / h, (x + fw) / w, (y + fh) / h)
