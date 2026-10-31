@@ -129,8 +129,22 @@ def wrap(text: str) -> str:
     text = re.sub(r"\s+", " ", text).strip()
     if len(text) <= CJK_PER_LINE:
         return text
-    cut = max((m.start() for m in re.finditer(r" ", text) if 4 <= m.start() <= len(text) - 3),
-              key=lambda i: -abs(i - len(text) / 2), default=len(text) // 2)
+    mid = len(text) / 2
+    spaces = [m.start() for m in re.finditer(r" ", text) if 3 <= m.start() <= len(text) - 3 and abs(m.start() - mid) <= 4]
+    if spaces:
+        cut = min(spaces, key=lambda i: abs(i - mid))
+    else:   # no pause near the middle: break between words, never inside one (「我们」 must not split)
+        try:
+            import jieba
+            jieba.setLogLevel(60)
+            bounds, i = [], 0
+            for w in jieba.cut(text):
+                i += len(w)
+                if 3 <= i <= len(text) - 3:
+                    bounds.append(i)
+            cut = min(bounds, key=lambda b: abs(b - mid)) if bounds else len(text) // 2
+        except ImportError:
+            cut = len(text) // 2
     return text[:cut].rstrip() + r"\N" + text[cut:].lstrip()
 
 
@@ -157,7 +171,17 @@ Style: Line,{e['font']},{round(w * 0.062)},&H00FFFFFF,&H00FFFFFF,&H00101010,&H64
 Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
 """
     rows, srows = [], []
-    subs = plan["subtitles"]
+    subs = []
+    for sb in plan["subtitles"]:   # a line too long for two subtitle rows is shown in two parts, timed by length
+        text = re.sub(r"[，。、；：,.;:]+", " ", sb["text"]).replace("……", " ").replace("——", " ").strip()
+        if len(text) > 2 * CJK_PER_LINE:
+            mid = len(text) / 2
+            cuts = [m.start() for m in re.finditer(r" ", text)]
+            k = min(cuts, key=lambda i: abs(i - mid)) if cuts else int(mid)
+            split_t = sb["start"] + (sb["end"] - sb["start"]) * k / len(text)
+            subs += [{**sb, "text": text[:k].strip(), "end": round(split_t, 3)}, {**sb, "text": text[k:].strip(), "start": round(split_t, 3)}]
+        else:
+            subs.append(sb)
     for i, s in enumerate(subs):
         end = min(s["end"], subs[i + 1]["start"] - 0.05) if i + 1 < len(subs) else s["end"]
         rows.append(f"Dialogue: 0,{ass_time(s['start'])},{ass_time(end)},Line,,0,0,0,,{wrap(s['text'])}")

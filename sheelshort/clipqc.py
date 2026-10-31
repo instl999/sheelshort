@@ -21,7 +21,7 @@ from .project import Project, load_json, log, save_json
 STRIP_PROMPT = """This image is a strip of {n} video frames side by side, panel 1 on the left to panel {n} on the right.
 For each panel, answer in order. Answer with ONE JSON object and nothing else:
 {{"panels": [{{"panel": <number>, "people": <number of people clearly visible>, "main_person_sex": "woman" | "man" | "none",
-  "text_or_subtitles": <true if any legible letters, captions, subtitles, logos or watermarks appear>,
+  "text_or_subtitles": <true only if text is OVERLAID on the picture: subtitles, captions, titles, watermarks or logos; text printed on objects inside the scene (documents, contracts, signs, phone screens) does not count>,
   "night": <true if it is clearly night or dark, false if daylight or a brightly lit day scene>,
   "glitch": <true if a face or body is clearly malformed, melted or duplicated>}}]}}"""
 
