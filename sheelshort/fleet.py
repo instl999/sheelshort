@@ -185,7 +185,7 @@ class Fleet:
 
     def start(self, jobs: int) -> None:
         if not self.dry:
-            reap_orphans(self.api, self.log_raw)
+            self._adopt_orphans()
         self.pending = jobs
         self.log(f"start: {jobs} job(s), {len(self.p.cfg['comfy']['servers'])} server(s), up to {self.c['max_extra']} extra"
                  + (" [dry run]" if self.dry else ""))
@@ -206,6 +206,28 @@ class Fleet:
             self._up.join(timeout=1500)
         for uuid in list(self.managed):
             self._retire(uuid, "run finished")
+
+    def _adopt_orphans(self) -> None:
+        """Servers left running by a run that died are taken into this run's pool (they are ours, and already warm);
+        stopped ones are just forgotten. The idle rules power them off if this run has no work for them."""
+        for uuid, pid in _owned().items():
+            if pid == os.getpid() or _alive(pid):
+                continue
+            try:
+                status = self.api.status(uuid)
+            except AutoDLError:
+                _own(uuid, None)
+                continue
+            url = self.api.comfy_url(uuid) if status == "running" else ""
+            if not url:
+                _own(uuid, None)
+                continue
+            self.managed[uuid] = {"url": url, "idle_since": None}
+            _own(uuid, os.getpid())
+            with self.p.lock:
+                if url not in self.p.cfg["comfy"]["servers"]:
+                    self.p.cfg["comfy"]["servers"].append(url)
+            self.log(f"{uuid}: adopted from a run that ended without cleaning up -> {url}")
 
     def _loop(self) -> None:
         while not self._stop.wait(float(self.c.get("tick_s", 20))):

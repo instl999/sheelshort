@@ -33,7 +33,7 @@ def leads(p: Project, k: int = 2) -> list[str]:
     return [c for c, _ in sorted(count.items(), key=lambda kv: -kv[1])][:k]
 
 
-def poster_art(p: Project, out: Path) -> Path | None:
+def poster_art(p: Project) -> Path | None:
     cast = leads(p)
     loc = next(iter(p.bible["locations"]))
     srcs = [p.asset(f"char_{c}") for c in cast] + [p.asset(f"loc_{loc}")]
