@@ -1,0 +1,52 @@
+# Copy to sheelshort.toml (gitignored) and set the servers. A project's own projects/<name>/sheelshort.toml can
+# override any key. SHEELSHORT_SERVERS="url1,url2" overrides the server list.
+
+[comfy]
+servers = ["https://your-comfyui-server-1:8443", "https://your-comfyui-server-2:8443"]
+auth_header_env = ""            # e.g. "COMFY_TOKEN" if a server needs a Bearer token
+
+[workflows]
+t2i = "c01.api.json"            # C01 Z-Image: close-ups, props, location plates
+edit = "y01.api.json"           # Y01 Qwen-Image-Edit 2511: three-view sheets, repairs
+voice_design = "n06design.api.json"   # N06 Qwen3-TTS voice design: cast voices from a timbre description
+h3_ref = "u22_base.api.json"    # U22: H3 reference-to-video, H3 speaks the lines itself (dialogue = "h3")
+h3_drive = "u24_stock.api.json" # U24's T8 chain: the picture rendered around the acted dialogue track (dialogue = "acted")
+
+[project]
+language = "zh-CN"
+seed_offset = 0                 # change to re-roll every generation
+
+[images]
+portrait_size = [720, 1280]
+plate_size = [720, 1280]
+prop_size = [1024, 1024]
+sheet_long_side = 1664
+
+[perform]
+# Performance first: every line is acted by a speech engine in the character's cast voice, several takes are scored
+# (words, voice identity, expressiveness) and the best becomes the dialogue the picture is rendered to.
+takes = 4                        # Drama 3 takes per line
+max_cer = 0.25                   # reject takes whose words drift further from the line (ASR character error rate)
+pitch_band = [0.8, 1.22]         # median pitch / cast voice median: identity guard for calm lines
+pitch_band_intense = [0.8, 1.6]    # ... for crying, shouting, fear, pleading (real shouting lifts pitch a lot)
+lead_s = 0.35                    # silence before a line inside its cut
+tail_s = 0.45                    # breath after a line before the cut ends
+whisper_model = "medium"
+
+[render]
+dialogue = "h3"                  # "h3" (default, owner verdict 2026-10-31): H3 voices the lines from the cast voice references; "acted": render to the performed track (lip-sync)
+voice_ref = "cast"               # dialogue = "h3": "cast" = the cast voice clip; "acted" = acted Drama 3 takes of the clip's lines (run `perform` first)
+takes = 1
+megapixels = 0.52                # first pass; drive mode upscales 2x in latent space (~1088x1984)
+upscale = 2.0
+lock_strength = 0.35
+h3_megapixels = 0.7              # dialogue = "h3" (U22)
+timeout_s = 3600
+
+[edit]
+width = 1080
+height = 1920
+fps = 30
+loudness = -14                   # LUFS integrated
+font = "Heiti SC"            # libass family name; must have CJK glyphs
+music = "auto"                   # "auto": ACE-Step bed from the episode's `music` tags; a file path; or "" for none

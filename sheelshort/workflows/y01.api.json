@@ -1,0 +1,272 @@
+{
+ "1": {
+  "inputs": {
+   "strength": 1,
+   "pre_cfg": false,
+   "model": [
+    "24",
+    0
+   ]
+  },
+  "class_type": "CFGNorm",
+  "_meta": {
+   "title": "CFGNorm"
+  }
+ },
+ "2": {
+  "inputs": {
+   "mode": "always",
+   "volume": 1,
+   "file": "notify.mp3",
+   "any": [
+    "28",
+    0
+   ]
+  },
+  "class_type": "PlaySound|pysssss",
+  "_meta": {
+   "title": "PlaySound 🐍"
+  }
+ },
+ "9": {
+  "inputs": {
+   "prompt": "",
+   "clip": [
+    "22",
+    0
+   ],
+   "image1": [
+    "25",
+    0
+   ]
+  },
+  "class_type": "TextEncodeQwenImageEditPlus",
+  "_meta": {
+   "title": "Text Encode Qwen Image Edit Plus"
+  }
+ },
+ "10": {
+  "inputs": {
+   "aspect_ratio": "original",
+   "proportional_width": 1,
+   "proportional_height": 1,
+   "fit": "letterbox",
+   "method": "lanczos",
+   "round_to_multiple": "8",
+   "scale_to_side": "longest",
+   "scale_to_length": [
+    "30",
+    0
+   ],
+   "background_color": "#000000",
+   "image": [
+    "25",
+    0
+   ]
+  },
+  "class_type": "LayerUtility: ImageScaleByAspectRatio V2",
+  "_meta": {
+   "title": "LayerUtility: ImageScaleByAspectRatio V2"
+  }
+ },
+ "11": {
+  "inputs": {
+   "prompt": "将女孩改为哭泣的表情，季节改为冬季",
+   "clip": [
+    "22",
+    0
+   ],
+   "image1": [
+    "25",
+    0
+   ]
+  },
+  "class_type": "TextEncodeQwenImageEditPlus",
+  "_meta": {
+   "title": "Text Encode Qwen Image Edit Plus"
+  }
+ },
+ "13": {
+  "inputs": {
+   "pixels": [
+    "10",
+    0
+   ],
+   "vae": [
+    "23",
+    0
+   ]
+  },
+  "class_type": "VAEEncode",
+  "_meta": {
+   "title": "VAE Encode"
+  }
+ },
+ "20": {
+  "inputs": {
+   "conditioning": [
+    "11",
+    0
+   ],
+   "latent": [
+    "13",
+    0
+   ]
+  },
+  "class_type": "ReferenceLatent",
+  "_meta": {
+   "title": "Set Reference Latent"
+  }
+ },
+ "21": {
+  "inputs": {
+   "conditioning": [
+    "9",
+    0
+   ],
+   "latent": [
+    "13",
+    0
+   ]
+  },
+  "class_type": "ReferenceLatent",
+  "_meta": {
+   "title": "Set Reference Latent"
+  }
+ },
+ "22": {
+  "inputs": {
+   "clip_name": "qwen_2.5_vl_7b_fp8_scaled.safetensors",
+   "type": "qwen_image",
+   "device": "default"
+  },
+  "class_type": "CLIPLoader",
+  "_meta": {
+   "title": "Load CLIP"
+  }
+ },
+ "23": {
+  "inputs": {
+   "vae_name": "qwen_image_vae.safetensors"
+  },
+  "class_type": "VAELoader",
+  "_meta": {
+   "title": "Load VAE"
+  }
+ },
+ "24": {
+  "inputs": {
+   "lora_name": "Qwen/Qwen-Image-Edit-F2P.safetensors",
+   "strength_model": 0.25,
+   "model": [
+    "34",
+    0
+   ]
+  },
+  "class_type": "LoraLoaderModelOnly",
+  "_meta": {
+   "title": "Load LoRA"
+  }
+ },
+ "25": {
+  "inputs": {
+   "image": "123.png"
+  },
+  "class_type": "LoadImage",
+  "_meta": {
+   "title": "Load Image"
+  }
+ },
+ "28": {
+  "inputs": {
+   "samples": [
+    "32",
+    0
+   ],
+   "vae": [
+    "23",
+    0
+   ]
+  },
+  "class_type": "VAEDecode",
+  "_meta": {
+   "title": "VAE Decode"
+  }
+ },
+ "30": {
+  "inputs": {
+   "value": 1280
+  },
+  "class_type": "INTConstant",
+  "_meta": {
+   "title": "INT Constant"
+  }
+ },
+ "32": {
+  "inputs": {
+   "seed": 196638723972992,
+   "steps": 4,
+   "cfg": 1,
+   "sampler_name": "euler_ancestral",
+   "scheduler": "simple",
+   "denoise": 1,
+   "model": [
+    "1",
+    0
+   ],
+   "positive": [
+    "20",
+    0
+   ],
+   "negative": [
+    "21",
+    0
+   ],
+   "latent_image": [
+    "13",
+    0
+   ]
+  },
+  "class_type": "KSampler",
+  "_meta": {
+   "title": "KSampler"
+  }
+ },
+ "33": {
+  "inputs": {
+   "unet_name": "qwen/qwen_image_edit_2511_fp8mixed.safetensors",
+   "weight_dtype": "fp8_e4m3fn"
+  },
+  "class_type": "UNETLoader",
+  "_meta": {
+   "title": "Load Diffusion Model"
+  }
+ },
+ "34": {
+  "inputs": {
+   "lora_name": "Qwen/Qwen-Image-Edit-2511-Lightning-4steps-V1.0-bf16.safetensors",
+   "strength_model": 1,
+   "model": [
+    "33",
+    0
+   ]
+  },
+  "class_type": "LoraLoaderModelOnly",
+  "_meta": {
+   "title": "Load LoRA"
+  }
+ },
+ "35": {
+  "inputs": {
+   "filename_prefix": "20261030/image_",
+   "images": [
+    "28",
+    0
+   ]
+  },
+  "class_type": "SaveImage",
+  "_meta": {
+   "title": "Save Image"
+  }
+ }
+}

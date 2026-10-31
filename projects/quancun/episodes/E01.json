@@ -1,0 +1,364 @@
+{
+  "id": "E01",
+  "title": "全村公敌",
+  "logline": "Li Xiaokang refuses the village's buy-out and backs the developer's share contract; when the developer suddenly pays everyone more, he senses a trap.",
+  "clips": [
+    {
+      "id": "C1",
+      "location": "village_gate",
+      "summary": "At {loc}, {dahua} screams at {xiaokang} for betraying the village, and {cunmin} leads the crowd in shouting him out.",
+      "soundscape": "Outdoor village ambience: an angry murmuring crowd, a dog barking far off, wind through the cornfields.",
+      "cuts": [
+        {
+          "type": "CU",
+          "subjects": [
+            "dahua"
+          ],
+          "speaker": "dahua",
+          "line": "李小康，你是不是脑子有病！",
+          "say": "李小康！你是不是脑子有病？！",
+          "act": "双手叉腰，尖着嗓子破口大骂，气急败坏",
+          "emotion": "anger",
+          "delivery": "screaming furiously, face flushed red, eyes bulging",
+          "composition": "Close-up of {dahua} filling the centre of the frame in harsh sunlight; a loose crowd of unnamed villagers in simple rural clothes fills the background, out of focus.",
+          "action": "{dahua} jabs a finger toward the camera, hands on hips between jabs, spittle flying as she shouts.",
+          "camera": "Static camera with a barely perceptible handheld breathing.",
+          "end": ""
+        },
+        {
+          "type": "OTS",
+          "over": "xiaokang",
+          "subjects": [
+            "dahua"
+          ],
+          "speaker": "dahua",
+          "line": "关键时刻，你居然背叛我们！",
+          "say": "关键时刻——你居然背叛我们！",
+          "act": "手指几乎戳到他脸上，越骂越激动，嗓门更大",
+          "emotion": "anger",
+          "delivery": "shrieking, trembling with rage",
+          "composition": "{xiaokang}'s light-blue shoulder blurs in the right foreground; {dahua} faces the camera in the left third, the red archway behind her.",
+          "action": "{dahua} steps in so close her finger nearly touches his face.",
+          "camera": "Static camera, focus held on the speaker's eyes.",
+          "end": ""
+        },
+        {
+          "type": "CU",
+          "subjects": [
+            "cunmin"
+          ],
+          "speaker": "cunmin",
+          "line": "我们黄谷村不要叛徒！滚出去！",
+          "say": "我们黄谷村不要叛徒！滚出去！",
+          "act": "振臂高喊，带头起哄，粗声大吼",
+          "emotion": "shout",
+          "delivery": "bellowing, rallying the crowd, fist raised",
+          "composition": "Close-up of {cunmin} in the right two-thirds of the frame, straw hat pushed back; a loose crowd of unnamed villagers in simple rural clothes fills the background, raising fists.",
+          "action": "{cunmin} punches his fist into the air as he shouts; the villagers behind him raise their fists too.",
+          "camera": "Static camera with a barely perceptible handheld breathing.",
+          "end": ""
+        }
+      ]
+    },
+    {
+      "id": "C2",
+      "location": "village_gate",
+      "summary": "The crowd chants at {xiaokang}, who stands alone clutching his shirt; his inner voice says he became the whole village's enemy that day.",
+      "soundscape": "Outdoor village ambience: a crowd chanting rhythmically, wind through the cornfields.",
+      "cuts": [
+        {
+          "type": "MS",
+          "subjects": [
+            "xiaokang"
+          ],
+          "composition": "Medium shot of {xiaokang} standing alone in the centre of the dirt clearing of {loc}; a loose crowd of unnamed villagers in simple rural clothes fills the background, encircling him and chanting.",
+          "action": "{xiaokang} grips the hem of his shirt with both hands, jaw clenched, eyes moving across the hostile faces.",
+          "camera": "Slow push in, with small amplitude, at slow speed.",
+          "sound": "The villagers chant and shake their fists.",
+          "end": ""
+        },
+        {
+          "type": "VO",
+          "subjects": [
+            "xiaokang"
+          ],
+          "speaker": "xiaokang",
+          "line": "那一天，我成了全村的公敌。",
+          "say": "那一天……我成了全村的公敌。",
+          "act": "低沉的内心独白，苦涩，带着一点自嘲",
+          "emotion": "calm",
+          "delivery": "bitter and quiet",
+          "composition": "Close-up of {xiaokang} in three-quarter profile, sunlight on his cheek, the crowd a blur behind him.",
+          "action": "His eyes drop to the ground; he swallows hard.",
+          "end": "The shot ends on his eyes in extreme close-up."
+        }
+      ]
+    },
+    {
+      "id": "C3",
+      "location": "village_gate",
+      "summary": "Earlier at {loc}: {dahua} mocks {gaoliang}'s offer of fifty thousand per household, {cunmin} demands more, and {gaoliang} calmly asks if nobody will sign the share contract.",
+      "soundscape": "Outdoor village ambience: a restless crowd murmuring, papers rustling on the tables, wind through the cornfields.",
+      "cuts": [
+        {
+          "type": "CU",
+          "subjects": [
+            "dahua"
+          ],
+          "speaker": "dahua",
+          "line": "高总，拆一户才给五万，你打发叫花子呢？",
+          "say": "高总，拆一户才给五万……你打发叫花子呢？",
+          "act": "叉腰冷笑，阴阳怪气地挖苦",
+          "emotion": "contempt",
+          "delivery": "sneering, eyebrows raised, mocking smile",
+          "composition": "Close-up of {dahua} in the left two-thirds of the frame, the folding tables and contract stacks soft behind her.",
+          "action": "{dahua} looks the businessman up and down, lips curled in contempt.",
+          "camera": "Static camera with a barely perceptible handheld breathing.",
+          "end": "",
+          "dur": 4
+        },
+        {
+          "type": "CU",
+          "subjects": [
+            "cunmin"
+          ],
+          "speaker": "cunmin",
+          "line": "必须加钱！不加我们不签！",
+          "say": "必须加钱！不加——我们不签！",
+          "act": "粗着嗓子带头喊，拍着桌子",
+          "emotion": "shout",
+          "delivery": "shouting, slamming his palm on the table",
+          "composition": "Close-up of {cunmin} leaning over the folding table; a loose crowd of unnamed villagers in simple rural clothes fills the background.",
+          "action": "{cunmin} slams his palm on the contract stack.",
+          "camera": "Static camera with a barely perceptible handheld breathing.",
+          "end": ""
+        },
+        {
+          "type": "CU",
+          "subjects": [
+            "gaoliang"
+          ],
+          "speaker": "gaoliang",
+          "line": "好，你们都不签原始股的合同是吧？",
+          "say": "好。你们……都不签原始股的合同，是吧？",
+          "act": "慢条斯理，面带微笑，话里藏着锋芒",
+          "emotion": "cold",
+          "delivery": "smiling politely, eyes cold behind his glasses",
+          "composition": "Close-up of {gaoliang} seated at the table, centre-right of the frame, the crowd blurred behind him.",
+          "action": "{gaoliang} slowly stands, adjusts his glasses with one finger and smiles without warmth.",
+          "camera": "Static camera with a barely perceptible handheld breathing.",
+          "end": "",
+          "dur": 4
+        }
+      ]
+    },
+    {
+      "id": "C4",
+      "location": "village_gate",
+      "summary": "{xiaokang} pushes through the crowd and shouts that he will sign the share contract; his father {shoudi} is stunned.",
+      "soundscape": "Outdoor village ambience: the crowd falls into a shocked silence, wind through the cornfields.",
+      "cuts": [
+        {
+          "type": "CU",
+          "subjects": [
+            "xiaokang"
+          ],
+          "speaker": "xiaokang",
+          "line": "我签！我签原始股的合同！",
+          "say": "我签！我签原始股的合同！",
+          "act": "从人群里挤出来，鼓起勇气大声喊，声音发紧",
+          "emotion": "shout",
+          "delivery": "shouting with nervous resolve, chest heaving",
+          "composition": "Close-up of {xiaokang} pushing forward out of the crowd, centre of the frame; a loose crowd of unnamed villagers in simple rural clothes fills the background, turning to stare at him.",
+          "action": "{xiaokang} shoves between two villagers and raises his hand high.",
+          "camera": "Static camera with a barely perceptible handheld breathing.",
+          "end": ""
+        },
+        {
+          "type": "CU",
+          "subjects": [
+            "shoudi"
+          ],
+          "speaker": "shoudi",
+          "line": "儿啊……你这是？",
+          "say": "儿啊……你，你这是？",
+          "act": "愣住，又惊又慌，声音发颤",
+          "emotion": "shock",
+          "delivery": "stunned, mouth falling open, voice shaking",
+          "composition": "Close-up of {shoudi} in the left two-thirds of the frame among the crowd, squinting in the sunlight.",
+          "action": "{shoudi}'s eyes widen; he half reaches toward his son and stops.",
+          "camera": "Static camera with a barely perceptible handheld breathing.",
+          "end": ""
+        }
+      ]
+    },
+    {
+      "id": "C5",
+      "location": "village_gate",
+      "summary": "{dahua} turns on {xiaokang}, who tries to explain that shares are worth more than cash; she wails that he will ruin them all.",
+      "soundscape": "Outdoor village ambience: an angry crowd muttering, wind through the cornfields.",
+      "cuts": [
+        {
+          "type": "OTS",
+          "over": "xiaokang",
+          "subjects": [
+            "dahua"
+          ],
+          "speaker": "dahua",
+          "line": "好啊李小康，你书都读到狗肚子里去了！",
+          "say": "好啊，李小康！你书都读到狗肚子里去了！",
+          "act": "气得发抖，咬牙切齿地骂",
+          "emotion": "anger",
+          "delivery": "trembling with fury, teeth bared",
+          "composition": "{xiaokang}'s shoulder blurs in the right foreground; {dahua} faces the camera in the left third.",
+          "action": "{dahua} slaps her own thigh and points at him.",
+          "camera": "Static camera, focus held on the speaker's eyes.",
+          "end": "",
+          "dur": 4
+        },
+        {
+          "type": "CU",
+          "subjects": [
+            "xiaokang"
+          ],
+          "speaker": "xiaokang",
+          "line": "钱是死的，股份是活的，长远看股票更划算！",
+          "say": "钱是死的，股份是活的……长远看，还是股票更划算！",
+          "act": "急切地解释，恳切，努力让大家听进去",
+          "emotion": "plead",
+          "delivery": "earnest and urgent, palms open",
+          "composition": "Close-up of {xiaokang} in the right two-thirds of the frame, sunlight on his face.",
+          "action": "{xiaokang} opens both palms toward the crowd, searching their faces.",
+          "camera": "Static camera with a barely perceptible handheld breathing.",
+          "end": "",
+          "dur": 5
+        },
+        {
+          "type": "CU",
+          "subjects": [
+            "dahua"
+          ],
+          "speaker": "dahua",
+          "line": "你懂个屁！这是要把我们都毁了啊！",
+          "say": "你懂个屁！这……这是要把我们都毁了啊！",
+          "act": "拍着大腿哭嚎起来，撒泼打滚的哭腔",
+          "emotion": "sob",
+          "delivery": "wailing theatrically, tears and fury",
+          "composition": "Close-up of {dahua} centre frame; a loose crowd of unnamed villagers in simple rural clothes fills the background.",
+          "action": "{dahua} slaps both thighs and wails, tears running down her red face.",
+          "camera": "Static camera with a barely perceptible handheld breathing.",
+          "end": "",
+          "dur": 4
+        }
+      ]
+    },
+    {
+      "id": "C6",
+      "location": "village_gate",
+      "summary": "{gaoliang} raises a hand and announces fifteen thousand more per household; {dahua} cheers and {xiaokang} stares in disbelief.",
+      "soundscape": "Outdoor village ambience: the crowd erupts into cheering and clapping, wind through the cornfields.",
+      "cuts": [
+        {
+          "type": "CU",
+          "subjects": [
+            "gaoliang"
+          ],
+          "speaker": "gaoliang",
+          "line": "好！每户再加十五万！",
+          "say": "好！那就依各位的——每户，再加十五万！",
+          "act": "抬手示意安静，笑容满面，声音洪亮",
+          "emotion": "firm",
+          "delivery": "beaming, voice ringing out",
+          "composition": "Close-up of {gaoliang} standing at the table, one hand raised, centre-left of the frame.",
+          "action": "{gaoliang} lifts his hand for silence, then spreads it wide with a generous smile.",
+          "camera": "Static camera with a barely perceptible handheld breathing.",
+          "end": ""
+        },
+        {
+          "type": "MS",
+          "subjects": [
+            "xiaokang"
+          ],
+          "composition": "Medium shot of {xiaokang} frozen in the middle of {loc} while a loose crowd of unnamed villagers in simple rural clothes fills the background, jumping and clapping around him.",
+          "action": "The villagers cheer and slap each other's backs; {xiaokang} stands still, staring toward the businessman in disbelief.",
+          "camera": "Slow push in, with small amplitude, at slow speed.",
+          "sound": "Cheering and clapping all around.",
+          "end": ""
+        },
+        {
+          "type": "CU",
+          "subjects": [
+            "dahua"
+          ],
+          "speaker": "dahua",
+          "line": "我就说嘛！高总是大老板！",
+          "say": "我就说嘛！高总是大老板！",
+          "act": "笑开了花，拍手叫好，嗓门洪亮",
+          "emotion": "joy",
+          "delivery": "laughing delightedly, clapping",
+          "composition": "Close-up of {dahua} centre frame, grinning, the crowd cheering behind her.",
+          "action": "{dahua} claps her hands over her head, beaming.",
+          "camera": "Static camera with a barely perceptible handheld breathing.",
+          "end": ""
+        }
+      ]
+    },
+    {
+      "id": "C7",
+      "location": "village_gate",
+      "summary": "As everyone rushes to sign, {xiaokang} senses a trap; {shoudi} asks why he did not sign, and he says this contract must not be signed.",
+      "soundscape": "Outdoor village ambience: villagers chattering happily at the tables, pens scratching, wind through the cornfields.",
+      "cuts": [
+        {
+          "type": "VO",
+          "subjects": [
+            "xiaokang"
+          ],
+          "speaker": "xiaokang",
+          "line": "高亮答应得这么爽快，事情没那么简单。",
+          "say": "高亮答应得这么爽快……事情，没那么简单。",
+          "act": "低声的内心独白，警觉，满是怀疑",
+          "emotion": "calm",
+          "delivery": "wary and quiet",
+          "composition": "Close-up of {xiaokang} in three-quarter profile watching the signing tables, the crowd a blur behind him.",
+          "action": "His eyes narrow as he watches the businessman smile at the queue of villagers.",
+          "end": "",
+          "dur": 4
+        },
+        {
+          "type": "CU",
+          "subjects": [
+            "shoudi"
+          ],
+          "speaker": "shoudi",
+          "line": "儿啊，你怎么没去签字？",
+          "say": "儿啊……你怎么没去签字？",
+          "act": "压低声音，焦急又不解",
+          "emotion": "plead",
+          "delivery": "worried, voice low",
+          "composition": "Close-up of {shoudi} in the left two-thirds of the frame, glancing toward the tables.",
+          "action": "{shoudi} tugs at his son's sleeve, brows knotted.",
+          "camera": "Static camera with a barely perceptible handheld breathing.",
+          "end": ""
+        },
+        {
+          "type": "CU",
+          "subjects": [
+            "xiaokang"
+          ],
+          "speaker": "xiaokang",
+          "line": "爸，你相信我，这合同不能签！",
+          "say": "爸，你相信我……这合同，不能签！",
+          "act": "压低声音但无比坚定，一字一顿",
+          "emotion": "firm",
+          "delivery": "low, steady and certain, eyes locked on his father",
+          "composition": "Close-up of {xiaokang} in the right two-thirds of the frame, the signing tables blurred behind him.",
+          "action": "{xiaokang} turns to his father and holds his gaze.",
+          "camera": "Static camera with a barely perceptible handheld breathing.",
+          "end": "His jaw sets; he does not look away."
+        }
+      ]
+    }
+  ],
+  "music": "rural Chinese comedy drama underscore, erhu, pipa, plucked strings, light percussion, playful tension, mid tempo, instrumental, no vocals"
+}

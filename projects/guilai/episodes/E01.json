@@ -1,0 +1,159 @@
+{
+  "id": "E01",
+  "title": "归来",
+  "logline": "A widow's husband, presumed dead for three years, walks back into her penthouse - and he did not come back for her.",
+  "clips": [
+    {
+      "id": "K1",
+      "location": "penthouse",
+      "summary": "At night in {loc}, {linxia} turns from the window to face {luchen}, who steps out of the dark doorway, and tells him she believed he was dead for three years.",
+      "soundscape": "Quiet penthouse room tone continues throughout, with a faint muffled city hum through the glass and a soft electrical buzz from the lamps.",
+      "cuts": [
+        {
+          "type": "MS",
+          "subjects": [
+            "linxia",
+            "luchen"
+          ],
+          "composition": "Vertical rule-of-thirds frame: {linxia} stands in the left third in front of the floor-to-ceiling window with the skyline behind her, while {luchen} stands half in shadow in the doorway in the right background of {loc}.",
+          "action": "{linxia}, holding {wine_glass} low in her right hand, slowly turns from the window toward the doorway, the satin gown catching the lamplight. {luchen} takes one measured step out of the shadow into the warm lamplight.",
+          "camera": "Slow push in, with small amplitude, at slow speed.",
+          "sound": "Her heel clicks once on the marble; his single footstep follows.",
+          "end": "Both hold still, eyes locked across the room.",
+          "props": [
+            "wine_glass"
+          ]
+        },
+        {
+          "type": "CU",
+          "subjects": [
+            "linxia"
+          ],
+          "speaker": "linxia",
+          "line": "整整三年，我以为你死了。",
+          "delivery": "low and trembling, holding back anger and tears",
+          "composition": "Tight close-up with her face in the right two-thirds of the frame, warm lamp key light from screen left, cool blue skyline bokeh behind her.",
+          "action": "Her eyes glisten with tears that do not fall; her fingers tighten around the stem of {wine_glass} at the bottom edge of the frame, and her jaw tightens just before she speaks.",
+          "camera": "Static camera with a barely perceptible handheld breathing.",
+          "end": "She keeps staring at him, lips pressed together.",
+          "props": [
+            "wine_glass"
+          ],
+          "say": "整整三年……我以为你——死了。",
+          "act": "压着哭腔，声音发抖，又恨又委屈，最后两个字几乎说不出口",
+          "emotion": "broken"
+        }
+      ]
+    },
+    {
+      "id": "K1b",
+      "location": "penthouse",
+      "summary": "Moments later in {loc}, {luchen} answers {linxia}: he did die once, and the man she married is not coming back.",
+      "soundscape": "Quiet penthouse room tone continues throughout, with a faint muffled city hum through the glass and a soft electrical buzz from the lamps.",
+      "cuts": [
+        {
+          "type": "OTS",
+          "over": "linxia",
+          "subjects": [
+            "luchen"
+          ],
+          "speaker": "luchen",
+          "line": "我确实死过一次。",
+          "delivery": "quiet and controlled, almost gentle",
+          "composition": "Her bare shoulder and the edge of her wavy dark hair blur in the left foreground; he faces the camera in the right third, lit by the warm lamp with the dark doorway behind him.",
+          "action": "He holds her gaze without blinking; a faint muscle moves in his jaw.",
+          "camera": "Static camera, focus held on his eyes.",
+          "end": "He does not look away.",
+          "say": "我确实……死过一次。",
+          "act": "低沉克制，平静得近乎温柔，带一点疲惫",
+          "emotion": "calm"
+        },
+        {
+          "type": "CU",
+          "subjects": [
+            "luchen"
+          ],
+          "speaker": "luchen",
+          "line": "你嫁的那个人，回不来了。",
+          "delivery": "low and flat, as a final statement",
+          "composition": "Tight close-up with his face in the left two-thirds of the frame, lamp light raking across the scar on his left eyebrow, the doorway falling to black behind him.",
+          "action": "He lowers his eyes for a moment, then lifts them back to her.",
+          "camera": "Very slow push in, with small amplitude, at slow speed.",
+          "end": "He stays perfectly still as the line ends.",
+          "say": "你嫁的那个人，回不来了。",
+          "act": "冷，一字一顿，像在宣判",
+          "emotion": "cold"
+        }
+      ]
+    },
+    {
+      "id": "K2",
+      "location": "penthouse",
+      "summary": "Moments later in {loc}, {linxia} closes the distance to {luchen} and demands to know who he is; he says he is the only one who can keep her alive tonight, and her inner voice concludes he did not come back for her.",
+      "soundscape": "The same quiet penthouse room tone and muffled city hum continue throughout, with soft fabric rustle as she moves.",
+      "cuts": [
+        {
+          "type": "MS",
+          "subjects": [
+            "linxia",
+            "luchen"
+          ],
+          "composition": "Profile two-shot in front of the window: {linxia} on the left, {luchen} on the right, the skyline glittering between them.",
+          "action": "{linxia} closes the distance with two sharp steps and stops one step from him; he does not move back.",
+          "camera": "Slow lateral track to the right, with small amplitude, at slow speed.",
+          "sound": "Two quick heel clicks on the marble.",
+          "end": "They stand face to face, one step apart."
+        },
+        {
+          "type": "OTS",
+          "over": "luchen",
+          "subjects": [
+            "linxia"
+          ],
+          "speaker": "linxia",
+          "line": "那你到底是谁？",
+          "delivery": "sharp and breathless, demanding",
+          "composition": "His black-suited shoulder and the back of his swept-back hair blur in the right foreground; she faces the camera in the left third, the window skyline soft behind her.",
+          "action": "She lifts her chin and searches his face, her breath unsteady.",
+          "camera": "Static camera, focus held on her eyes.",
+          "end": "She waits for his answer.",
+          "say": "那你……到底是谁？！",
+          "act": "急促喘息，逼问，声音拔高，快要失控",
+          "emotion": "anger"
+        },
+        {
+          "type": "CU",
+          "subjects": [
+            "luchen"
+          ],
+          "speaker": "luchen",
+          "line": "今晚唯一能让你活下来的人。",
+          "delivery": "quiet and urgent, every word deliberate",
+          "composition": "Tight close-up, his face filling the centre-left of the frame, warm lamp light on one side and cool skyline light on the other.",
+          "action": "He leans in a few centimetres; his eyes flick once toward the door, then back to her.",
+          "camera": "Static camera with a barely perceptible handheld breathing.",
+          "end": "His expression gives nothing away.",
+          "say": "今晚——唯一能让你活下来的人。",
+          "act": "压低声音，急切，每个字都很重",
+          "emotion": "firm"
+        },
+        {
+          "type": "VO",
+          "subjects": [
+            "linxia"
+          ],
+          "speaker": "linxia",
+          "line": "他回来，不是为了我。",
+          "delivery": "cold and certain, barely above a whisper",
+          "composition": "Close-up of {linxia} in three-quarter profile, lamplight on her cheek, the skyline a soft blue blur behind her.",
+          "action": "A single tear finally slides down her cheek; she does not wipe it away.",
+          "end": "The shot ends on her eyes in extreme close-up, the tear catching the light.",
+          "say": "他回来……不是为了我。",
+          "act": "心里的独白，极轻的气声，冷而笃定，心碎",
+          "emotion": "whisper"
+        }
+      ]
+    }
+  ],
+  "music": "suspenseful melancholic night drama underscore, slow, solo cello, sparse piano, ambient pads, low drone, instrumental, no vocals"
+}
