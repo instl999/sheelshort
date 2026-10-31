@@ -170,6 +170,14 @@ Scene: two 12 s clips, each four 3 s cuts, Mandarin dialogue plus one voice-over
   modes: `say` with verbatim punctuation inside `<d>`, timbre-only voice definitions, and a per-line `delivery`. The
   objective pitch-motion measure did not separate the modes either (acted median 2.2, H3 3.3, with H3 readings partly
   unreliable), so the ear decides.
+- **Acted voice references (`voice_ref = "acted"`), owner verdict 2026-10-31.** In this mode H3 still voices the lines,
+  but each speaker's `<Audio N>` is built from acted Drama 3 takes of their own lines. The test used the same seeds,
+  so the reference was the only difference.
+  - 全村抢 opening: the cast-voice version is better.
+  - 归来: about the same, with a slight preference for the acted references.
+  - The pitch measures rose on 归来 K1/K1b and were mixed on K2.
+  - **Decision:** `voice_ref = "cast"` stays the default. Acted references cost an extra Drama 3 stage per episode for
+    no consistent gain. They stay available for scenes that need it.
 
 ---
 
