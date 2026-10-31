@@ -126,7 +126,10 @@ def run(p: Project, ep: str, only: set[str] | None = None, takes: int | None = N
             track = Path(tm["track"]) if tm["track"] else None
         job = (lambda clip=clip, text=text, refs=refs, files=files, seconds=seconds, track=track:
                _clip(p, ep, clip, n, text, refs, files, seconds, track))
-        job.renders = not clip_path(p, ep, clip["id"], 1).exists()   # a take on disk only needs its quick QC check
+        first = clip_path(p, ep, clip["id"], 1)
+        meta = first.with_suffix(".json")
+        job.renders = not first.exists() or (meta.exists() and load_json(meta).get("fingerprint")
+                                              != fingerprint(text, files, track, seconds))   # current take: QC only
         jobs.append(job)
     if p.cfg["edit"].get("music") == "auto" and not only:
         from . import assemble

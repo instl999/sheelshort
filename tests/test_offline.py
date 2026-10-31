@@ -72,10 +72,11 @@ def test_layout_retimes_cuts_to_acted_lines():
 def test_test_mode_takes_opening_clips():
     p = Project(ROOT / "projects/quancun")
     p.limit_s, p.only_eps = 20, ["E01"]
-    assert [c["id"] for c in p.clips("E01")] == ["C1", "C2"]          # 9 s + 6 s; C3 would overshoot to 26 s
-    assert p.in_use()[0] == {"dahua", "xiaokang", "cunmin"} and p.master_name() == "master_20s"
+    ids = [c["id"] for c in p.clips("E01")]
+    assert ids[0] == "C1" and 15 <= sum(h3prompt.clip_len(c) for c in p.clips("E01")) <= 25
+    assert {"dahua", "xiaokang"} <= p.in_use()[0] and "gaoliang" not in p.in_use()[0] and p.master_name() == "master_20s"
     p.limit_s = None
-    assert len(p.clips("E01")) == 7
+    assert len(p.clips("E01")) == len(json.loads((ROOT / "projects/quancun/episodes/E01.json").read_text())["clips"])
 
 
 def _scratch_project(tmp, ch):

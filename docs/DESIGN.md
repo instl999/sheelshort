@@ -215,6 +215,34 @@ would have left nothing for an added server.
 The owner's decision: **Beijing only.** The fleet adds servers while a render has clips waiting and powers off what
 it added when idle and at the end of the run. It never touches other instances.
 
+### 0.9 Quality pass 1 (2026-10-31): measured against the reference series
+**The target**, from drama-studio's shot study of the original 全村抢 episode 1: 151 s, 73 shots, mean shot 2.07 s,
+median 1.84 s, 2 shots over 5 s. Name cards appear on the intro close-ups. There is no end card: the cut lands on the
+cliffhanger line.
+
+**Where we were:** episodes of 61–89 s with a mean shot of 3.2–4.7 s.
+- The adaptation compressed the script.
+- The one-line-per-cut grammar cannot cut faster than a line lasts.
+
+**What changed:**
+- **Reaction cuts (`RX`).** The listener's close-up comes while the previous line continues off-screen. Test T01
+  verified this on H3: each line runs across the cut, with the listener's lips closed, and every word is heard.
+  The full-length E01 rewrite uses them: 56 cuts over 141 s, mean 2.5 s.
+- **Clip QC with re-takes (`clipqc.py`).**
+  - Each scripted line must be heard (Whisper CER).
+  - One vision call per clip checks overlaid text, day/night against the location's `light`, the wrong person and
+    malformed faces.
+  - A failing clip is re-taken, and the best take wins.
+  - Two QC false positives found on real renders were fixed. Printed text on props (the contract) was counted as
+    on-screen text. The greedy line splitter shifted lines; lines are now located by the best-matching word run,
+    which also fixed subtitle timing.
+- **RTX Video Super Resolution** to 1080×1920 on the servers. It is a small, clean gain over a plain resize. One
+  server cannot load NVIDIA VFX; the engine remembers that and routes upscales to the other.
+- **Name cards** in the reference style: a vertical name in heavy serif with a thin role column, beside the head
+  (OpenCV face detection), on the first solo close-up.
+- **Clean version and delivery package** (`package`).
+- **Pacing report** in each review page, against the reference numbers.
+
 ---
 
 ## 1. Market research: does this already exist?

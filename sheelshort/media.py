@@ -146,6 +146,8 @@ def face_box(video: Path, t: float) -> tuple[float, float, float, float] | None:
     try:
         import cv2
         import numpy as np
+        if not hasattr(cv2, "CascadeClassifier"):   # OpenCV 5 dropped the Haar detector: no face, the card takes a default side
+            return None
     except ImportError:
         return None
     p = subprocess.run(["ffmpeg", "-v", "error", "-ss", f"{max(0, t):.3f}", "-i", str(video), "-frames:v", "1",
@@ -163,3 +165,21 @@ def face_box(video: Path, t: float) -> tuple[float, float, float, float] | None:
         return None
     x, y, fw, fh = max(faces, key=lambda f: f[2] * f[3])
     return (x / w, y / h, (x + fw) / w, (y + fh) / h)
+
+
+def shot_cuts(video: Path, threshold: float = 0.3) -> list[float]:
+    """Times of the hard cuts in a video (ffmpeg scene-change score above `threshold`)."""
+    p = subprocess.run(["ffmpeg", "-hide_banner", "-i", str(video), "-vf", f"select='gt(scene,{threshold})',showinfo",
+                        "-an", "-f", "null", "-"], capture_output=True, text=True)
+    import re
+    return [float(m) for m in re.findall(r"pts_time:([0-9.]+)", p.stderr)]
+
+
+def pacing(video: Path) -> dict:
+    """Shot statistics of an edited episode, comparable with the reference series' study (mean ~2.1 s per shot)."""
+    import statistics
+    dur = probe(video)["duration"]
+    cuts = [0.0] + shot_cuts(video) + [dur]
+    shots = [b - a for a, b in zip(cuts, cuts[1:]) if b - a > 0.2]
+    return {"duration_s": round(dur, 1), "shots": len(shots), "mean_shot_s": round(statistics.mean(shots), 2),
+            "median_shot_s": round(statistics.median(shots), 2), "over_5s": sum(1 for s in shots if s > 5)}
