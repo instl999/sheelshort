@@ -1,0 +1,138 @@
+{
+  "title": "全村抢20万拆迁款，我拒签后靠玉米赚麻了",
+  "language": "zh-CN",
+  "style": "The target video is a photorealistic live-action Chinese rural vertical short drama in 9:16 with cinematic composition, a 35mm-equivalent lens look, warm earthy colours, crisp detail, natural motivated light that matches each location, and finely detailed faces with natural skin texture and sun-weathered complexions.",
+  "characters": {
+    "xiaokang": {
+      "name": "Li Xiaokang",
+      "role": "young man",
+      "look": "a 24-year-old Chinese man with a lean, earnest face, straight dark brows, clear bright eyes, a small mole on his left cheekbone, short neat black hair, wearing a plain light-blue cotton shirt with the sleeves rolled to the elbows and dark-grey work trousers.",
+      "keep": "small mole on the left cheekbone, short neat black hair, light-blue shirt with rolled sleeves",
+      "face_detail": "a small mole on the left cheekbone, clear eyes, light sun-tan and fine skin texture.",
+      "hair": "short neat black hair",
+      "costume": "a plain light-blue cotton shirt with sleeves rolled to the elbows, dark-grey work trousers, worn black canvas shoes",
+      "voice_en": "in a clear young male voice",
+      "voice_design": "二十四岁左右的年轻男性，音色清亮干净，中等音高，普通话标准带一点北方口音，语速中等。",
+      "voice_sample": "我从小在黄谷村长大，村口这条路，我闭着眼睛都能走回家。"
+    },
+    "dahua": {
+      "name": "Wang Dahua",
+      "role": "middle-aged woman",
+      "look": "a 52-year-old stout Chinese village woman with a round sunburned face, thin arched painted brows, narrow sharp eyes, a mole on the chin, short permed curly black hair, wearing a bright floral red-and-pink short-sleeved blouse and black trousers.",
+      "keep": "mole on the chin, short permed curly black hair, red-and-pink floral blouse",
+      "face_detail": "a mole on the chin, thin painted brows, sunburned cheeks and fine wrinkles.",
+      "hair": "short permed curly black hair",
+      "costume": "a bright floral red-and-pink short-sleeved blouse, loose black trousers, black cloth shoes",
+      "voice_en": "in a loud, high-pitched middle-aged female voice",
+      "voice_design": "五十岁左右的农村妇女，音色尖亮、嗓门大，音调偏高，普通话带北方农村口音，语速偏快。",
+      "voice_sample": "我们家那块地种了三十年玉米，一年到头也就落下这么几个钱。"
+    },
+    "gaoliang": {
+      "name": "Gao Liang",
+      "role": "businessman",
+      "look": "a 42-year-old Chinese businessman with a square, well-groomed face, thick dark brows, calm narrow eyes behind thin gold-rimmed glasses, neatly side-parted black hair with a touch of grey at the temples, wearing a tailored charcoal-grey suit, white shirt and a dark-blue tie.",
+      "keep": "thin gold-rimmed glasses, side-parted hair with grey temples, charcoal-grey suit with dark-blue tie",
+      "face_detail": "thin gold-rimmed glasses, grey at the temples, smooth clean-shaven skin.",
+      "hair": "neatly side-parted black hair with a touch of grey at the temples",
+      "costume": "a tailored charcoal-grey two-piece suit, white shirt, dark-blue tie, polished black leather shoes, a silver wristwatch",
+      "voice_en": "in a smooth, mellow middle-aged male voice",
+      "voice_design": "四十岁左右的成年男性，音色圆润醇厚，中低音，普通话标准，语速不紧不慢。",
+      "voice_sample": "这个项目我们已经筹备了两年，规划图、合同、资金都已经准备好了。"
+    },
+    "shoudi": {
+      "name": "Li Shoudi",
+      "role": "old farmer",
+      "look": "a 72-year-old Chinese farmer with a thin, deeply lined sun-darkened face, sparse grey eyebrows, kind tired eyes, short cropped grey hair, wearing a faded olive-green work jacket over a white undershirt.",
+      "keep": "short cropped grey hair, deeply lined face, faded olive-green work jacket",
+      "face_detail": "deep wrinkles, sun-darkened skin, sparse grey eyebrows and tired, kind eyes.",
+      "hair": "short cropped grey hair",
+      "costume": "a faded olive-green work jacket over a white undershirt, baggy dark trousers, muddy cloth shoes",
+      "voice_en": "in a hoarse, low old man's voice",
+      "voice_design": "五十多岁的农村老汉，音色沙哑低沉，音调偏低，普通话带浓重北方乡音，语速偏慢。",
+      "voice_sample": "今年雨水足，地里的玉米长得比往年都好，再过一个月就能掰了。"
+    },
+    "cunmin": {
+      "name": "the villager",
+      "role": "village man",
+      "look": "a 45-year-old Chinese village man with a broad weathered face, a short black stubble beard, wide nose, buzz-cut black hair, wearing a grey sleeveless vest and a straw hat pushed back on his head.",
+      "keep": "buzz-cut hair, short stubble beard, grey sleeveless vest, straw hat",
+      "face_detail": "a short black stubble beard, weathered tanned skin and a wide nose.",
+      "hair": "buzz-cut black hair under a straw hat pushed back",
+      "costume": "a grey sleeveless vest, khaki trousers rolled at the ankles, a worn straw hat",
+      "voice_en": "in a rough, loud male voice",
+      "voice_design": "四十多岁的农村汉子，音色粗犷，中低音，嗓门大，普通话带北方乡音。",
+      "voice_sample": "今天早上我去镇上卖了两筐鸡蛋，回来的时候顺路买了包烟。"
+    },
+    "erdaye": {
+      "name": "Second Grand-uncle",
+      "role": "old man",
+      "look": "a 78-year-old Chinese village elder with a gaunt, deeply wrinkled face, white stubble on his chin, sunken gentle eyes, a liver spot on his left temple, thin white hair cropped short, wearing a faded dark-blue Mao-style cotton jacket buttoned to the neck and leaning on a worn wooden walking cane.",
+      "keep": "liver spot on the left temple, thin white cropped hair, faded dark-blue buttoned cotton jacket, wooden walking cane",
+      "face_detail": "deep wrinkles, white chin stubble, a liver spot on the left temple and gentle sunken eyes.",
+      "hair": "thin white hair cropped short",
+      "costume": "a faded dark-blue Mao-style cotton jacket buttoned to the neck, black cloth trousers, black cloth shoes, a worn wooden walking cane",
+      "voice_en": "in a slow, frail old man's voice",
+      "voice_design": "七十多岁的农村老人，音色苍老、略带沙哑，音调偏低，北方乡音浓重，语速很慢。",
+      "voice_sample": "我在这村里活了七十多年，什么样的年景都见过，地里的事我心里有数。"
+    },
+    "fugui": {
+      "name": "Village Chief Fugui",
+      "role": "middle-aged man",
+      "look": "a 50-year-old Chinese village chief with a plump round face, small eyes, a receding hairline with thin combed-over black hair, a gold front tooth, wearing a plain brown zip-up jacket over a grey shirt.",
+      "keep": "receding hairline with thin combed-over black hair, gold front tooth, plain brown zip-up jacket",
+      "face_detail": "a plump round face, small eyes, a gold front tooth and a shiny forehead.",
+      "hair": "thin black hair combed over a receding hairline",
+      "costume": "a plain brown zip-up jacket over a grey shirt, dark trousers, black leather shoes",
+      "voice_en": "in a slightly nasal middle-aged male voice",
+      "voice_design": "五十岁左右的农村干部，音色略带鼻音，中音，普通话带北方口音，语速中等。",
+      "voice_sample": "乡亲们都放心，咱们村的事情，我这个当村长的肯定一碗水端平。"
+    }
+  },
+  "locations": {
+    "village_gate": {
+      "name": "village entrance signing site",
+      "look": "an open dirt clearing at the entrance of a northern Chinese village on a sunny morning, a plain red-painted wooden archway gate with no lettering in the background, two folding tables pushed together with thick stacks of contract papers and a black pen, red plastic stools, low brick houses with grey tiled roofs and tall green cornfields beyond.",
+      "keep": "the red village archway, the folding tables with contract stacks, the dirt clearing, the cornfields and brick houses behind",
+      "time": "day",
+      "light": "bright natural late-morning sunlight from a clear sky, soft shadows"
+    },
+    "lijia_home": {
+      "name": "Li family farmhouse room at night",
+      "look": "a shabby northern Chinese farmhouse main room at night lit by a single bare warm-yellow bulb, whitewashed walls with peeling patches, a worn square wooden table with two wooden stools, an old wooden window looking onto a moonlit courtyard with an old jujube tree, a doorway to an inner room hung with a faded cloth curtain.",
+      "keep": "the bare warm-yellow bulb, the square wooden table, the window onto the moonlit courtyard and jujube tree, the inner doorway curtain",
+      "time": "night",
+      "light": "deep night indoors; the only light is the single bare warm-yellow bulb above the table and cold blue moonlight through the window; dark shadows in the corners; there is no daylight anywhere and the window and courtyard are dark"
+    },
+    "restaurant_door": {
+      "name": "upscale restaurant entrance in the city",
+      "look": "the entrance of an upscale city restaurant in the afternoon, a polished granite facade, a glass revolving door with brass frames, two potted pine bonsai beside the steps, a black luxury SUV parked at the kerb, and a leafy plane tree on the pavement a few metres away.",
+      "keep": "the glass revolving door, the granite facade, the black SUV at the kerb, the plane tree on the pavement",
+      "time": "day",
+      "light": "soft overcast afternoon daylight in the city"
+    },
+    "village_tree": {
+      "name": "dirt square under the old locust tree at the village entrance",
+      "look": "a packed-dirt square in a northern Chinese village dominated by a huge gnarled old locust tree with a thick trunk and a wide leafy canopy, a low stone ring around its base, a few wooden benches, low brick houses with grey tiled roofs and tall green cornfields in the distance.",
+      "keep": "the huge gnarled locust tree with the stone ring at its base, the packed-dirt square, the brick houses and cornfields beyond",
+      "time": "day",
+      "light": "bright late-morning sunlight dappled through the tree's leaves, soft shadows"
+    }
+  },
+  "props": {
+    "money_box": {
+      "name": "old iron biscuit tin",
+      "look": "a dented old red iron biscuit tin, its lid open, packed with stacks of crumpled ten-, twenty- and fifty-yuan banknotes and a few small bank passbooks.",
+      "keep": "the dented red iron tin and the crumpled banknote stacks"
+    },
+    "contract": {
+      "name": "supplementary contract",
+      "look": "a thin stapled contract booklet of white A4 pages with a red seal stamp on the cover and dense printed paragraphs, slightly crumpled from handling.",
+      "keep": "the thin stapled white booklet with the red seal stamp"
+    },
+    "phone_app": {
+      "name": "smartphone with a finance app",
+      "look": "a large black smartphone held up screen-forward, showing a glossy finance app with a big green rising line chart and a gold coin icon, no legible text.",
+      "keep": "the large black smartphone with the green rising chart on screen"
+    }
+  }
+}

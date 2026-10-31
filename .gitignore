@@ -14,3 +14,10 @@ spike/inputs/
 
 # Claude Code: the MiniMax h3-prompt-writing skill has no license; tools/install_h3_skill.py fetches it
 .claude/
+
+# sheelshort engine: local server config, caches, and generated project media (only bible + episodes are committed)
+sheelshort.toml
+.cache/
+projects/*/*
+!projects/*/bible.json
+!projects/*/episodes/

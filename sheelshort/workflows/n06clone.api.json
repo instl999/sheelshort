@@ -1,0 +1,100 @@
+{
+ "15": {
+  "inputs": {
+   "model_path": "Qwen/Qwen3-TTS-12Hz-1.7B-Base",
+   "precision": "bf16",
+   "device": "cuda",
+   "attn_implementation": "flash_attention_2",
+   "auto_download": false,
+   "download_source": "ModelScope"
+  },
+  "class_type": "TDQwen3TTSModelLoader",
+  "_meta": {
+   "title": "TD Qwen3 TTS Model Loader"
+  }
+ },
+ "17": {
+  "inputs": {
+   "audio": "18ebdd8171d66391297650a99b5defa28cdb36f27f373c0209402d435d2e3f50.flac"
+  },
+  "class_type": "LoadAudio",
+  "_meta": {
+   "title": "Load Audio"
+  }
+ },
+ "18": {
+  "inputs": {
+   "model": "large-v3",
+   "language": "Chinese",
+   "prompt": "",
+   "audio": [
+    "17",
+    0
+   ]
+  },
+  "class_type": "Apply Whisper",
+  "_meta": {
+   "title": "获取音频的文本内容"
+  }
+ },
+ "19": {
+  "inputs": {
+   "text": [
+    "23",
+    0
+   ],
+   "language": "Chinese",
+   "ref_text": [
+    "18",
+    0
+   ],
+   "x_vector_only_mode": false,
+   "model": [
+    "15",
+    0
+   ],
+   "ref_audio": [
+    "17",
+    0
+   ]
+  },
+  "class_type": "TDQwen3TTSVoiceClone",
+  "_meta": {
+   "title": "TD Qwen3 TTS Voice Clone"
+  }
+ },
+ "21": {
+  "inputs": {
+   "filename_prefix": "audio/ComfyUI",
+   "audio": [
+    "19",
+    0
+   ]
+  },
+  "class_type": "SaveAudio",
+  "_meta": {
+   "title": "Save Audio (FLAC) (DEPRECATED)"
+  }
+ },
+ "22": {
+  "inputs": {
+   "source": [
+    "18",
+    0
+   ]
+  },
+  "class_type": "PreviewAny",
+  "_meta": {
+   "title": "Preview as Text"
+  }
+ },
+ "23": {
+  "inputs": {
+   "prompt": "家人们快来看!我跟你们讲,今天找群主定制并发镜像只要100元，先到先得"
+  },
+  "class_type": "CR Prompt Text",
+  "_meta": {
+   "title": "⚙️ CR Prompt Text"
+  }
+ }
+}

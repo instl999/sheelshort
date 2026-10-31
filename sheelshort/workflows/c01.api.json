@@ -1,0 +1,157 @@
+{
+ "1": {
+  "inputs": {
+   "unet_name": "Zimage/z_image_turbo_bf16.safetensors",
+   "weight_dtype": "default"
+  },
+  "class_type": "UNETLoader",
+  "_meta": {
+   "title": "Load Diffusion Model"
+  }
+ },
+ "2": {
+  "inputs": {
+   "clip_name": "qwen_3_4b.safetensors",
+   "type": "qwen_image",
+   "device": "default"
+  },
+  "class_type": "CLIPLoader",
+  "_meta": {
+   "title": "Load CLIP"
+  }
+ },
+ "3": {
+  "inputs": {
+   "vae_name": "z_image_vae.safetensors"
+  },
+  "class_type": "VAELoader",
+  "_meta": {
+   "title": "Load VAE"
+  }
+ },
+ "4": {
+  "inputs": {
+   "seed": 938240084766043,
+   "steps": 9,
+   "cfg": 1,
+   "sampler_name": "euler",
+   "scheduler": "simple",
+   "denoise": 1,
+   "model": [
+    "21",
+    0
+   ],
+   "positive": [
+    "5",
+    0
+   ],
+   "negative": [
+    "6",
+    0
+   ],
+   "latent_image": [
+    "7",
+    0
+   ]
+  },
+  "class_type": "KSampler",
+  "_meta": {
+   "title": "KSampler"
+  }
+ },
+ "5": {
+  "inputs": {
+   "text": [
+    "11",
+    1
+   ],
+   "clip": [
+    "2",
+    0
+   ]
+  },
+  "class_type": "CLIPTextEncode",
+  "_meta": {
+   "title": "CLIP Text Encode (Prompt)"
+  }
+ },
+ "6": {
+  "inputs": {
+   "conditioning": [
+    "5",
+    0
+   ]
+  },
+  "class_type": "ConditioningZeroOut",
+  "_meta": {
+   "title": "Conditioning Zero Out"
+  }
+ },
+ "7": {
+  "inputs": {
+   "width": 720,
+   "height": 1280,
+   "batch_size": 2
+  },
+  "class_type": "EmptyLatentImage",
+  "_meta": {
+   "title": "Empty Latent Image"
+  }
+ },
+ "8": {
+  "inputs": {
+   "samples": [
+    "4",
+    0
+   ],
+   "vae": [
+    "3",
+    0
+   ]
+  },
+  "class_type": "VAEDecode",
+  "_meta": {
+   "title": "VAE Decode"
+  }
+ },
+ "11": {
+  "inputs": {
+   "prompt_1": " 日漫校园纯爱风，浅棕色齐耳短发配空气刘海，少女身着米白色针织衫 + 藏青色百褶裙，站在铺满银杏叶的校园小径，风扬起发丝与裙摆，手持泛黄的信封，背景是红砖墙教学楼与远处的樱花树，暖调光影，线条细腻柔和，眼神清澈带羞，画面满是青春悸动",
+   "prompt_2": "日漫暗黑悬疑风，黑色长直发遮眼，少女身着黑色水手服（领口系黑色领结），站在阴雨绵绵的废弃车站，雨水打湿发丝与衣角，背景是生锈的铁轨、昏暗的路灯与飘着的雾气，冷调光影，高对比度，眼神空洞带一丝诡异，画面氛围感压抑又带张力",
+   "prompt_3": "日漫职场社畜风，浅棕色中长发扎低马尾，女性身着灰色西装套裙，领口松开两颗纽扣，疲惫地靠在地铁站墙壁，手中攥着皱巴巴的公文包，背景是闪烁的电子屏与行色匆匆的人群，冷调为主，线条简洁，眼神倦怠却带韧劲，画面充满现实感",
+   "prompt_4": "二次元赛博朋克少女，蓝粉色挑染短发搭配机械耳饰，眼妆点缀荧光蓝纹路，身着露腰机能风套装，外搭全息投影披风（投射数据流光影），手持能量手枪，站在霓虹闪烁的未来都市街头，背景是悬浮车辆与全息广告牌，画面高对比度，冷调为主，科技感与酷飒感拉满",
+   "prompt_5": "水墨山水国风写真，人物身着玄色广袖长袍立于悬崖边，背后是水墨晕染的远山云海，冷冽山风扬起衣摆与发丝，侧光突出面部轮廓，画面以浓淡墨色为主，点缀少量赭石色，大气磅礴，兼具侠气与诗意"
+  },
+  "class_type": "easy promptList",
+  "_meta": {
+   "title": "PromptList"
+  }
+ },
+ "20": {
+  "inputs": {
+   "filename_prefix": "20261030/image_",
+   "images": [
+    "8",
+    0
+   ]
+  },
+  "class_type": "SaveImage",
+  "_meta": {
+   "title": "Save Image"
+  }
+ },
+ "21": {
+  "inputs": {
+   "lora_name": "Zimage/AWPortrait-Z.safetensors",
+   "strength_model": 1,
+   "model": [
+    "1",
+    0
+   ]
+  },
+  "class_type": "LoraLoaderModelOnly",
+  "_meta": {
+   "title": "Load LoRA"
+  }
+ }
+}

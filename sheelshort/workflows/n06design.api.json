@@ -1,0 +1,68 @@
+{
+ "15": {
+  "inputs": {
+   "model_path": "Qwen/Qwen3-TTS-12Hz-1.7B-VoiceDesign",
+   "precision": "bf16",
+   "device": "cuda",
+   "attn_implementation": "flash_attention_2",
+   "auto_download": false,
+   "download_source": "ModelScope"
+  },
+  "class_type": "TDQwen3TTSModelLoader",
+  "_meta": {
+   "title": "TD Qwen3 TTS Model Loader"
+  }
+ },
+ "21": {
+  "inputs": {
+   "filename_prefix": "comfyui",
+   "audio": [
+    "24",
+    0
+   ]
+  },
+  "class_type": "SaveAudio",
+  "_meta": {
+   "title": "Save Audio (FLAC) (DEPRECATED)"
+  }
+ },
+ "23": {
+  "inputs": {
+   "prompt": "啊哈，是关中王来了"
+  },
+  "class_type": "CR Prompt Text",
+  "_meta": {
+   "title": "⚙️ CR Prompt Text"
+  }
+ },
+ "24": {
+  "inputs": {
+   "text": [
+    "23",
+    0
+   ],
+   "instruct": [
+    "25",
+    0
+   ],
+   "language": "Chinese",
+   "model": [
+    "15",
+    0
+   ]
+  },
+  "class_type": "TDQwen3TTSVoiceDesign",
+  "_meta": {
+   "title": "TD Qwen3 TTS Voice Design"
+  }
+ },
+ "25": {
+  "inputs": {
+   "prompt": "略带沙哑的 28-30 岁成年男性，音域偏低沉，语速冷静约 150 字/分钟，带有金属通讯器过滤感，参考《赛博朋克 2077》男 V。"
+  },
+  "class_type": "CR Prompt Text",
+  "_meta": {
+   "title": "⚙️ CR Prompt Text"
+  }
+ }
+}
