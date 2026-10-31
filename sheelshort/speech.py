@@ -8,6 +8,7 @@ one speaker each, so two voices are never mixed into one number.
 from __future__ import annotations
 
 import re
+import threading
 import unicodedata
 from functools import lru_cache
 from pathlib import Path
@@ -130,7 +131,10 @@ def error_rate(ref: str, hyp: str) -> float:
     return prev[-1] / len(r)
 
 
-@lru_cache(maxsize=1)
+_ASR_LOCK = threading.Lock()   # one transcription at a time: render workers align clips in parallel threads
+
+
+@lru_cache(maxsize=2)
 def _whisper(size: str):
     from faster_whisper import WhisperModel
     return WhisperModel(size, device="cpu", compute_type="int8")
@@ -138,9 +142,10 @@ def _whisper(size: str):
 
 def transcribe(path: Path, lang: str = "zh", size: str = "small") -> str:
     prompt = "以下是普通话的句子。" if lang.startswith("zh") else None
-    segs, _ = _whisper(size).transcribe(load(path).astype(np.float32), language=lang.split("-")[0], beam_size=5, initial_prompt=prompt,
-                                        vad_filter=False, condition_on_previous_text=False)
-    text = "".join(s.text for s in segs)
+    with _ASR_LOCK:
+        segs, _ = _whisper(size).transcribe(load(path).astype(np.float32), language=lang.split("-")[0], beam_size=5,
+                                            initial_prompt=prompt, vad_filter=False, condition_on_previous_text=False)
+        text = "".join(s.text for s in segs)
     if lang.startswith("zh"):
         text = to_simplified(text)
     return text
@@ -157,9 +162,11 @@ def to_simplified(text: str) -> str:
 def words(path: Path, lang: str = "zh", size: str = "small") -> list[tuple[float, float, str]]:
     """(start, end, text) per recognised word/character run, for locating lines inside a clip."""
     prompt = "以下是普通话的句子。" if lang.startswith("zh") else None
-    segs, _ = _whisper(size).transcribe(load(path).astype(np.float32), language=lang.split("-")[0], beam_size=5,
-                                        initial_prompt=prompt, word_timestamps=True, condition_on_previous_text=False)
-    return [(w.start, w.end, to_simplified(w.word) if lang.startswith("zh") else w.word) for s in segs for w in (s.words or [])]
+    with _ASR_LOCK:
+        segs, _ = _whisper(size).transcribe(load(path).astype(np.float32), language=lang.split("-")[0], beam_size=5,
+                                            initial_prompt=prompt, word_timestamps=True, condition_on_previous_text=False)
+        segs = list(segs)   # the generator runs the model: consume it inside the lock
+        return [(w.start, w.end, to_simplified(w.word) if lang.startswith("zh") else w.word) for s in segs for w in (s.words or [])]
 
 
 def locate(lines: list[str], ws: list[tuple[float, float, str]]) -> list[tuple[float, float] | None]:

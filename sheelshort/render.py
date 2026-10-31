@@ -128,7 +128,12 @@ def run(p: Project, ep: str, only: set[str] | None = None, takes: int | None = N
             key = f"render/{ep}/{stem(p, clip['id'], t)}"
             jobs.append(lambda key=key, clip=clip, t=t, text=text, refs=refs, files=files, seconds=seconds, track=track:
                         _render(p, ep, key, clip, t, text, refs, files, seconds, track))
-    with ThreadPoolExecutor(max(1, len(p.cfg["comfy"]["servers"]))) as ex:
+    if p.cfg["edit"].get("music") == "auto" and not only:
+        from . import assemble
+        jobs.insert(0, lambda: assemble.score(p, ep))   # the music bed renders alongside the clips, not after them
+    # Two jobs in flight per server: the next clip is already queued when one finishes, so the GPU never waits for a
+    # result to come back through the tunnel (measured: ~110 s per clip under load, vs ~300 s of GPU time).
+    with ThreadPoolExecutor(max(1, 2 * len(p.cfg["comfy"]["servers"]))) as ex:
         list(ex.map(lambda f: f(), jobs))
 
 
@@ -153,15 +158,16 @@ def _render(p, ep, key, clip, t, text, refs, files, seconds, track) -> None:
         # the prompt, a reference or the acted track changed since this take was rendered: keep it aside, render again
         stale = dest.with_name(dest.stem + f"_stale{int(meta.stat().st_mtime)}.mp4")
         dest.replace(stale)
+        meta.unlink()
         p.forget(key)
         p.forget(f"foley/{ep}/{dest.stem}")
         foley_path(dest).unlink(missing_ok=True)
         log(f"{key}: inputs changed since the last render; old take kept as {stale.name}")
-    files_out = [dest] if dest.exists() else p.run_job(key, build, p.d("clips", ep), stem(p, clip["id"], t), ("gifs", "videos"), rc["timeout_s"])
+    fresh = not dest.exists()
+    files_out = [dest] if not fresh else p.run_job(key, build, p.d("clips", ep), stem(p, clip["id"], t), ("gifs", "videos"), rc["timeout_s"])
     if files_out and dest not in files_out:
         # VHS saves a silent .mp4 and, with audio connected, a "-audio" one: keep the one with sound
         mp4 = sorted((f for f in files_out if f.suffix == ".mp4"), key=lambda f: media.probe(f)["audio_codec"] is None)
-        meta.unlink(missing_ok=True)
         mp4[0].replace(dest)
         for f in files_out:
             if f.exists() and f != dest:
@@ -170,8 +176,11 @@ def _render(p, ep, key, clip, t, text, refs, files, seconds, track) -> None:
         p._touched.add(key)
         p.save()
         log(f"{key}: -> {dest.name}")
-    if dest.exists() and not meta.exists():
+    if dest.exists() and (fresh or not meta.exists()):   # a take rendered now records the inputs it was rendered from
         save_json(meta, {"fingerprint": fp, "seconds": seconds, "seed": seed})
+    if dest.exists() and track is None:
+        from . import assemble
+        assemble.heard_lines(p, ep, clip, dest)   # subtitle timing, computed while the other clips still render
     if dest.exists() and track is not None and rc.get("foley", True):
         foley(p, ep, clip, dest, seconds)
 

@@ -19,6 +19,9 @@ for its shot (rule below), and say what you changed.
 
 ## 2. Write `bible.json` (see `reference/schema.md`)
 Characters, locations, props, visual style. Rules that matter:
+- **`style`** (opens every prompt) is lens, grade and realism only, with **no time of day or light source**. Each
+  location has its own **`light`** (e.g. "deep night indoors; the only light is the single bare bulb and moonlight
+  through the window; no daylight anywhere"). A sunny style sentence turned a night scene's close-ups into daylight.
 - **`look`**: one precise sentence, age, face shape, brows, eyes, one or two identity anchors (beauty mark, scar)
   that will be *visible in a front close-up*, hair, outfit. Never a real person or celebrity.
 - **`keep`**: the short list of things that must never change (anchors, hair, outfit).

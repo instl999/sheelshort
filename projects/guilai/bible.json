@@ -1,7 +1,7 @@
 {
   "title": "归来 (The Return)",
   "language": "zh-CN",
-  "style": "The target video is a photorealistic live-action Chinese vertical short drama in 9:16 with cinematic composition, shallow depth of field, a 50mm-equivalent lens look, warm tungsten lamp key light against a cool blue night skyline, subtle film grain, and finely detailed faces with natural skin texture.",
+  "style": "The target video is a photorealistic live-action Chinese vertical short drama in 9:16 with cinematic composition, shallow depth of field, a 50mm-equivalent lens look, subtle film grain, and finely detailed faces with natural skin texture.",
   "characters": {
     "linxia": {
       "name": "Lin Xia",
@@ -33,7 +33,8 @@
       "name": "penthouse living room",
       "look": "a luxury penthouse living room at night with floor-to-ceiling windows showing the glittering Shanghai skyline with the Lujiazui towers, including the Oriental Pearl Tower, across the Huangpu River, low warm brass table lamps, a dark grey marble floor, a charcoal velvet sofa, and a dark wooden doorway on the right leading into shadow.",
       "keep": "the floor-to-ceiling windows, the Shanghai Lujiazui night skyline, the brass table lamps, the dark grey marble floor, the charcoal velvet sofa and the doorway position",
-      "time": "night"
+      "time": "night",
+      "light": "night; warm brass table lamps as the key light against the cool blue night skyline through the windows"
     }
   },
   "props": {

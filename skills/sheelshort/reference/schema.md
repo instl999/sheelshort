@@ -22,7 +22,8 @@ A complete worked example is `projects/guilai/` (bible.json, episodes/E01.json).
     }
   },
   "locations": {
-    "penthouse": {"name": "penthouse living room", "look": "...", "keep": "...", "time": "night"}
+    "penthouse": {"name": "penthouse living room", "look": "...", "keep": "...", "time": "night",
+                  "light": "night; warm brass table lamps as the key light against the cool blue night skyline"}
   },
   "props": {
     "wine_glass": {"name": "crystal wine glass", "look": "...", "keep": "..."}

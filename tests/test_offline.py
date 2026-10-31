@@ -100,6 +100,14 @@ def test_qc_aligns_text_to_the_image():
     assert a["look"].startswith("a 72-year-old")
 
 
+def test_offscreen_mention_uses_the_name():
+    scene = json.loads((ROOT / "projects/quancun/bible.json").read_text()) | json.loads((ROOT / "projects/quancun/episodes/E03.json").read_text())
+    clip = next(c for c in scene["clips"] if c["id"] == "C7")          # mentions {gaoliang}, who is not on screen
+    text = h3prompt.build(scene, clip, h3prompt.Refs(char_pictures={"fugui": ["a.png", "b.png"], "xiaokang": ["c.png", "d.png"]},
+                                                     location_pictures=["loc.png"]))
+    assert "Gao Liang" in text and "{gaoliang}" not in text
+
+
 if __name__ == "__main__":
     for name, fn in list(globals().items()):
         if name.startswith("test_"):

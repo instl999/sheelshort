@@ -89,7 +89,9 @@ def validate(workflow: dict, object_info: dict) -> list[str]:
 class ComfyClient:
     def __init__(self, base_url: str, headers: dict | None = None, timeout: float = 120):
         self.base_url = base_url.rstrip("/")
-        self.http = httpx.Client(base_url=self.base_url, headers=headers or {}, timeout=timeout)
+        # short connect/read timeouts: a call stalled inside the servers' tunnel fails and is retried instead of hanging
+        self.http = httpx.Client(base_url=self.base_url, headers=headers or {},
+                                 timeout=httpx.Timeout(timeout, connect=20, read=60))
         self.client_id = uuid.uuid4().hex
         self._object_info: dict | None = None
 

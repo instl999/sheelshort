@@ -1,7 +1,7 @@
 {
   "title": "全村抢20万拆迁款，我拒签后靠玉米赚麻了",
   "language": "zh-CN",
-  "style": "The target video is a photorealistic live-action Chinese rural vertical short drama in 9:16 with cinematic composition, bright natural late-morning sunlight, a 35mm-equivalent lens look, warm earthy colours, crisp detail, and finely detailed faces with natural skin texture and sun-weathered complexions.",
+  "style": "The target video is a photorealistic live-action Chinese rural vertical short drama in 9:16 with cinematic composition, a 35mm-equivalent lens look, warm earthy colours, crisp detail, natural motivated light that matches each location, and finely detailed faces with natural skin texture and sun-weathered complexions.",
   "characters": {
     "xiaokang": {
       "name": "Li Xiaokang",
@@ -93,19 +93,22 @@
       "name": "village entrance signing site",
       "look": "an open dirt clearing at the entrance of a northern Chinese village on a sunny morning, a plain red-painted wooden archway gate with no lettering in the background, two folding tables pushed together with thick stacks of contract papers and a black pen, red plastic stools, low brick houses with grey tiled roofs and tall green cornfields beyond.",
       "keep": "the red village archway, the folding tables with contract stacks, the dirt clearing, the cornfields and brick houses behind",
-      "time": "day"
+      "time": "day",
+      "light": "bright natural late-morning sunlight from a clear sky, soft shadows"
     },
     "lijia_home": {
       "name": "Li family farmhouse room at night",
       "look": "a shabby northern Chinese farmhouse main room at night lit by a single bare warm-yellow bulb, whitewashed walls with peeling patches, a worn square wooden table with two wooden stools, an old wooden window looking onto a moonlit courtyard with an old jujube tree, a doorway to an inner room hung with a faded cloth curtain.",
       "keep": "the bare warm-yellow bulb, the square wooden table, the window onto the moonlit courtyard and jujube tree, the inner doorway curtain",
-      "time": "night"
+      "time": "night",
+      "light": "deep night indoors; the only light is the single bare warm-yellow bulb above the table and cold blue moonlight through the window; dark shadows in the corners; there is no daylight anywhere and the window and courtyard are dark"
     },
     "restaurant_door": {
       "name": "upscale restaurant entrance in the city",
       "look": "the entrance of an upscale city restaurant in the afternoon, a polished granite facade, a glass revolving door with brass frames, two potted pine bonsai beside the steps, a black luxury SUV parked at the kerb, and a leafy plane tree on the pavement a few metres away.",
       "keep": "the glass revolving door, the granite facade, the black SUV at the kerb, the plane tree on the pavement",
-      "time": "day"
+      "time": "day",
+      "light": "soft overcast afternoon daylight in the city"
     }
   },
   "props": {

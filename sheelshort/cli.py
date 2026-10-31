@@ -18,12 +18,16 @@ everything deterministic. Every command is resumable: run it again after a crash
 from __future__ import annotations
 
 import argparse
+import re
 import shutil
 import sys
 from pathlib import Path
 
 from . import assemble, cast, evaluate, h3prompt, perform, render, review
 from .project import REPO, Project, log, save_json
+
+
+TIME_WORDS = re.compile(r"sunlight|morning|afternoon|noon|night|dusk|dawn|sunset|moonlight|tungsten|lamp", re.I)
 
 
 def project_dir(name: str) -> Path:
@@ -38,6 +42,12 @@ def check(p: Project, eps: list[str]) -> list[str]:
         for k in ("name", "role", "look", "keep", "face_detail", "hair", "costume", "voice_en"):
             if not ch.get(k):
                 errs.append(f"character {c}: missing {k}")
+    if TIME_WORDS.search(b.get("style", "")):
+        errs.append("style names a time of day or a light source; put lighting in each location's `light` "
+                    "(the style opens every prompt and would override a night scene)")
+    for loc, v in b["locations"].items():
+        if not v.get("light"):
+            errs.append(f"location {loc}: missing `light` (time of day and light sources for every shot there)")
     for ep in eps:
         scene = p.scene(ep)
         errs += [f"{ep} {e}" for e in h3prompt.check_rules(scene)]

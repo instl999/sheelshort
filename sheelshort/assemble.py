@@ -161,7 +161,7 @@ def run(p: Project, ep: str) -> Path:
     filt.append(f"[vc]subtitles={_esc(ass)}:fontsdir={_esc(fonts)}[vout]")
     music = e.get("music")
     if music == "auto":
-        music = score(p, ep, plan["duration"])
+        music = score(p, ep)
     if music:
         mi = ins.count("-i")
         ins += ["-stream_loop", "-1", "-i", str(Path(music).expanduser())]
@@ -176,7 +176,7 @@ def run(p: Project, ep: str) -> Path:
     filt.append(f"{last}loudnorm=I={e['loudness']}:TP=-1.0:LRA=11,aresample=48000[aout]")
     master = out_dir / f"{p.master_name()}.mp4"
     cmd = ["ffmpeg", "-y", "-v", "error", *ins, "-filter_complex", ";".join(filt), "-map", "[vout]", "-map", "[aout]",
-           "-c:v", "libx264", "-preset", "slow", "-crf", "18", "-profile:v", "high", "-pix_fmt", "yuv420p",
+           "-c:v", "libx264", "-preset", "medium", "-crf", "18", "-profile:v", "high", "-pix_fmt", "yuv420p",
            "-c:a", "aac", "-b:a", "192k", "-movflags", "+faststart", str(master)]
     subprocess.run(cmd, check=True)
     log(f"{ep}: master {plan['duration']:.1f}s -> {master}")
@@ -187,13 +187,22 @@ DEFAULT_MUSIC = ("cinematic tense underscore, Chinese short drama, instrumental,
                  "subtle percussion pulse, emotional, no vocals")
 
 
-def score(p: Project, ep: str, seconds: float) -> Path | None:
+def music_seconds(p: Project, ep: str) -> int:
+    """The bed's length from the clips in scope (written lengths, plus slack for H3's frame grid and the fade)."""
+    if p.cfg["render"]["dialogue"] == "acted" and (p.root / "perform" / ep / "timing.json").exists():
+        tm = load_json(p.root / "perform" / ep / "timing.json")
+        return int(sum(tm[c["id"]]["seconds"] for c in p.clips(ep) if c["id"] in tm)) + 4
+    return int(sum(h3prompt.clip_len(c) for c in p.clips(ep))) + 4
+
+
+def score(p: Project, ep: str) -> Path | None:
     """An instrumental bed for the episode from ACE-Step; mood tags from the episode's `music` field."""
     from . import flows
     tags = p.episode(ep).get("music") or DEFAULT_MUSIC
-    key = f"music/{ep}"
-    out = p.run_job(key, lambda cl: flows.music(tags, seconds + 2, p.seed(key), f"sheelshort/{ep}_music"),
-                    p.d("edit", ep), "music", ("audio",), 900)
+    seconds = music_seconds(p, ep)
+    key = f"music/{ep}_{seconds}s"
+    out = p.run_job(key, lambda cl: flows.music(tags, seconds, p.seed(key), f"sheelshort/{ep}_music"),
+                    p.d("edit", ep), f"music_{seconds}s", ("audio",), 900)
     return out[0] if out else None
 
 

@@ -132,6 +132,17 @@ def speaker_order(clip: dict) -> list[str]:
     return list(dict.fromkeys(c["speaker"] for c in clip["cuts"] if c.get("line")))
 
 
+class _Labels(dict):
+    """Subject labels for the clip's cast; a character or prop mentioned but not on screen falls back to its name."""
+
+    def __init__(self, labels: dict, names: dict):
+        super().__init__(labels)
+        self.names = names
+
+    def __missing__(self, key):
+        return self.names.get(key, key)
+
+
 def ts(seconds: float) -> str:
     return f"{int(seconds // 60):02d}:{seconds % 60:06.3f}"
 
@@ -165,7 +176,8 @@ def build(scene: dict, clip: dict, refs: Refs, cameras: dict[int, dict] | None =
     subj = {k: i for i, k in enumerate(cast + props, 1)}
     loc_subj = len(subj) + 1
     aud = {c: i for i, c in enumerate(refs.voices, 1)}
-    labels = {c: f"<Subject {i}>" for c, i in subj.items()} | {"loc": f"<Subject {loc_subj}>"}
+    labels = _Labels({c: f"<Subject {i}>" for c, i in subj.items()} | {"loc": f"<Subject {loc_subj}>"},
+                     {c: v["name"] for c, v in chars.items()} | {pr: f"the {v['name']}" for pr, v in prop_defs.items()})
 
     def f(text: str) -> str:
         """Scene text may name characters as {linxia} and the location as {loc}."""
@@ -241,7 +253,8 @@ def build(scene: dict, clip: dict, refs: Refs, cameras: dict[int, dict] | None =
         ret.append(f"<Audio {i}>: reference - {S(c)} speaks with this voice timbre and delivery without copying the original signal or its words.")
 
     # ---- detailed_description ----
-    body = [f"{scene['style']} {NO_TEXT}"]
+    light = f" Lighting in every shot: {loc['light'].rstrip('.')}." if loc.get("light") else ""
+    body = [f"{scene['style']}{light} {NO_TEXT}"]
     introduced: set[str] = set()
     t = 0.0
     for i, cut in enumerate(clip["cuts"], 1):
