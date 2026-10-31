@@ -79,13 +79,8 @@ class AutoDL:
         The public proxy on :8443 is HTTPS whatever the in-container protocol."""
         s = self.snapshot(uuid)
         for key in ("service_6006_domain", "service_6008_domain"):
-            if s.get(key):
-                url = f"https://{s[key]}"
-                try:
-                    if httpx.get(f"{url}/system_stats", timeout=10).status_code == 200:
-                        return url
-                except httpx.HTTPError:
-                    pass
+            if s.get(key) and is_comfy(f"https://{s[key]}", timeout=10):
+                return f"https://{s[key]}"
         return ""
 
     def wait_status(self, uuid: str, want: str, timeout_s: float = 1800, poll_s: float = 5) -> float:
@@ -98,15 +93,23 @@ class AutoDL:
         raise TimeoutError(f"{uuid} not {want} after {timeout_s}s (last: {self.status(uuid)})")
 
 
+def is_comfy(url: str, timeout: float = 15) -> bool:
+    """True only if ComfyUI itself answers at `url`: its /system_stats JSON lists the GPUs. The port ComfyUI uses
+    differs between boots, and the app's other port may answer any path with an HTML page and status 200; taking that
+    for ComfyUI put two servers in the pool that never got a job (2026-10-31, E03/E04)."""
+    try:
+        r = httpx.get(f"{url}/system_stats", timeout=timeout)
+        return r.status_code == 200 and bool(r.json().get("devices"))
+    except (httpx.HTTPError, ValueError, AttributeError):
+        return False
+
+
 def wait_comfy(url: str, timeout_s: float = 1800, poll_s: float = 5) -> float:
     """Seconds until ComfyUI at `url` answers /system_stats."""
     t0 = time.time()
     while time.time() - t0 < timeout_s:
-        try:
-            if httpx.get(f"{url}/system_stats", timeout=15).status_code == 200:
-                return time.time() - t0
-        except httpx.HTTPError:
-            pass
+        if is_comfy(url):
+            return time.time() - t0
         time.sleep(poll_s)
     raise TimeoutError(f"ComfyUI at {url} not answering after {timeout_s}s")
 
@@ -247,7 +250,16 @@ class Fleet:
             self._up = threading.Thread(target=self._scale_up, daemon=True)
             self._up.start()
         for uuid, m in list(self.managed.items()):
+            if not m["url"]:
+                continue   # still starting
             busy = self._busy(m["url"])
+            if busy is None:   # unreachable: counts as busy, never idle, but a wrong address must not stay in the pool
+                m.setdefault("bad_since", self.clock())
+                if self.clock() - m["bad_since"] >= 180:
+                    self._re_resolve(uuid, m)
+                busy = True
+            else:
+                m.pop("bad_since", None)
             if busy:
                 m["idle_since"] = None
             elif m["idle_since"] is None:
@@ -266,14 +278,26 @@ class Fleet:
         s = float(self.c.get("startup_minutes", 5))
         return (w - n * s) / (n * (n + 1))
 
-    def _busy(self, url: str) -> bool:
+    def _busy(self, url: str) -> bool | None:
+        """True if the server has work, False if idle, None if it does not answer as ComfyUI."""
         if self.p._assigned.get(url, 0) > 0:
             return True
         try:
             running, pending = self.p.client(url).queue_info()
             return running + pending > 0
-        except Exception:  # noqa: BLE001 - an unreachable server counts as busy, never as idle to be stopped
-            return True
+        except Exception:  # noqa: BLE001
+            return None
+
+    def _re_resolve(self, uuid: str, m: dict) -> None:
+        """A pool server that has not answered for minutes: look its ComfyUI address up again and swap it in."""
+        m["bad_since"] = self.clock()
+        url = self.api.comfy_url(uuid)
+        if url and url != m["url"]:
+            with self.p.lock:
+                servers = self.p.cfg["comfy"]["servers"]
+                servers[:] = [url if u == m["url"] else u for u in servers]
+            self.log(f"{uuid}: {m['url']} does not answer as ComfyUI; now {url}")
+            m["url"] = url
 
     # ---------- actions ----------
 

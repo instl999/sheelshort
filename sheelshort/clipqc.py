@@ -5,7 +5,7 @@ Two checks, both cheap next to a render:
   words heard in each line's span; a line not found, or heard with a character error rate above `max_line_cer`, fails.
 - **Picture** (the servers' vision model, one call per clip): one frame from the middle of every cut, side by side in a
   strip, described blind. Visible on-screen text or subtitles, a day/night look that contradicts the location's
-  `light`, or a single-character close-up of the wrong sex fail.
+  `light`, a character shot with nobody in it, or a single-character close-up of the wrong sex fail.
 
 The result (problems, per-line CER, per-panel description) is saved to edit/<EP>/clipqc/<take>.json and shown in the
 review page; render.py uses it to decide on re-takes and picks the take with the fewest problems.
@@ -25,6 +25,7 @@ For each panel, answer in order. Answer with ONE JSON object and nothing else:
   "night": <true if it is clearly night or dark, false if daylight or a brightly lit day scene>,
   "glitch": <true if a face or body is clearly malformed, melted or duplicated>}}]}}"""
 
+RULES = 3   # bump when the rules change: cached results are re-judged (the vision answers stay cached in qc.ask)
 NIGHT = re.compile(r"\bnight|moonlight|dark\b|midnight", re.I)
 DAY = re.compile(r"\bday(light)?\b|sunlight|morning|afternoon|noon", re.I)
 
@@ -37,23 +38,66 @@ def cut_times(clip: dict) -> list[float]:
     return out
 
 
-def strip(p: Project, video: Path, clip: dict) -> Path:
-    dur = media.probe(video)["duration"]
-    tmp = p.d("edit", "_qc_frames", video.stem)
+def cut_at(clip: dict, t: float) -> int:
+    """0-based index of the planned cut playing at `t` seconds (the last one past the clip's planned end)."""
+    end = 0.0
+    for i, cut in enumerate(clip["cuts"]):
+        end += h3prompt.cut_len(cut)
+        if t < end:
+            return i
+    return len(clip["cuts"]) - 1
+
+
+def sample_times(clip: dict, dur: float, shot_cuts: list[float]) -> list[float]:
+    """The middle of every planned cut, plus the middle of every shot H3 actually cut that contains none of them:
+    an inserted shot (an empty establishing view during a voice-over, say) is judged against the cut it plays in."""
+    planned = [min(t, dur - 0.05) for t in cut_times(clip)]
+    bounds = [0.0] + [c for c in shot_cuts if 0 < c < dur] + [dur]
+    extra = [(a + b) / 2 for a, b in zip(bounds, bounds[1:])
+             if b - a >= 0.8 and not any(a <= t < b for t in planned)]
+    return sorted(planned + extra)
+
+
+def strip(p: Project, ep: str, video: Path, times: list[float]) -> Path:
+    tmp = p.d("edit", ep, "clipqc", "frames", video.stem)   # per episode: E03 and E04 both have a C3_h3_t1
     frames = []
-    for i, t in enumerate(cut_times(clip)):
+    for i, t in enumerate(times):
         f = tmp / f"p{i + 1}.jpg"
-        media._run(["ffmpeg", "-y", "-v", "error", "-ss", f"{min(t, dur - 0.05):.3f}", "-i", str(video), "-frames:v", "1",
+        media._run(["ffmpeg", "-y", "-v", "error", "-ss", f"{t:.3f}", "-i", str(video), "-frames:v", "1",
                     "-q:v", "3", str(f)])
         frames.append(f)
     return media.tile(frames, tmp / "strip.jpg", cols=len(frames), cell=(288, 512))
 
 
+def judge_panel(chars: dict, i: int, cut: dict, pan: dict, want_night: bool, want_day: bool) -> list[str]:
+    """Problems with cut `i`, from the vision model's blind description `pan` of its middle frame."""
+    out = []
+    if pan.get("text_or_subtitles") is True:
+        out.append(f"cut {i}: on-screen text")
+    if pan.get("glitch") is True:
+        out.append(f"cut {i}: malformed face or body")
+    if want_night and pan.get("night") is False:
+        out.append(f"cut {i}: daylight in a night scene")
+    if want_day and pan.get("night") is True:
+        out.append(f"cut {i}: night look in a day scene")
+    subj = cut.get("subjects", [])
+    if cut["type"] != "ECU" and subj and pan.get("people") == 0:   # an ECU may be hands or a prop
+        out.append(f"cut {i}: nobody in the shot, should show {', '.join(chars[c]['name'] for c in subj)}")
+    if cut["type"] in ("CU", "ECU", "VO") and len(subj) == 1:
+        sex = qc.written_sex(chars[subj[0]])
+        seen = str(pan.get("main_person_sex", "")).lower()
+        if sex and seen in ("woman", "man") and seen != sex:
+            out.append(f"cut {i}: shows a {seen}, should be {chars[subj[0]]['name']}")
+    return out
+
+
 def check(p: Project, ep: str, clip: dict, video: Path) -> dict:
     """Problems with one rendered take (an empty list passes). Cached per take in edit/<EP>/clipqc/<take>.json."""
     out_path = p.d("edit", ep, "clipqc") / f"{video.stem}.json"
-    if out_path.exists() and load_json(out_path).get("mtime") == video.stat().st_mtime_ns:
-        return load_json(out_path)
+    if out_path.exists():
+        old = load_json(out_path)
+        if old.get("mtime") == video.stat().st_mtime_ns and old.get("rules") == RULES:
+            return old
     c = p.cfg.get("qc", {})
     problems = []
     lines = assemble.heard_lines(p, ep, clip, video)
@@ -65,8 +109,9 @@ def check(p: Project, ep: str, clip: dict, video: Path) -> dict:
     panels = []
     if c.get("clip_vision", True):
         try:
-            img = strip(p, video, clip)
-            n = len(clip["cuts"])
+            times = sample_times(clip, media.probe(video)["duration"], media.shot_cuts(video))
+            img = strip(p, ep, video, times)
+            n = len(times)
             ans = qc.ask(p, f"clipqc/{ep}_{video.stem}", img, STRIP_PROMPT.format(n=n),
                          model=c.get("clip_vlm_model"), mmproj=c.get("clip_vlm_mmproj"), handler=c.get("clip_vlm_chat_handler"))
             panels = ans.get("panels") or []
@@ -74,24 +119,14 @@ def check(p: Project, ep: str, clip: dict, video: Path) -> dict:
                            p.bible["locations"][clip["location"]].get("light", ""), flags=re.I)   # "no daylight anywhere"
             want_night = bool(NIGHT.search(light)) and not DAY.search(light)
             want_day = bool(DAY.search(light)) and not NIGHT.search(light)
-            for i, (cut, pan) in enumerate(zip(clip["cuts"], panels), 1):
-                if pan.get("text_or_subtitles") is True:
-                    problems.append(f"cut {i}: on-screen text")
-                if pan.get("glitch") is True:
-                    problems.append(f"cut {i}: malformed face or body")
-                if want_night and pan.get("night") is False:
-                    problems.append(f"cut {i}: daylight in a night scene")
-                if want_day and pan.get("night") is True:
-                    problems.append(f"cut {i}: night look in a day scene")
-                subj = cut.get("subjects", [])
-                if cut["type"] in ("CU", "ECU", "VO") and len(subj) == 1:
-                    sex = qc.written_sex(p.chars[subj[0]])
-                    seen = str(pan.get("main_person_sex", "")).lower()
-                    if sex and seen in ("woman", "man") and seen != sex:
-                        problems.append(f"cut {i}: shows a {seen}, should be {p.chars[subj[0]]['name']}")
+            for t, pan in zip(times, panels):
+                k = cut_at(clip, t)
+                for prob in judge_panel(p.chars, k + 1, clip["cuts"][k], pan, want_night, want_day):
+                    if prob not in problems:
+                        problems.append(prob)
         except Exception as e:  # noqa: BLE001 - a failed vision call must not fail the render
             log(f"clipqc {video.stem}: vision check skipped ({e})")
-    res = {"mtime": video.stat().st_mtime_ns, "take": video.stem, "problems": problems, "lines": lines, "panels": panels}
+    res = {"rules": RULES, "mtime": video.stat().st_mtime_ns, "take": video.stem, "problems": problems, "lines": lines, "panels": panels}
     save_json(out_path, res)
     log(f"clipqc {ep}/{video.stem}: " + ("pass" if not problems else "; ".join(problems)))
     return res

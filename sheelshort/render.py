@@ -189,9 +189,14 @@ def run(p: Project, eps: str | list[str], only: set[str] | None = None, takes: i
                 results.setdefault((ep, clip["id"]), []).append((t, clipqc.check(p, ep, clip, dest)))
 
         def existing(spec):
+            """The takes on disk rendered from the clip as it is now. A take left from an earlier version of the
+            episode is a different scene: it must never be checked, picked or counted (E03 C3 once used one)."""
+            ep, clip, text, refs, files, seconds, track = spec
             t, out = 1, []
-            while clip_path(p, spec[0], spec[1]["id"], t).exists():
-                out.append(t)
+            while (dest := clip_path(p, ep, clip["id"], t)).exists():
+                meta = dest.with_suffix(".json")
+                if not meta.exists() or load_json(meta).get("fingerprint") == fingerprint(text, files, track, seconds):
+                    out.append(t)
                 t += 1
             return out
 

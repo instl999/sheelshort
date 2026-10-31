@@ -243,6 +243,45 @@ cliffhanger line.
 - **Clean version and delivery package** (`package`).
 - **Pacing report** in each review page, against the reference numbers.
 
+
+### 0.10 Quality pass 2 (2026-10-31): every episode at reference pacing
+**Episodes.** E02–E04 were rewritten from the complete script episodes, as E01 was. They use reaction cuts, a second
+villager (村妇), Gao Liang's aide, and a city street:
+
+| Episode | Before | Now (planned) |
+|---|---|---|
+| E02 | 61 s, mean shot 4.7 s | 117 s, 47 shots, mean 2.5 s (measured on the master) |
+| E03 | 68 s | 173 s, 64 shots, mean 2.7 s |
+| E04 | 89 s, mean 4.7 s | 144 s, 49 shots, mean 2.9 s |
+
+**Engine.**
+- `check --fit` lengthens each dialogue cut too short for its line, and `check` prints each episode's planned pacing
+  against the reference.
+- Commands take several episodes (`make quancun E03,E04`). `render` puts all of them in one job queue, so the fleet's
+  extra servers stay busy until the last clip instead of powering off between episodes.
+
+**Two defects found by looking at the frames, not the QC verdicts:**
+- **Voice-over shots rendered an empty set.** The prompt said the speaker spoke "off-screen, as inner voice-over",
+  and H3 took that literally: E02 C3 shows three seconds of an empty signing table before Xiaokang appears. The
+  prompt now keeps the speaker in frame with lips closed while the inner voice is heard.
+- **Clip QC could not see it.** It sampled only the middle of each planned cut, and the empty shot fell between two
+  of them. It now also samples every shot H3 actually cut (ffmpeg scene detection) that contains no planned
+  midpoint, and judges it against the cut it plays in. A character shot with nobody in it fails. QC frames are
+  kept per episode: E03 and E04 both have a `C3_h3_t1`, and in one queue their strips overwrote each other.
+
+**Three more defects, found in the logs of the pooled E03/E04 run:**
+- **The fleet's servers got no work.** On these boots ComfyUI answered on port 6006. The probe took the app's other
+  port, which answers `/system_stats` with an HTML page and status 200, so two servers sat in the pool for two
+  hours while all 26 clips went to the original pair. An unreachable server also counted as "busy", so neither was
+  retired. Now:
+  - a server joins the pool only when `/system_stats` returns ComfyUI's JSON with its GPUs;
+  - a pool server that stops answering for 3 minutes has its address looked up again.
+- **Takes from an older version of the episode.** Only take 1 was checked against the current prompt. E03's C3, C6
+  and C8 picked a take 2 left over from the first E03, which shows a different scene. Takes whose fingerprint
+  does not match the clip as it is now are never checked, picked or counted, and re-takes replace them.
+- **QC skipped one-shot clips.** A one-shot clip (a voice-over) has a one-panel strip, and `xstack` needs at least
+  two inputs.
+
 ---
 
 ## 1. Market research: does this already exist?
