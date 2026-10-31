@@ -69,7 +69,8 @@ through observable cues (eyes drop, jaw tightens, a delayed answer), not emotion
 
 ## 4. Produce
 ```
-python -m sheelshort check <project>          # fix every rule it reports before spending GPU time
+python -m sheelshort check <project> --fit    # lengthens dialogue cuts too short for their lines, prints each
+                                              # episode's planned pacing; fix every rule it reports before GPU time
 python -m sheelshort cast <project>           # close-ups, three-view sheets, props, plates, cast voices
 python -m sheelshort perform <project> E01    # only with render.dialogue = "acted": Drama 3 acted takes + dialogue tracks
 python -m sheelshort render <project> E01     # H3 renders each clip and voices the lines (default) from the cast voices
