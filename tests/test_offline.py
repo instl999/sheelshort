@@ -278,6 +278,22 @@ def test_fleet_dry_run_changes_nothing():
     assert api.calls == [] and len(p.cfg["comfy"]["servers"]) == 2
 
 
+
+def test_fit_durations_gives_lines_room_and_never_shortens():
+    from sheelshort import h3prompt
+    scene = {"language": "zh-CN", "clips": [{"id": "C1", "cuts": [
+        {"type": "CU", "line": "这是一句需要差不多四秒钟才能说完的台词啊", "dur": 2.0},
+        {"type": "RX", "dur": 1.0},
+        {"type": "CU", "line": "好。", "dur": 2.5}]}]}
+    changes = h3prompt.fit_durations(scene)
+    cuts = scene["clips"][0]["cuts"]
+    need = h3prompt.spoken_len(cuts[0]["line"], "zh") + h3prompt.LINE_SLACK_S
+    assert len(changes) == 1 and cuts[0]["dur"] + cuts[1]["dur"] >= need and cuts[2]["dur"] == 2.5
+    assert h3prompt.fit_durations(scene) == []                   # idempotent
+    pc = h3prompt.pacing(scene)
+    assert pc["shots"] == 3 and pc["duration_s"] == round(sum(c["dur"] for c in cuts), 1)
+
+
 if __name__ == "__main__":
     for name, fn in list(globals().items()):
         if name.startswith("test_"):

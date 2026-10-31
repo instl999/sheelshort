@@ -15,6 +15,7 @@ House rules (from the user, apply to every generation):
 """
 from __future__ import annotations
 
+import math
 import unicodedata
 from dataclasses import dataclass, field
 
@@ -32,6 +33,8 @@ SHOT_PHRASE = {
 NO_TEXT = "No on-screen text, subtitles, captions, logos or watermarks appear at any point."
 NO_MUSIC = "None. There is no background music or score at any point; only diegetic sound is heard."
 LANG_TAG = {"zh": "Chinese", "en": "English", "ja": "Japanese", "ko": "Korean"}
+REFERENCE_MEAN_SHOT_S = 2.07   # 全村抢 001 as released: 151 s, 73 shots
+LINE_SLACK_S = 0.3             # breathing room a line needs beyond its spoken length
 
 
 def cut_len(cut: dict) -> float:
@@ -80,7 +83,7 @@ def check_rules(scene: dict) -> list[str]:
                     errs.append(f"{where}: dialogue must be a close-up, over-the-shoulder or voice-over shot, not {t}")
                 need = spoken_len(cut["line"], lang)
                 room = cut_len(cut) + sum(cut_len(c) for c in _reactions_after(clip["cuts"], i - 1))
-                if need > room - 0.3:
+                if need > room - LINE_SLACK_S:
                     errs.append(f"{where}: line needs ~{need:.1f}s but the cut (and its reaction shots) last {room:.1f}s; "
                                 "split it, add a reaction cut, or lengthen the cut")
             if t == "OTS":
@@ -135,6 +138,31 @@ def _reactions_after(cuts: list[dict], idx: int) -> list[dict]:
             break
         out.append(c)
     return out
+
+
+def fit_durations(scene: dict) -> list[str]:
+    """Lengthen each dialogue cut whose line (with its reaction cuts) has too little room. Edits the clips in place and
+    returns what changed; never shortens a cut."""
+    lang, changes = scene.get("language", "zh-CN"), []
+    for clip in scene["clips"]:
+        for i, cut in enumerate(clip["cuts"]):
+            if not cut.get("line"):
+                continue
+            need = spoken_len(cut["line"], lang) + LINE_SLACK_S
+            room = cut_len(cut) + sum(cut_len(c) for c in _reactions_after(clip["cuts"], i))
+            if need > room:
+                old = cut_len(cut)
+                cut["dur"] = round(old + math.ceil((need - room) * 10) / 10 + 0.1, 1)
+                changes.append(f"{clip['id']} cut {i + 1}: {old:g}s -> {cut['dur']:g}s")
+    return changes
+
+
+def pacing(scene: dict) -> dict:
+    """Planned shot statistics of an episode, comparable with media.pacing() on a finished master."""
+    lens = [cut_len(c) for clip in scene["clips"] for c in clip["cuts"]]
+    total = sum(lens)
+    return {"clips": len(scene["clips"]), "shots": len(lens), "duration_s": round(total, 1),
+            "mean_shot_s": round(total / max(len(lens), 1), 2), "over_5s": sum(x > 5 for x in lens)}
 
 
 def clip_characters(clip: dict) -> list[str]:

@@ -103,7 +103,7 @@ def main(argv: list[str] | None = None) -> None:
     ap = argparse.ArgumentParser(prog="sheelshort", description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("command", choices=["new", "doctor", "check", "cast", "perform", "render", "assemble", "review", "make", "free", "evaluate", "fleet", "package"])
     ap.add_argument("project")
-    ap.add_argument("episode", nargs="?")
+    ap.add_argument("episode", nargs="?", help="episode id, or several separated by commas (E03,E04)")
     ap.add_argument("--script")
     ap.add_argument("--only", help="comma-separated clip ids (or line keys for perform)")
     ap.add_argument("--takes", type=int)
@@ -111,6 +111,7 @@ def main(argv: list[str] | None = None) -> None:
     ap.add_argument("--voice-ref", choices=["cast", "acted"], help="dialogue h3: voice references from the cast clip or acted takes")
     ap.add_argument("--seconds", type=float, help="test mode: only the opening clips of the episode, about this long (e.g. 20)")
     ap.add_argument("--dry-run", action="store_true")
+    ap.add_argument("--fit", action="store_true", help="check: lengthen dialogue cuts that are too short for their lines")
     a = ap.parse_args(argv)
     root = project_dir(a.project)
 
@@ -130,12 +131,23 @@ def main(argv: list[str] | None = None) -> None:
         p.cfg["render"]["voice_ref"] = a.voice_ref
     p.limit_s = a.seconds
     only = set(a.only.split(",")) if a.only else None
-    eps = [a.episode] if a.episode else p.episodes()
-    p.only_eps = [a.episode] if a.episode else None
+    eps = a.episode.split(",") if a.episode else p.episodes()
+    p.only_eps = eps if a.episode else None
 
     if a.command == "doctor":
         sys.exit(0 if doctor(p) else 1)
     if a.command == "check":
+        for ep in eps if a.fit else []:
+            e = p.episode(ep)
+            changes = h3prompt.fit_durations({**p.bible, **e})
+            if changes:
+                save_json(p.root / "episodes" / f"{ep}.json", e)
+                print(f"{ep}: fitted " + "; ".join(changes))
+        for ep in eps:
+            pc = h3prompt.pacing(p.scene(ep))
+            slow = " (slower than the reference: add reaction cuts or split long shots)" if pc["mean_shot_s"] > 1.5 * h3prompt.REFERENCE_MEAN_SHOT_S else ""
+            print(f"{ep}: {pc['clips']} clips, {pc['shots']} shots, {pc['duration_s']} s, mean shot {pc['mean_shot_s']} s, "
+                  f"{pc['over_5s']} over 5 s; reference mean {h3prompt.REFERENCE_MEAN_SHOT_S} s{slow}")
         errs = check(p, eps)
         for e in errs:
             print(e)
