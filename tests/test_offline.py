@@ -1236,6 +1236,25 @@ def test_a_name_card_never_lands_on_a_tight_close_up_face():
         media.face_box = real
 
 
+def test_a_characters_demeanor_reaches_every_face_shot_and_the_eye_roll_check():
+    from sheelshort import clipqc
+    scene = json.loads((ROOT / "projects/quancun/bible.json").read_text())
+    scene["characters"]["dahua"]["demeanor"] = "composed and warm, attentive eyes; never contemptuous"
+    clip = _talk_clip()
+    scene["clips"] = [clip]
+    text = h3prompt.build(scene, clip, h3prompt.Refs(char_pictures={"dahua": ["a.png", "b.png"], "xiaokang": ["c.png", "d.png"]},
+                                                     location_pictures=["l.png"]))
+    assert "manner: composed and warm" in text
+    assert text.count("manner, unless this shot's action says otherwise: composed and warm") == 2   # dahua's two close-ups
+    chars = {"v": {"name": "V", "role": "man", "look": "a man", "demeanor": "smug, a faint sneer"},
+             "h": {"name": "H", "role": "woman", "look": "a woman", "demeanor": "warm"}}
+    roll = {"people": 1, "eye_roll": True}
+    assert not clipqc.judge_panel(chars, 1, {"type": "CU", "subjects": ["v"], "action": "He waits."}, roll, False, False)
+    assert clipqc.judge_panel(chars, 1, {"type": "CU", "subjects": ["h"], "action": "She waits."}, roll, False, False)
+    notes = h3prompt.cast_notes({"characters": {"x": {"card": "女主", "keep": "black bob"}}})
+    assert any("no `demeanor`" in n for n in notes)
+
+
 if __name__ == "__main__":
     for name, fn in list(globals().items()):
         if name.startswith("test_"):
