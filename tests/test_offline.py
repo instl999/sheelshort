@@ -1230,7 +1230,8 @@ def test_a_name_card_never_lands_on_a_tight_close_up_face():
     real = media.face_box
     media.face_box = lambda v, t: {1: (0.56, 0.28, 0.67, 0.34), 2: (0.2, 0.2, 0.8, 0.6), 3: (0.22, 0.2, 0.8, 0.6)}[t]
     try:
-        assert assemble.steady_face(Path("x.mp4"), 1, 2, 3) == (0.21, 0.2, 0.8, 0.6)   # the eye-sized box is dropped
+        x0, y0, x1, y1 = assemble.steady_face(Path("x.mp4"), 1, 2, 3)   # the eye-sized box is dropped...
+        assert (x0, x1) == (0.033, 0.977) and y0 < 0.2 and y1 > 0.6        # ...and the face widened to the whole head
     finally:
         media.face_box = real
 
