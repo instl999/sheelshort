@@ -200,5 +200,6 @@ def _finish_voice(p: Project, c: str, src, transcript: str, origin: str) -> None
 def _parallel(p: Project, jobs: list) -> None:
     if not jobs:
         return
-    with ThreadPoolExecutor(max(1, len(p.cfg["comfy"]["servers"]) * 2)) as ex:
+    p.wake()
+    with ThreadPoolExecutor(max(2, len(p.cfg["comfy"]["servers"]) * 2)) as ex:
         list(ex.map(lambda f: f(), jobs))

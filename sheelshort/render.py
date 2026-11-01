@@ -151,12 +151,14 @@ def run(p: Project, eps: str | list[str], only: set[str] | None = None, takes: i
         from . import assemble
         for i, ep in enumerate(eps):   # each music bed renders alongside the clips, not after them
             jobs.insert(i, lambda ep=ep: assemble.score(p, ep))
+    if jobs:
+        p.wake()   # the on-demand servers first, so the fleet sizes the pool from what is really up
     fl = None
     if p.cfg.get("fleet", {}).get("enabled") and not p.dry:
         from .fleet import Fleet
         fl = Fleet(p)
         fl.start(sum(1 for j in jobs if getattr(j, "renders", False)))   # only real renders are work worth a server
-    workers = 2 * (len(p.cfg["comfy"]["servers"]) + (int(p.cfg["fleet"]["max_extra"]) if fl else 0))
+    workers = 2 * max(len(p.cfg["comfy"]["servers"]), int(p.cfg["fleet"]["max_servers"]) if fl else 0)
 
     def run_one(job):
         try:

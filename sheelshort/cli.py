@@ -14,7 +14,8 @@ everything deterministic. Every command is resumable: run it again after a crash
   python -m sheelshort make <project> EP               cast + perform + render + assemble + review
   python -m sheelshort make <project> EP --seconds 20  fast test: only the opening ~20 s, finished (edit/<EP>/master_20s.mp4)
   python -m sheelshort package <project>               delivery/: episodes, clean cuts, SRTs, cover, thumbnails, metadata
-  python -m sheelshort fleet <project> [off]           AutoDL autoscaling: list (or power off) the managed extra servers
+  python -m sheelshort fleet <project> [off|idle]      AutoDL servers: list them (off: power off every one no run uses;
+                                                       idle: watch and power off idle ones, run in the background)
   python -m sheelshort evaluate <project> EP           A/B per line: acted vs. H3-voiced renders (edit/<EP>/dialogue_ab.md)
 """
 from __future__ import annotations
@@ -67,6 +68,7 @@ def check(p: Project, eps: list[str]) -> list[str]:
 
 def doctor(p: Project) -> bool:
     ok = True
+    p.wake()
     for url in p.cfg["comfy"]["servers"]:
         try:
             c = p.client(url)
@@ -125,6 +127,18 @@ def main(argv: list[str] | None = None) -> None:
         return
 
     p = Project(root, dry_run=a.dry_run)
+    fc = p.cfg.get("fleet", {})
+    if fc.get("enabled") and fc.get("core") and not fc.get("dry_run") and a.command not in ("check", "fleet", "free"):
+        from . import fleet   # every server is powered on on demand: the first GPU job wakes them, the end lets them go
+        p.waker = fleet.Session(p)
+    try:
+        _dispatch(a, p)
+    finally:
+        if p.waker:
+            p.waker.release()
+
+
+def _dispatch(a, p: Project) -> None:
     if a.dialogue:
         p.cfg["render"]["dialogue"] = a.dialogue
     if a.voice_ref:
@@ -155,16 +169,23 @@ def main(argv: list[str] | None = None) -> None:
             print(e)
         print("ok" if not errs else f"{len(errs)} problem(s)")
         sys.exit(1 if errs else 0)
-    if a.command == "fleet":   # python -m sheelshort fleet <project> [status|off]
+    if a.command == "fleet":   # python -m sheelshort fleet <project> [off|idle]
         from . import fleet
-        api, prefix = fleet.AutoDL(), p.cfg["fleet"]["name_prefix"]
-        fleet.reap_orphans(api, log)
-        for inst in fleet.managed(api, prefix):
-            if a.episode == "off" and inst["status"] not in ("shutdown",):
+        api, fc = fleet.AutoDL(), p.cfg["fleet"]
+        if a.episode == "idle":
+            fleet.watch_idle(api, fc, log)
+            return
+        fleet.reap_idle(api, fc, log)
+        for inst in [i for i in api.instances() if fleet.ours(fc, i)]:
+            used = fleet.holders(inst["uuid"])
+            if a.episode == "off" and inst["status"] not in ("shutdown",) and not used:
                 api.power_off(inst["uuid"])
+                fleet.forget(inst["uuid"])
                 log(f"powered off {inst['uuid']}")
             else:
-                log(f"{inst['uuid']} {inst.get('name')} {inst['status']} {inst.get('region_name')} {inst.get('gpu_spec_uuid')}")
+                kind = "core" if inst["uuid"] in (fc.get("core") or []) else inst.get("name")
+                log(f"{inst['uuid']} {kind} {inst['status']} {inst.get('region_name')} {inst.get('gpu_spec_uuid')}"
+                    + (f", in use by pid {', '.join(map(str, used))}" if used else ""))
         return
     if a.command == "package":
         from . import package

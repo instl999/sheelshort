@@ -345,6 +345,32 @@ The fresh render's 10 clips all passed clip QC on the first take. It runs 122.5 
 12 jump cuts and around 80% static camera. So they came from the workflow, not from one adaptation. `--fit` repairs 7
 of the 12; the other 5 are one-person phone-call sequences, which need a rewrite.
 
+### 0.12 Every server on demand (2026-10-31)
+
+Before this, the two servers in `[comfy] servers` ran around the clock, pay-as-you-go, and only the fleet's extra
+servers were powered on and off. The owner asked for all servers to follow the dynamic rule. Now:
+
+- **Core servers.** The owner's two instances are listed by uuid in `[fleet] core`, and `[comfy] servers` is empty.
+  Their address is looked up from the AutoDL API on every wake, because ComfyUI moves between ports 6006 and 6008.
+- **Wake on the first GPU job.** A command starts nothing until a job needs a GPU (`Project.pick`, or the pools in
+  `cast`, `perform` and `render`), so `check`, or an `assemble` whose upscales are cached, never powers anything on.
+  On the first job, every instance of ours that is already running joins the pool (warm, and billed anyway). If that
+  is fewer than `min_servers` (1), stopped core servers are powered on first, then stopped `sheelshort-bj-N` ones, and
+  only then is a new instance created.
+- **Scaling while rendering.** The scaling rule in §0.8 is unchanged and still adds servers while clips wait. It
+  counts toward `max_servers` = 4 in all, the same 2 + 2 as before, and powers on a stopped core server before a fleet
+  one. A server the fleet started is powered off when it is idle and when the render ends.
+- **Off when idle.** When a command ends, it lets go of its servers. A background watcher, `fleet <project> idle`,
+  powers a server off once no live sheelshort process holds it and its ComfyUI queue has been empty for
+  `idle_off_minutes` (10). Work queued from the ComfyUI page restarts the wait. Back-to-back commands, such as a 20 s
+  test followed by `make`, find the server still warm.
+- **Shared between runs.** `.cache/fleet_owned.json` records which processes hold which server, under a file lock.
+  Two runs never power on the same stopped server, and a run never powers off a server another live run uses. A run
+  killed without cleanup counts as gone, and its servers go idle.
+
+Cost: a cold command now waits for a boot, which took 67–68 s to reach the pool on this app plus H3's first model
+load. In exchange, the two servers stop billing about 10 minutes after the last run ends.
+
 ---
 
 ## 1. Market research: does this already exist?

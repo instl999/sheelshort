@@ -124,7 +124,8 @@ and look before spending GPU time on the whole episode.)
 - **Picture:** still sample frames of each clip (ffmpeg `-vf fps=1`) and look: faces match the close-ups, the right
   person speaks, no extra people, no on-screen text, mouths move on the lines. A failed clip:
   `render ... --only K2 --takes 2`, then choose the take in `edit/<EP>/picks.json` (`{"K2": 2}`) and re-assemble.
-- **Long runs:** with `[fleet] enabled = true` the render adds AutoDL servers while clips wait and powers them off
-  afterwards. After any interrupted run, check `python -m sheelshort fleet <project>` and power off leftovers with
-  `... fleet <project> off`.
+- **Servers are on demand:** with `[fleet] core` set, every server is off while nothing renders. The first GPU job
+  of a command powers one on, which takes about 1–3 min: a quiet start is not a hang. The render adds more while clips
+  wait. Servers power off about 10 min after the last command ends. `python -m sheelshort fleet <project>` shows each
+  server and which run uses it, and `... fleet <project> off` powers off every server no run uses.
 - Never change a tested default without an A/B; report what you changed and why.

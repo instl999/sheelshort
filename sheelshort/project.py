@@ -65,6 +65,7 @@ class Project:
         self.cfg = config(self.root / "sheelshort.toml")
         self.bible = load_json(self.root / "bible.json")
         self.dry = dry_run
+        self.waker = None   # fleet.Session when the servers are powered on on demand (`[fleet] core`)
         self.state_path = self.root / "state.json"
         self.state = load_json(self.state_path) if self.state_path.exists() else {"jobs": {}}
         self.lock = threading.Lock()
@@ -182,11 +183,17 @@ class Project:
     def object_info(self, c: comfy.ComfyClient) -> dict:
         return c.object_info(REPO / ".cache" / f"object_info_{urlparse(c.base_url).hostname}.json")
 
+    def wake(self) -> None:
+        """Make sure servers are up before work is handed out (on-demand servers start on the first GPU job)."""
+        if self.waker:
+            self.waker.ensure()
+
     def pick(self, exclude: set[str] | frozenset = frozenset()) -> comfy.ComfyClient:
         """The least busy server with a free slot. A server holds at most `[comfy] in_flight` of this run's jobs (one
         running, one queued behind it); the others wait here, not in a server's queue, so a server the fleet adds
         mid-run gets work at once instead of finding everything already queued elsewhere."""
         cap = int(self.cfg["comfy"].get("in_flight", 2))
+        self.wake()
         while True:
             with self.lock:
                 best, best_load, reachable = None, None, 0
@@ -242,6 +249,10 @@ class Project:
                 c = self.client(job["server"])
                 log(f"{key}: resuming {job['prompt_id']} on {urlparse(c.base_url).hostname}")
             else:
+                if self.dry:
+                    self.wake()   # a dry run only uses a server that is already running, for its node schemas
+                    if not self.cfg["comfy"]["servers"]:
+                        raise comfy.ComfyError("dry run: no server is running to validate against")
                 c = self.pick(exclude) if not self.dry else self.client(self.cfg["comfy"]["servers"][0])
                 api = build(c)
                 problems = comfy.validate(api, self.object_info(c))
