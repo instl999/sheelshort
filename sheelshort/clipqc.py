@@ -106,8 +106,9 @@ def judge_panel(chars: dict, i: int, cut: dict, pan: dict, want_night: bool, wan
     if slack is not None and isinstance(pan.get("people"), int) and pan["people"] > expected + slack:
         out.append(f"cut {i}: {pan['people']} people in the shot, written for {expected} (add `extras` if they belong)")
     # an eye-roll reads as contempt: only where the script asks for one (林晚's opening close-up had one it didn't)
+    manner = " ".join(chars.get(c, {}).get("demeanor", "") for c in cut.get("subjects", []))   # a scornful villain may
     if pan.get("eye_roll") is True and cut["type"] in h3prompt.FACE_SHOTS and not h3prompt.EYE_ROLL.search(
-            " ".join(str(cut.get(k, "")) for k in ("action", "act", "delivery", "emotion"))):
+            " ".join(str(cut.get(k, "")) for k in ("action", "act", "delivery", "emotion")) + " " + manner):
         out.append(f"cut {i}: an eye-roll the script does not ask for (it reads as contempt)")
     if cut["type"] in ("CU", "MCU", "ECU", "VO") and len(subj) == 1:
         sex = qc.written_sex(chars[subj[0]])
