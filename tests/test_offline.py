@@ -109,10 +109,12 @@ def test_qc_aligns_text_to_the_image():
             "looks about 72, written as 56", "glasses missing"],
             {"face_marks": [{"kind": "scar", "on": "nose bridge", "image_side": "center"}]})
         a = json.loads((p.root / "bible.json").read_text())["characters"]["a"]
-    assert left == ["glasses missing"]                                  # text cannot fix a missing object
+    assert left == ["looks about 72, written as 56", "glasses missing"]  # text cannot fix an object; the age is the script's
     assert "mole on his left cheekbone" in a["look"] and "left cheekbone" in a["keep"]
     assert "scar on the nose bridge" in a["keep"] and "eyebrow" not in a["face_detail"]
-    assert a["look"].startswith("a 72-year-old")
+    assert a["look"].startswith("a 56-year-old")
+    from sheelshort import cast
+    assert "exactly 56 years old" in cast.age_hint(left, a) and "no deep wrinkles" in cast.age_hint(left, a)
 
 
 def _talk_clip(cid="C1", loc="village_gate"):
@@ -639,7 +641,8 @@ def test_reference_structure_notes_length_openings_and_endings():
         clips.append(cl)
     scene["clips"] = clips
     notes = " | ".join(h3prompt.craft_notes(scene))
-    assert "runs 115 s" in notes and "C1 (village_gate), C7 (village_tree)" in notes
+    assert "runs 115 s" in notes and "open without a wide or medium shot of the place: C7 (village_tree)." in notes
+    assert "C1 (" not in notes                                                # the episode's own opening may be a cold open
     assert "last shot is" not in notes                                        # a 2.4 s close-up is a good last shot
     scene["clips"][-1]["cuts"][-1] = {"type": "WS", "subjects": [], "composition": "", "action": "", "camera": "", "dur": 3}
     assert "last shot is WS" in " | ".join(h3prompt.craft_notes(scene))
@@ -674,6 +677,140 @@ def test_location_card_and_grade_follow_the_bible():
         assert assemble.grade(p) == assemble.GRADES["bright"] and "vignette" not in assemble.grade(p)
         p.cfg["edit"]["grade"] = "none"
         assert assemble.grade(p) == ""
+
+
+def test_place_card_waits_for_the_wide_shot_and_subtitles_never_overlap():
+    from sheelshort import assemble
+    with tempfile.TemporaryDirectory() as tmp:
+        p = _scratch_project(tmp, {"name": "A", "name_zh": "林薇", "card": "前女友"})
+        p.bible["locations"] = {"room": {"name_zh": "云顶餐厅"}}
+        p.cfg["render"]["dialogue"] = "h3"
+        clip = {"id": "K1", "location": "room", "cuts": [{"type": "CU", "subjects": ["a"], "dur": 1.7},
+                                                          {"type": "WS", "subjects": ["a"], "dur": 2.0}]}
+        (p.root / "episodes" / "E01.json").write_text(json.dumps({"id": "E01", "clips": [clip]}))
+        real = (assemble.chosen_take, assemble.edge_trims, assemble.heard_lines, media.face_box, media.shot_cuts, media.probe)
+        media.probe = lambda v: {"duration": 3.7}
+        assemble.chosen_take = lambda p, ep, c: Path(tmp) / "K1.mp4"
+        assemble.edge_trims = lambda v, s, l: (0.0, 3.7)
+        assemble.heard_lines = lambda p, ep, c, v: [{"text": "二叔。", "start": 0.2, "end": 0.5},
+                                                    {"text": "你来了", "start": 0.9, "end": 2.0}]
+        media.face_box = lambda v, t: None
+        media.shot_cuts = lambda v, threshold=0.3: [1.7]
+        try:
+            (Path(tmp) / "K1.mp4").write_bytes(b"")
+            plan = assemble.edl(p, "E01")
+        finally:
+            assemble.chosen_take, assemble.edge_trims, assemble.heard_lines, media.face_box, media.shot_cuts, media.probe = real
+        name = [c for c in plan["cards"] if c.get("kind") != "place"]
+        place = [c for c in plan["cards"] if c.get("kind") == "place"]
+        assert name and name[0]["start"] == 0.15                                  # the cold-open face keeps its name card
+        assert place and place[0]["start"] == 1.8                                 # the place card sits on the wide shot
+        a, b = plan["subtitles"]
+        assert a["end"] == 0.86 and b["start"] == 0.9                             # stretched toward 1 s, but no overlap
+
+
+def test_sound_effects_land_on_the_rendered_cut_at_a_level_set_by_the_dialogue():
+    import subprocess
+    import numpy as np
+    from sheelshort import sfx
+    clip = {"id": "K1", "location": "x", "cuts": [{"type": "MS", "dur": 3}, {"type": "CU", "dur": 3, "sfx": "boom"},
+                                                   {"type": "CU", "dur": 2, "sfx": [{"cue": "boom", "at": 0.5}, "nope"]}]}
+    scene = {"sfx": {"boom": {"file": "inputs/boom.wav", "sync": 0.1, "len": 0.5, "level": 0}}, "clips": [clip]}
+    errs = sfx.check(scene)
+    assert len(errs) == 1 and "'nope'" in errs[0]
+    clip["cuts"][2]["sfx"] = [{"cue": "boom", "at": 0.5}]
+    with tempfile.TemporaryDirectory() as tmp:
+        p = _scratch_project(tmp, {})
+        p.bible["sfx"] = scene["sfx"]
+        (p.root / "inputs").mkdir()
+        # the cue: 0.1 s of silence, then a 0.4 s tone (its sync point is the tone's onset)
+        subprocess.run(["ffmpeg", "-v", "error", "-f", "lavfi", "-i", "sine=f=880:d=0.4", "-af", "adelay=100,volume=-6dB",
+                        str(p.root / "inputs" / "boom.wav")], check=True)
+        dia = p.root / "dia.wav"
+        subprocess.run(["ffmpeg", "-v", "error", "-f", "lavfi", "-i", "sine=f=220:d=8", "-af", "volume=-30dB", str(dia)], check=True)
+        real = media.shot_cuts
+        media.shot_cuts = lambda video, threshold=0.3: [3.2, 6.1]          # H3 cut 0.2 s later than written
+        try:
+            ev = sfx.events_in(p, clip, 10.0, 0.0, 8.0, dia)
+        finally:
+            media.shot_cuts = real
+        assert ev == [{"cue": "boom", "start": 13.2, "dur": 3.0}, {"cue": "boom", "start": 16.5, "dur": 1.5}]
+        plan = {"sfx": [dict(ev[0], start=3.2)]}
+        ins, filt = ["-i", str(dia)], ["[0:a]aresample=48000,aformat=channel_layouts=stereo[dia]"]
+        out = sfx.mix(p, plan, ins, filt, "[dia]", [(dia, 8.0)])
+        assert out == "[withfx]"
+        raw = subprocess.run(["ffmpeg", "-v", "error", *ins, "-filter_complex", ";".join(filt), "-map", out, "-ac", "1",
+                              "-ar", "8000", "-f", "s16le", "-"], capture_output=True, check=True).stdout
+        a = np.frombuffer(raw, np.int16).astype(np.float32)
+        env = np.sqrt(np.convolve(a ** 2, np.ones(80) / 80, "same"))
+        onset = np.argmax(env > 1.25 * np.median(env)) / 8000
+        assert abs(onset - 3.2) < 0.03, onset                                   # the tone's onset, not the file's start
+        lift = 20 * np.log10(env[int(3.4 * 8000)] / np.median(env))
+        assert 1.5 < lift < 6, lift                                             # about as loud as the dialogue (level 0)
+
+
+def test_an_outfit_is_the_same_person_in_other_clothes():
+    from sheelshort import wardrobe
+    ch = {"name": "Chen Mo", "name_zh": "陈默", "role": "man", "look": "a 28-year-old man in a blue raincoat", "keep": "scar, blue raincoat",
+          "costume": "blue raincoat", "card": "外卖员",
+          "outfits": {"suit": {"look": "a 28-year-old man in a charcoal suit", "keep": "scar, charcoal suit", "costume": "charcoal suit"}}}
+    with tempfile.TemporaryDirectory() as tmp:
+        p = _scratch_project(tmp, ch)
+        p.bible["characters"]["b"] = {"name": "B", "role": "woman"}
+        ep = {"id": "E02", "outfits": {"a": "suit"}, "blocking": {"room": {"a": "left", "b": "right"}}, "clips": [
+            {"id": "K1", "location": "room", "summary": "{a} enters.", "cuts": [
+                {"type": "MCU", "subjects": ["a"], "speaker": "a", "to": "b", "line": "我回来了。", "action": "{a} smiles at {b}."}]},
+            {"id": "K2", "location": "room", "outfits": {"a": "default"}, "cuts": [{"type": "CU", "subjects": ["a"]}]}]}
+        (p.root / "episodes" / "E02.json").write_text(json.dumps(ep, ensure_ascii=False))
+        k1, k2 = p.clips("E02")
+        cut = k1["cuts"][0]
+        assert cut["subjects"] == ["a__suit"] and cut["speaker"] == "a__suit" and cut["to"] == "b"
+        assert cut["action"] == "{a__suit} smiles at {b}." and k1["summary"] == "{a__suit} enters."
+        assert k1["blocking"] == {"a__suit": "left", "b": "right"} and k2["cuts"][0]["subjects"] == ["a"]
+        suit = p.chars["a__suit"]
+        assert suit["costume"] == "charcoal suit" and suit["name_zh"] == "陈默" and "outfits" not in suit
+        assert p.voice("a__suit") == p.voice("a") and p.base("a__suit") == "a"
+        assert p.episode("E02")["clips"][0]["cuts"][0]["subjects"] == ["a"]       # the file keeps the writer's ids
+        assert p.scene("E02")["clips"][0]["cuts"][0]["subjects"] == ["a__suit"]
+        assert wardrobe.check(p.bible, ep) == []
+        ep["clips"][1]["outfits"] = {"a": "tux"}
+        assert any("no outfit 'tux'" in e for e in wardrobe.check(p.bible, ep))
+        from sheelshort import cast
+        assert "Change only the clothing to: charcoal suit" in cast.outfit_prompt(suit)
+
+
+def test_a_phone_line_is_heard_through_the_phone_and_extras_are_written_in():
+    scene = json.loads((ROOT / "projects/quancun/bible.json").read_text())
+    clip = _talk_clip()
+    clip["cuts"] = [{"type": "MCU", "subjects": ["xiaokang"], "speaker": "dahua", "via": "phone", "line": "你爹出事了。",
+                     "act": "急促", "emotion": "fear", "delivery": "breathless", "composition": "", "action": "", "camera": "Static camera.", "dur": 3},
+                    {"type": "MS", "subjects": ["xiaokang"], "extras": "two villagers mending a net", "composition": "",
+                     "action": "", "camera": "Static camera.", "dur": 2}]
+    scene["clips"] = [clip]
+    assert h3prompt.check_rules(scene) == []
+    text = h3prompt.build(scene, clip, h3prompt.Refs(char_pictures={"xiaokang": ["a.png", "b.png"], "dahua": ["c.png", "d.png"]},
+                                                     location_pictures=["l.png"]))
+    assert "never appears in the picture of this clip" in text and "voice comes through the phone held by" in text
+    assert "inner voice" not in text and "In the background: two villagers mending a net" in text
+    clip["cuts"][0]["subjects"] = ["dahua"]
+    assert any("heard from the other end" in e for e in h3prompt.check_rules(scene))
+    from sheelshort import clipqc
+    chars = scene["characters"]
+    crowd = {"people": 6, "main_person_sex": "man"}
+    assert any("6 people" in x for x in clipqc.judge_panel(chars, 1, {"type": "MS", "subjects": ["xiaokang"]}, crowd, False, False))
+    assert not any("people in" in x for x in clipqc.judge_panel(chars, 1, clip["cuts"][1], crowd, False, False))
+
+
+def test_phone_filter_thins_only_the_phone_line():
+    import subprocess
+    import numpy as np
+    filt = ["[0:a]anull[p0]"] + assemble.phone_filter("[p0]", "[a0]", [(1.0, 2.0)], "ph0")
+    raw = subprocess.run(["ffmpeg", "-v", "error", "-f", "lavfi", "-i", "sine=f=120:d=3", "-filter_complex", ";".join(filt),
+                          "-map", "[a0]", "-ac", "1", "-ar", "8000", "-f", "s16le", "-"], capture_output=True, check=True).stdout
+    a = np.frombuffer(raw, np.int16).astype(np.float32)
+    rms = lambda t0, t1: float(np.sqrt(np.mean(a[int(t0 * 8000):int(t1 * 8000)] ** 2)))
+    assert rms(1.2, 1.8) < 0.1 * rms(0.2, 0.8)                                 # 120 Hz is cut inside the window
+    assert abs(rms(2.2, 2.8) - rms(0.2, 0.8)) < 0.05 * rms(0.2, 0.8)           # and untouched outside it
 
 
 if __name__ == "__main__":

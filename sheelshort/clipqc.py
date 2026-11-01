@@ -25,7 +25,7 @@ For each panel, answer in order. Answer with ONE JSON object and nothing else:
   "light": "daylight" if the scene is lit by the sun or a bright sky (outdoors by day, or daylight coming through windows) | "night" if it is dark outside or moonlit | "lamp" if it is indoors, lit by lamps or bulbs, with no daylight visible,
   "glitch": <true if a face or body is clearly malformed, melted or duplicated>}}]}}"""
 
-RULES = 5   # bump when the rules change: cached results are re-judged (the vision answers stay cached in qc.ask)
+RULES = 6   # bump when the rules change: cached results are re-judged (the vision answers stay cached in qc.ask)
 NIGHT = re.compile(r"\bnight|moonlight|dark\b|midnight", re.I)
 DAY = re.compile(r"\bday(light)?\b|sunlight|morning|afternoon|noon", re.I)
 
@@ -97,6 +97,10 @@ def judge_panel(chars: dict, i: int, cut: dict, pan: dict, want_night: bool, wan
     subj = cut.get("subjects", [])
     if cut["type"] != "ECU" and subj and pan.get("people") == 0:   # an ECU may be hands or a prop
         out.append(f"cut {i}: nobody in the shot, should show {', '.join(chars[c]['name'] for c in subj)}")
+    expected = len(subj) + (1 if cut.get("over") else 0)
+    if cut["type"] not in ("WS", "ECU") and not cut.get("extras") and isinstance(pan.get("people"), int) \
+            and pan["people"] > expected + 2:   # waimai2 E02 K6: six strangers stood behind a two-person shot
+        out.append(f"cut {i}: {pan['people']} people in the shot, written for {expected} (add `extras` if they belong)")
     if cut["type"] in ("CU", "MCU", "ECU", "VO") and len(subj) == 1:
         sex = qc.written_sex(chars[subj[0]])
         seen = str(pan.get("main_person_sex", "")).lower()

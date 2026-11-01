@@ -18,6 +18,12 @@ everything deterministic. Every command is resumable: run it again after a crash
   python -m sheelshort fleet <project> [off|idle]      AutoDL servers: list them (off: power off every one no run uses;
                                                        idle: watch and power off idle ones, run in the background)
   python -m sheelshort evaluate <project> EP           A/B per line: acted vs. H3-voiced renders (edit/<EP>/dialogue_ab.md)
+  python -m sheelshort sfx <project>                   the sound-effect cues a cut can ask for (library + the bible's own)
+  python -m sheelshort sfx <project> search "<English query>" [--license cc0|by|any]
+                                                       Freesound candidates (sound skill): downloads, rating, description,
+                                                       and where the sound sits in each file (onset, peak, end, loudness)
+  python -m sheelshort sfx <project> add <name> fs:<id> --what "..." [--sync onset|peak|end|SECONDS] [--level DB]
+                                                       make a candidate one of the project's cues (bible `sfx`)
 """
 from __future__ import annotations
 
@@ -27,7 +33,7 @@ import shutil
 import sys
 from pathlib import Path
 
-from . import assemble, cast, evaluate, h3prompt, perform, render, review
+from . import assemble, cast, evaluate, h3prompt, perform, render, review, sfx, wardrobe
 from .project import REPO, Project, log, save_json
 
 
@@ -54,7 +60,7 @@ def check(p: Project, eps: list[str]) -> list[str]:
             errs.append(f"location {loc}: missing `light` (time of day and light sources for every shot there)")
     for ep in eps:
         scene = p.scene(ep)
-        errs += [f"{ep} {e}" for e in h3prompt.check_rules(scene)]
+        errs += [f"{ep} {e}" for e in h3prompt.check_rules(scene) + sfx.check(scene) + wardrobe.check(b, p.episode(ep))]
         for clip in scene["clips"]:
             if len(h3prompt.clip_characters(clip)) > 3:
                 errs.append(f"{ep} {clip['id']}: more than 3 characters; split the clip")
@@ -127,6 +133,25 @@ def status(p: Project) -> None:
             print(f"  {k} on {(urlparse(j.get('server', '')).hostname or '?').split('.')[0]}: queued {eta.span(now - j['queued_at'])} ago, {when}")
 
 
+def sfx_command(p: Project, a) -> None:
+    if a.episode == "search":
+        rows = sfx.search(" ".join(a.rest), a.license)
+        for r in rows:
+            stats = r.get("stats", "")
+            where = (f"{r['dur']:.1f}s, sound {r['onset']:.2f}-{r['end']:.2f}s, peak {r['peak']:.2f}s, "
+                     f"{r['lufs'] if r['lufs'] is not None else 'silent'} LUFS") if "dur" in r else "not downloaded"
+            print(f"{r['key']}\t{r.get('title', '')}\t{stats}\t{r.get('license', '')}\t{where}\t{r.get('desc', '')}")
+        print("(none)" if not rows else "add one: sfx <project> add <name> fs:<id> --what \"...\"")
+    elif a.episode == "add":
+        if len(a.rest) != 2 or not a.what:
+            raise SystemExit("usage: sfx <project> add <name> fs:<id> --what \"what it is for\" [--sync ...] [--level ...]")
+        cue = sfx.add(p, a.rest[0], a.rest[1], a.what, a.sync, a.level)
+        print(f"{a.rest[0]}: {cue['file']}, lands at {cue['sync']} s into the file, {cue['len']} s used, {cue['license']}")
+    else:
+        for name, v in sfx.library(p.bible).items():
+            print(f"{name:12s} {v.get('what', '')}" + ("  [project]" if name in sfx.own(p.bible) else ""))
+
+
 def _exit_on_signal(signum, frame):   # SIGTERM/SIGHUP end the run normally, so cleanup (the fleet's power-off) runs
     raise SystemExit(128 + signum)
 
@@ -137,9 +162,10 @@ def main(argv: list[str] | None = None) -> None:
         signal.signal(sig, _exit_on_signal)
     ap = argparse.ArgumentParser(prog="sheelshort", description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("command", choices=["new", "doctor", "check", "cast", "perform", "render", "assemble", "review", "make", "free", "evaluate", "fleet", "package",
-                                        "status"])
+                                        "status", "sfx"])
     ap.add_argument("project")
     ap.add_argument("episode", nargs="?", help="episode id, or several separated by commas (E03,E04)")
+    ap.add_argument("rest", nargs="*", help="sfx: the search query, or the cue name and fs:<id> to add")
     ap.add_argument("--script")
     ap.add_argument("--only", help="comma-separated clip ids (or line keys for perform)")
     ap.add_argument("--takes", type=int)
@@ -148,6 +174,10 @@ def main(argv: list[str] | None = None) -> None:
     ap.add_argument("--seconds", type=float, help="test mode: only the opening clips of the episode, about this long (e.g. 20)")
     ap.add_argument("--dry-run", action="store_true")
     ap.add_argument("--fit", action="store_true", help="check: lengthen dialogue cuts that are too short for their lines")
+    ap.add_argument("--license", choices=["cc0", "by", "any"], default="cc0", help="sfx search: licences to show")
+    ap.add_argument("--what", help="sfx add: what the cue is for (shown to the writer)")
+    ap.add_argument("--sync", default="onset", help="sfx add: the moment that lands on the cue time: onset, peak, end or seconds")
+    ap.add_argument("--level", type=float, default=-4.0, help="sfx add: dB against the dialogue (0 = as loud)")
     a = ap.parse_args(argv)
     root = project_dir(a.project)
 
@@ -163,6 +193,9 @@ def main(argv: list[str] | None = None) -> None:
     p = Project(root, dry_run=a.dry_run)
     if a.command == "status":
         status(p)
+        return
+    if a.command == "sfx":
+        sfx_command(p, a)
         return
     if a.command in ("cast", "perform", "render", "assemble", "review", "make", "evaluate", "package"):
         p.run_info["command"] = " ".join(sys.argv[1:] if argv is None else argv)
@@ -203,7 +236,7 @@ def _dispatch(a, p: Project) -> None:
             slow = " (slower than the reference: add reaction cuts or split long shots)" if pc["mean_shot_s"] > 1.5 * h3prompt.REFERENCE_MEAN_SHOT_S else ""
             print(f"{ep}: {pc['clips']} clips, {pc['shots']} shots, {pc['duration_s']} s, mean shot {pc['mean_shot_s']} s, "
                   f"{pc['over_5s']} over 5 s; reference mean {h3prompt.REFERENCE_MEAN_SHOT_S} s{slow}")
-            for note in h3prompt.craft_notes(p.scene(ep)):
+            for note in h3prompt.craft_notes(p.scene(ep)) + sfx.note(p.scene(ep)):
                 print(f"{ep} note: {note}")
         errs = check(p, eps)
         for e in errs:

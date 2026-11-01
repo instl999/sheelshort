@@ -11,7 +11,7 @@ import re
 import subprocess
 from pathlib import Path
 
-from . import h3prompt, media
+from . import h3prompt, media, sfx
 from .project import REPO, Project, load_json, log, save_json
 
 CJK_PER_LINE = 13
@@ -44,7 +44,7 @@ def chosen_take(p: Project, ep: str, clip_id: str) -> Path:
 def edl(p: Project, ep: str) -> dict:
     acted = p.cfg["render"]["dialogue"] == "acted"
     timing = load_json(p.root / "perform" / ep / "timing.json") if acted else None
-    t, items, subs, cards = 0.0, [], [], []
+    t, items, subs, cards, fx = 0.0, [], [], [], []
     introduced = introduced_before(p, ep)
     places, prev_loc = [], None
     for clip in p.clips(ep):
@@ -58,28 +58,57 @@ def edl(p: Project, ep: str) -> dict:
             lines, audio = heard_lines(p, ep, clip, video), None
         head, tail = edge_trims(video, seconds, lines) if p.cfg["edit"].get("trim_flashes", True) else (0.0, seconds)
         fol = sorted(video.parent.glob(video.stem + "_foley.*"))
+        vias = [c.get("via") for c in clip["cuts"] if c.get("line")]
+        phone = [(round(max(0.0, ln["start"] - head - 0.1), 3), round(ln["end"] - head + 0.1, 3))
+                 for ln, v in zip(lines, vias) if v == "phone"] if len(vias) == len(lines) else []
         items.append({"clip": clip["id"], "video": str(video), "audio": audio, "foley": str(fol[0]) if fol and audio else None,
-                      "start": round(t, 3), "in": head, "seconds": round(tail - head, 3)})
+                      "start": round(t, 3), "in": head, "seconds": round(tail - head, 3), "phone": phone})
         subs += [{"text": ln["text"], "start": round(t + ln["start"] - head, 3), "end": round(t + ln["end"] - head + 0.25, 3)}
                  for ln in lines]
         cards += _cards_in(p, clip, t - head, video, introduced)
+        fx += sfx.events_in(p, clip, t - head, head, tail, video)
         loc = p.bible["locations"].get(clip["location"], {})
         if clip["location"] != prev_loc and loc.get("name_zh") and p.cfg["edit"].get("location_cards", True) \
                 and clip["location"] not in {pl["loc"] for pl in places}:
-            places.append({"kind": "place", "loc": clip["location"], "name": loc["name_zh"], "start": round(t + 0.1, 3),
-                           "end": round(t + min(2.6, tail - head - 0.2), 3)})
+            # the card sits on the scene's first wide or medium shot (a cold open on a face gets it when the room shows)
+            at, x0, x1 = 0.0, head, tail
+            for cut in clip["cuts"]:
+                if cut["type"] in ("WS", "MS") and head <= at < tail - 0.8:
+                    x0, x1 = at, min(tail, at + h3prompt.cut_len(cut))
+                    break
+                at += h3prompt.cut_len(cut)
+            places.append({"kind": "place", "loc": clip["location"], "name": loc["name_zh"], "start": round(t - head + x0 + 0.1, 3),
+                           "end": round(t - head + min(x0 + 2.6, x1 - 0.1), 3)})
         prev_loc = clip["location"]
         t += tail - head
-    for pl in places:   # a name card waits until the location card is gone (both stand at the top of the frame)
-        for c in cards:
+    for pl in list(places):   # both stand at the top of the frame: a name card waits until the location card is gone,
+        for c in cards:         # or, when that would leave it too short to read, the location card gives way
             if c["start"] < pl["end"] and c["end"] > pl["start"]:
-                c["start"] = round(pl["end"] + 0.1, 3)
-    cards = [c for c in cards if c["end"] - c["start"] >= 0.8] + places
-    out = {"episode": ep, "duration": round(t, 3), "clips": items, "subtitles": subs, "cards": cards}
+                if c["end"] - (pl["end"] + 0.1) >= 0.8:
+                    c["start"] = round(pl["end"] + 0.1, 3)
+                elif pl in places:
+                    places.remove(pl)
+    cards = cards + places
+    subs.sort(key=lambda s: s["start"])
+    for a, b in zip(subs, subs[1:] + [None]):   # never two subtitles at once; a short line stays up long enough to read
+        nxt = b["start"] - 0.04 if b else t
+        a["end"] = round(min(max(a["end"], a["start"] + MIN_SUB_S), nxt), 3)
+    out = {"episode": ep, "duration": round(t, 3), "clips": items, "subtitles": subs, "cards": cards, "sfx": fx}
     save_json(p.d("edit", ep) / "edl.json", out)
     return out
 
 
+def phone_filter(src: str, dst: str, windows: list[tuple[float, float]], tag: str) -> list[str]:
+    """A line heard through a phone (`via: "phone"`): telephone band (350-3400 Hz), squeezed, only inside its windows."""
+    on = "+".join(f"between(t,{a:.3f},{b:.3f})" for a, b in windows)
+    return [f"{src}asplit=2[{tag}c][{tag}p]",
+            f"[{tag}c]volume=0:enable='{on}'[{tag}cm]",
+            f"[{tag}p]highpass=f=350,highpass=f=350,lowpass=f=3400,lowpass=f=3400,"
+            f"acompressor=threshold=0.05:ratio=6:attack=5:release=80,volume=3dB,volume=0:enable='not({on})'[{tag}pm]",
+            f"[{tag}cm][{tag}pm]amix=inputs=2:normalize=0{dst}"]
+
+
+MIN_SUB_S = 1.0   # seconds a subtitle stays up at least, when the next line allows it
 FLASH_S = 0.6   # a shot this short at a clip's head or tail is H3 starting the next shot early or ending late
 
 
@@ -121,16 +150,16 @@ def _cards_in(p: Project, clip: dict, t0: float, video: Path, introduced: set[st
     out, at = [], 0.0
     for cut in clip["cuts"]:
         dur = h3prompt.cut_len(cut)
-        cands = [c for c in cut.get("subjects", []) if p.chars.get(c, {}).get("card") and c not in introduced]
+        cands = [c for c in cut.get("subjects", []) if p.chars.get(c, {}).get("card") and p.base(c) not in introduced]
         if cut.get("intro") is True:
-            cands = [c for c in cut.get("subjects", []) if c not in introduced and p.chars.get(c, {}).get("card")][:1]
+            cands = cands[:1]
         for c in cands:
             if _intro_cut(cut, c):
                 ch = p.chars[c]
                 face = media.face_box(video, at + dur / 2)
                 out.append({"name": ch.get("name_zh") or ch["name"], "role": ch["card"], "start": round(t0 + at + 0.15, 3),
                             "end": round(t0 + at + min(dur - 0.1, 2.6), 3), "face": face})
-                introduced.add(c)
+                introduced.add(p.base(c))   # once per character, whatever they wear
                 break
         at += dur
     return out
@@ -329,6 +358,7 @@ def run(p: Project, ep: str) -> Path:
     k = n
     for i, it in enumerate(plan["clips"]):
         fit = f"aresample=48000,aformat=channel_layouts=stereo,atrim={it.get('in', 0)}:{it.get('in', 0) + it['seconds']},asetpts=PTS-STARTPTS,apad=whole_dur={it['seconds']}"
+        out = f"[p{i}]" if it.get("phone") else f"[a{i}]"
         if it["audio"]:
             ins += ["-i", it["audio"]]
             filt.append(f"[{k}:a]{fit}[d{i}]")
@@ -339,12 +369,14 @@ def run(p: Project, ep: str) -> Path:
                 filt.append(f"[{k}:a]{fit},loudnorm=I=-38:TP=-9[f{i}]")
                 filt.append(f"[d{i}]asplit=2[dd{i}][key{i}]")
                 filt.append(f"[f{i}][key{i}]sidechaincompress=threshold=0.02:ratio=3:attack=30:release=500[fd{i}]")
-                filt.append(f"[dd{i}][fd{i}]amix=inputs=2:normalize=0[a{i}]")
+                filt.append(f"[dd{i}][fd{i}]amix=inputs=2:normalize=0{out}")
                 k += 1
             else:
-                filt.append(f"[d{i}]anull[a{i}]")
+                filt.append(f"[d{i}]anull{out}")
         else:
-            filt.append(f"[{i}:a]{fit}[a{i}]")
+            filt.append(f"[{i}:a]{fit}{out}")
+        if it.get("phone"):
+            filt += phone_filter(f"[p{i}]", f"[a{i}]", it["phone"], f"ph{i}")
     filt.append("".join(f"[v{i}][a{i}]" for i in range(n)) + f"concat=n={n}:v=1:a=1[vc][dia]")
     fonts = e.get("fonts_dir", "/System/Library/Fonts")
     if grade(p):
@@ -367,6 +399,9 @@ def run(p: Project, ep: str) -> Path:
         last = "[mix]"
     else:
         last = "[dia]"
+    if plan["sfx"]:   # cues sit at a level set against the dialogue's own loudness, before the master is normalised
+        sources = [(Path(it["audio"] or it["video"]), it["seconds"]) for it in plan["clips"]]
+        last = sfx.mix(p, plan, ins, filt, last, sources)
     filt.append(f"{last}loudnorm=I={e['loudness']}:TP=-1.0:LRA=11,aresample=48000,asplit=2[aout][aclean]")
     master = out_dir / f"{p.master_name()}.mp4"
     clean = out_dir / f"{p.master_name()}_clean.mp4"   # the same cut without burned-in subtitles (dubbing, re-subtitling)

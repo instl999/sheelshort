@@ -193,9 +193,9 @@ def align_text(p: Project, c: str, problems: list[str], seen: dict) -> list[str]
                 ch[f] = pattern.sub(new, ch[f], count=1)
             log(f"qc char_{c}: text corrected to the image: '{mark}' -> '{new}'")
         elif pr.startswith("looks about"):
-            age = int(re.search(r"looks about (\d+)", pr).group(1))
-            ch["look"] = re.sub(r"\b\d{2}-year-old", f"{age}-year-old", ch["look"], count=1)
-            log(f"qc char_{c}: text corrected to the image: age {age}")
+            # the written age is the script's: never rewritten (waimai2 had a 55-year-old turned 65). The retries were
+            # steered toward it (cast.age_hint); what is left is reported for the writer to judge.
+            left.append(pr)
         else:
             left.append(pr)
     with p.lock:
