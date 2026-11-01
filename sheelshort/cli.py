@@ -14,6 +14,7 @@ everything deterministic. Every command is resumable: run it again after a crash
   python -m sheelshort make <project> EP               cast + perform + render + assemble + review
   python -m sheelshort make <project> EP --seconds 20  fast test: only the opening ~20 s, finished (edit/<EP>/master_20s.mp4)
   python -m sheelshort package <project>               delivery/: episodes, clean cuts, SRTs, cover, thumbnails, metadata
+  python -m sheelshort status <project>               what a running command is doing, and when each part ends
   python -m sheelshort fleet <project> [off|idle]      AutoDL servers: list them (off: power off every one no run uses;
                                                        idle: watch and power off idle ones, run in the background)
   python -m sheelshort evaluate <project> EP           A/B per line: acted vs. H3-voiced renders (edit/<EP>/dialogue_ab.md)
@@ -94,6 +95,38 @@ def doctor(p: Project) -> bool:
     return ok and not errs
 
 
+def status(p: Project) -> None:
+    """The running command's phases with their estimated end, and every GPU job in flight with its own."""
+    import os
+    import time
+    from . import eta
+    from .project import load_json
+    from urllib.parse import urlparse
+    info = load_json(p.root / "progress.json") if (p.root / "progress.json").exists() else {}
+    try:
+        os.kill(int(info.get("pid", 0)), 0)
+        alive = bool(info.get("pid"))
+    except OSError:
+        alive = False
+    now = time.time()
+    if not info:
+        print("no run recorded for this project yet")
+        return
+    print(f"{'running' if alive else 'last run (not running)'}: {info.get('command') or '?'}, started {eta.clock(info['started'])}")
+    for phase, ph in info.get("phases", {}).items():
+        end = ph.get("eta")
+        tail = f", done ~{eta.clock(end)} (in ~{eta.span(end - now)})" if end and alive else ""
+        print(f"  {phase}: {ph['done']}/{ph['total']}{tail}")
+    jobs = [(k, j) for k, j in p.state["jobs"].items() if j.get("status") == "queued"]
+    if alive and jobs:
+        print("in flight:")
+        for k, j in sorted(jobs, key=lambda kj: kj[1].get("eta") or 0):
+            end = j.get("eta")
+            late = " (running late)" if end and end < now else ""
+            when = f"done ~{eta.clock(end)} (in ~{eta.span(end - now)}){late}" if end else "no estimate"
+            print(f"  {k} on {(urlparse(j.get('server', '')).hostname or '?').split('.')[0]}: queued {eta.span(now - j['queued_at'])} ago, {when}")
+
+
 def _exit_on_signal(signum, frame):   # SIGTERM/SIGHUP end the run normally, so cleanup (the fleet's power-off) runs
     raise SystemExit(128 + signum)
 
@@ -103,7 +136,8 @@ def main(argv: list[str] | None = None) -> None:
     for sig in (signal.SIGTERM, signal.SIGHUP):
         signal.signal(sig, _exit_on_signal)
     ap = argparse.ArgumentParser(prog="sheelshort", description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("command", choices=["new", "doctor", "check", "cast", "perform", "render", "assemble", "review", "make", "free", "evaluate", "fleet", "package"])
+    ap.add_argument("command", choices=["new", "doctor", "check", "cast", "perform", "render", "assemble", "review", "make", "free", "evaluate", "fleet", "package",
+                                        "status"])
     ap.add_argument("project")
     ap.add_argument("episode", nargs="?", help="episode id, or several separated by commas (E03,E04)")
     ap.add_argument("--script")
@@ -127,6 +161,12 @@ def main(argv: list[str] | None = None) -> None:
         return
 
     p = Project(root, dry_run=a.dry_run)
+    if a.command == "status":
+        status(p)
+        return
+    if a.command in ("cast", "perform", "render", "assemble", "review", "make", "evaluate", "package"):
+        p.run_info["command"] = " ".join(sys.argv[1:] if argv is None else argv)
+        save_json(p.root / "progress.json", p.run_info)
     fc = p.cfg.get("fleet", {})
     if fc.get("enabled") and fc.get("core") and not fc.get("dry_run") and a.command not in ("check", "fleet", "free"):
         from . import fleet   # every server is powered on on demand: the first GPU job wakes them, the end lets them go
@@ -153,7 +193,8 @@ def _dispatch(a, p: Project) -> None:
     if a.command == "check":
         for ep in eps if a.fit else []:
             e = p.episode(ep)
-            changes = h3prompt.fix_jump_cuts({**p.bible, **e}) + h3prompt.fit_durations({**p.bible, **e})
+            sc = {**p.bible, **e}
+            changes = h3prompt.fix_close_runs(sc) + h3prompt.fix_jump_cuts(sc) + h3prompt.fit_durations(sc)
             if changes:
                 save_json(p.root / "episodes" / f"{ep}.json", e)
                 print(f"{ep}: fitted " + "; ".join(changes))

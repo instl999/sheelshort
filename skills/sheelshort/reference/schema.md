@@ -61,6 +61,7 @@ A complete worked example is `projects/guilai/` (bible.json, episodes/E01.json).
 | `type` | `WS` wide (geography), `MS` medium, `CU` close-up, `ECU`, `OTS` over-the-shoulder, `VO` inner voice (close-up pushing in), `RX` reaction while the previous line continues |
 | `subjects` | characters (and only they) visible in the cut |
 | `to` | optional: whom the subject looks at or addresses (default: the nearest other speaker in the clip) |
+| `angle` | optional camera angle: `front` (default), `three-quarter`, `profile`, `high`, `low`. A changed angle makes a cut to the same person at the same size a real cut |
 | `speaker` / `over` | who speaks; whose shoulder is in the foreground of an OTS |
 | `line` / `say` / `act` / `emotion` / `delivery` | subtitle text / acted wording / Chinese voice direction / scoring class / English face direction |
 | `composition`, `action`, `camera`, `sound`, `end` | picture prompt text; `{charid}` and `{loc}` become H3 subject labels |

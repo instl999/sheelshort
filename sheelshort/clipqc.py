@@ -70,6 +70,10 @@ def strip(p: Project, ep: str, video: Path, times: list[float]) -> Path:
 
 
 PRINTED = re.compile(r"\b(print(ed)?|characters|text|writing|screen|paragraphs?)\b", re.I)
+# A shot written to show something that carries writing (a phone screen, a contract, a sign): the vision model reads
+# that writing as a caption, so such a shot is not judged on text (E03 C10 cut 3, the phone-screen insert: two takes)
+SHOWS_WRITING = re.compile(r"\b(screens?|phone|contracts?|documents?|pages?|sign(board)?s?|posters?|labels?|newspapers?|"
+                           r"letters?|cards?|menus?|notes?|receipts?|banners?)\b", re.I)
 
 
 def judge_panel(chars: dict, i: int, cut: dict, pan: dict, want_night: bool, want_day: bool,
@@ -78,7 +82,8 @@ def judge_panel(chars: dict, i: int, cut: dict, pan: dict, want_night: bool, wan
     prop with printed text (a business card, a contract, a phone screen) is not judged on text: the model reads the
     prop's text as a caption however the question is put (E03's business card, three takes)."""
     out = []
-    printed = any(PRINTED.search((props or {}).get(pr, {}).get("look", "")) for pr in cut.get("props", []))
+    printed = any(PRINTED.search((props or {}).get(pr, {}).get("look", "")) for pr in cut.get("props", [])) \
+        or (cut.get("type") == "ECU" and bool(SHOWS_WRITING.search(cut.get("composition", ""))))
     if pan.get("text_or_subtitles") is True and not printed:
         out.append(f"cut {i}: on-screen text")
     if pan.get("glitch") is True:

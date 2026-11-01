@@ -43,6 +43,18 @@ SHOT_LENS = {
     "ECU": "on a 100mm macro lens with very shallow depth of field",
     "OTS": "on a 75mm lens",
 }
+# Camera angle (`angle` on a cut, default "front"). A cut to the same person at the same size reads as a jump unless
+# the camera moves at least ~30 degrees around them, so a different angle is a real cut (the editors' 30-degree rule)
+ANGLE_PHRASE = {
+    "front": "",
+    "three-quarter": "from a three-quarter angle",
+    "profile": "in profile from the side",
+    "high": "from a high angle looking down",
+    "low": "from a low angle looking up",
+}
+# Longest stretch of screen time at one location made only of close-ups and over-the-shoulder shots before a medium or
+# wide shot shows the room again (E01 2026-10-31: 50 s of faces in a row lost the crowd and the table)
+CLOSE_RUN_S = 25.0
 # The size a cut reads as on screen: two adjacent cuts of the same subjects at the same size are a jump cut
 SIZE_CLASS = {"WS": "wide", "MS": "medium", "CU": "close", "RX": "close", "VO": "close", "ECU": "insert", "OTS": "ots"}
 NO_TEXT = "No on-screen text, subtitles, captions, logos or watermarks appear at any point."
@@ -130,6 +142,8 @@ def check_rules(scene: dict) -> list[str]:
                 errs.append(f"{where}: voice-over shot without a line")
             if t in ("MS", "WS") and cut.get("line"):
                 errs.append(f"{where}: medium and wide shots are for positioning/movement; give dialogue its own close-up")
+            if cut.get("angle", "front") not in ANGLE_PHRASE:
+                errs.append(f"{where}: angle {cut['angle']!r} not one of {sorted(ANGLE_PHRASE)}")
             if cut.get("to") and cut["to"] not in chars:
                 errs.append(f"{where}: unknown character {cut['to']!r} in 'to'")
     errs += jump_cuts(scene)
@@ -137,7 +151,7 @@ def check_rules(scene: dict) -> list[str]:
 
 
 def _framing(cut: dict) -> tuple:
-    return SIZE_CLASS.get(cut["type"]), frozenset(cut.get("subjects", [])), cut.get("over")
+    return SIZE_CLASS.get(cut["type"]), frozenset(cut.get("subjects", [])), cut.get("over"), cut.get("angle", "front")
 
 
 def jump_cuts(scene: dict) -> list[str]:
@@ -157,8 +171,10 @@ def jump_cuts(scene: dict) -> list[str]:
 
 
 def fix_jump_cuts(scene: dict) -> list[str]:
-    """Repair the common jump cut in place: a close-up line right after a close-up of the same person becomes an
-    over-the-shoulder shot past the person addressed (the reverse angle). Other jumps are left for the writer."""
+    """Repair jump cuts in place. A close-up line right after a close-up of the same person becomes an
+    over-the-shoulder shot past the person addressed (the reverse angle). Any other jump, such as one person alone on
+    the phone, moves the camera around the subject instead: the second shot is taken in profile (or from a
+    three-quarter angle when the first already was), which is a real cut by the 30-degree rule."""
     changes, prev = [], None
     for clip in scene["clips"]:
         for i, cut in enumerate(clip["cuts"]):
@@ -170,7 +186,67 @@ def fix_jump_cuts(scene: dict) -> list[str]:
                                composition=f"Over-the-shoulder shot past {{{other}}}'s blurred shoulder onto {{{who}}}.")
                     here = (clip["location"], _framing(cut))
                     changes.append(f"{clip['id']} cut {i + 1}: close-up -> over-the-shoulder past {other}")
+            if prev == here and here[1][1] and cut["type"] != "OTS":
+                cut["angle"] = "three-quarter" if prev[1][3] == "profile" else "profile"
+                here = (clip["location"], _framing(cut))
+                changes.append(f"{clip['id']} cut {i + 1}: same framing again -> {cut['angle']} angle")
             prev = here
+    return changes
+
+
+def close_runs(scene: dict) -> list[tuple[str, int, int, float]]:
+    """Stretches at one location (across clips) made only of close-ups and over-the-shoulder shots, longer than
+    CLOSE_RUN_S: (location, first, last, seconds) with first/last as indexes into the episode's flat cut list."""
+    flat = [(cl["location"], c) for cl in scene["clips"] for c in cl["cuts"]]
+    tight = [SIZE_CLASS.get(c["type"]) in ("close", "ots") for _, c in flat]
+    runs, k = [], 0
+    while k < len(flat):
+        if not tight[k]:
+            k += 1
+            continue
+        j = k
+        while j + 1 < len(flat) and tight[j + 1] and flat[j + 1][0] == flat[k][0]:
+            j += 1
+        secs = sum(cut_len(c) for _, c in flat[k:j + 1])
+        if secs > CLOSE_RUN_S:
+            runs.append((flat[k][0], k, j, secs))
+        k = j + 1
+    return runs
+
+
+def fix_close_runs(scene: dict) -> list[str]:
+    """Break each too-long run of faces with a medium shot: the silent reaction cut nearest the middle of the run
+    becomes a medium shot of that listener among the others, so the room is seen again. A cut is only changed when
+    the clip still passes the rules afterwards (a line that needs its reaction cut keeps it)."""
+    changes = []
+    for _ in range(20):   # each fix splits a run; look again until none is left that can be fixed
+        where = [(cl, i) for cl in scene["clips"] for i in range(len(cl["cuts"]))]
+        fixed = False
+        for loc, a, b, secs in close_runs(scene):
+            mid = (a + b) / 2
+            for k in sorted(range(a, b + 1), key=lambda k: abs(k - mid)):
+                clip, i = where[k]
+                cut = clip["cuts"][i]
+                nxt = clip["cuts"][i + 1] if i + 1 < len(clip["cuts"]) else None
+                if cut["type"] != "RX" or (nxt and nxt["type"] == "RX"):
+                    continue
+                before = len(check_rules({**scene, "clips": [clip]}))
+                old = dict(cut)
+                who = cut["subjects"][0]
+                cut.update(type="MS", composition=f"Medium shot of {{{who}}} among the others around them, listening and "
+                                                  "reacting; whoever is speaking stays off camera.")
+                cut.pop("angle", None)
+                if len(check_rules({**scene, "clips": [clip]})) > before:
+                    cut.clear()
+                    cut.update(old)
+                    continue
+                changes.append(f"{clip['id']} cut {i + 1}: reaction close-up -> medium shot ({secs:.0f} s of faces at {loc})")
+                fixed = True
+                break
+            if fixed:
+                break
+        if not fixed:
+            break
     return changes
 
 
@@ -188,6 +264,10 @@ def craft_notes(scene: dict) -> list[str]:
         notes.append(f"{static:.0%} of cuts have a static camera; give the beats a motivated move (a slow push-in on a "
                      "realisation, handheld drift in a quarrel, a pull-back to isolate someone, a rack focus between two "
                      "faces)")
+    for loc, a, b, secs in close_runs(scene):
+        notes.append(f"{secs:.0f} s of close-ups and over-the-shoulders in a row at {loc} (cut {a + 1} to {b + 1} of the "
+                     f"episode); show the room again with a medium or wide shot at least every {CLOSE_RUN_S:.0f} s "
+                     "(`check --fit` turns a reaction close-up into one where it can)")
     for loc in dict.fromkeys(cl["location"] for cl, _ in cuts):
         if not any(c["type"] in ("WS", "MS", "OTS") for cl, c in cuts if cl["location"] == loc):
             notes.append(f"{loc}: no wide, medium or over-the-shoulder shot; the viewer never sees where everyone "
@@ -479,6 +559,8 @@ def build(scene: dict, clip: dict, refs: Refs, cameras: dict[int, dict] | None =
         else:
             frame = f"{phrase} of {' and '.join(S(c) for c in cut['subjects'])}" if cut.get("subjects") else phrase
             frame += f" {SHOT_LENS[typ]}"
+        if ANGLE_PHRASE.get(cut.get("angle", "front")):
+            frame += f", {ANGLE_PHRASE[cut['angle']]}"
         replaced = bool(cam and cam.get("replace") and typ != "VO")
         parts = [f"{head} {frame}. {f(cam['text']) if replaced else f(cut['composition'])}"]
         if cam and not replaced:

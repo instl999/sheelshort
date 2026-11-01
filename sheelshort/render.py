@@ -7,10 +7,11 @@ dialogue = "h3": H3 voices the lines itself from the cast voice references (the 
 from __future__ import annotations
 
 import hashlib
+import threading
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
-from . import flows, h3prompt, media, perform
+from . import eta, flows, h3prompt, media, perform
 from .project import Project, load_json, log, save_json
 
 IMAGE_BUDGET = 9
@@ -117,7 +118,11 @@ def run(p: Project, eps: str | list[str], only: set[str] | None = None, takes: i
     1. render every clip (`takes` each);
     2. check every take (clipqc: dialogue locally, one vision call per clip, all together);
     3. re-take the clips whose best take still has problems (up to `qc.max_takes`), check those, and record the best
-       take of every clip in edit/<EP>/picks.json.
+       take of every clip in edit/<EP>/picks.json;
+    4. upscale the chosen takes for the edit (`edit.upscale = "rtx"`) while every server, the fleet's too, is still up:
+       a clip whose take is settled is upscaled during the re-takes, not after them, so one re-take no longer holds
+       up the whole run. `assemble` then finds them done.
+    Every phase logs how far it is and when it should end (eta.py); `sheelshort status` shows the same.
     Several episodes share one job queue, so the servers (and any the fleet adds) stay busy from the first clip of the
     first episode to the last clip of the last one."""
     from . import clipqc
@@ -144,6 +149,7 @@ def run(p: Project, eps: str | list[str], only: set[str] | None = None, takes: i
         meta = dest.with_suffix(".json")
         job.renders = not dest.exists() or (meta.exists() and load_json(meta).get("fingerprint")
                                              != fingerprint(text, files, track, seconds))   # a current take needs no GPU
+        job.key, job.units = f"render/{ep}/{stem(p, clip['id'], t)}", seconds
         return job
 
     jobs = [take_job(sp, t) for sp in specs for t in range(1, n + 1)]
@@ -160,12 +166,34 @@ def run(p: Project, eps: str | list[str], only: set[str] | None = None, takes: i
         fl.start(sum(1 for j in jobs if getattr(j, "renders", False)))   # only real renders are work worth a server
     workers = 2 * max(len(p.cfg["comfy"]["servers"]), int(p.cfg["fleet"]["max_servers"]) if fl else 0)
 
+    prog: list[eta.Progress] = []
+
     def run_one(job):
         try:
             job()
         finally:
             if fl and getattr(job, "renders", False):
                 fl.job_done()
+            if getattr(job, "renders", False) and prog:
+                prog[-1].finish(job.key)
+
+    def upscale(items, phase):
+        """Upscale the chosen takes (ep, take path) that are not upscaled yet, on all servers at once."""
+        from . import assemble
+        if p.cfg["edit"].get("upscale", "rtx") != "rtx":
+            return
+        todo = [(e, v) for e, v in items if v.exists() and not ((up := v.with_name(v.stem + "_up.mp4")).exists()
+                                                                and up.stat().st_mtime >= v.stat().st_mtime)]
+        if not todo:
+            return
+        pr = eta.Progress(p, phase, [(f"upscale/{e}/{v.stem}", 1) for e, v in todo])
+
+        def one(it):
+            try:
+                assemble.upscaled(p, *it)
+            finally:
+                pr.finish(f"upscale/{it[0]}/{it[1].stem}")
+        pool(one, todo)
 
     def pool(fn, items):
         ex = ThreadPoolExecutor(max(1, workers))
@@ -177,18 +205,29 @@ def run(p: Project, eps: str | list[str], only: set[str] | None = None, takes: i
         finally:
             ex.shutdown(wait=False)
 
+    up_bg = None
     try:
+        prog.append(eta.Progress(p, "render", [(j.key, j.units) for j in jobs if getattr(j, "renders", False)]))
         pool(run_one, jobs)                                              # 1. render
         if not (qcfg.get("clips", True) and not acted):
             return
         results: dict[tuple[str, str], list[tuple[int, dict]]] = {}
+        checking: list[eta.Progress] = []
 
         def check(item):
             spec, t = item
             ep, clip = spec[0], spec[1]
             dest = clip_path(p, ep, clip["id"], t)
-            if dest.exists():
-                results.setdefault((ep, clip["id"]), []).append((t, clipqc.check(p, ep, clip, dest)))
+            try:
+                if dest.exists():
+                    results.setdefault((ep, clip["id"]), []).append((t, clipqc.check(p, ep, clip, dest)))
+            finally:
+                if checking:
+                    checking[-1].finish(f"clipqc/{ep}/{clip['id']}/{t}")
+
+        def check_all(items, phase):
+            checking.append(eta.Progress(p, phase, [(f"clipqc/{sp[0]}/{sp[1]['id']}/{t}", 1) for sp, t in items]))
+            pool(check, items)
 
         def existing(spec):
             """The takes on disk rendered from the clip as it is now. A take left from an earlier version of the
@@ -202,7 +241,12 @@ def run(p: Project, eps: str | list[str], only: set[str] | None = None, takes: i
                 t += 1
             return out
 
-        pool(check, [(sp, t) for sp in specs for t in existing(sp)])  # 2. check every take
+        check_all([(sp, t) for sp in specs for t in existing(sp)], "check")   # 2. check every take
+        max_takes = int(qcfg.get("max_takes", 2))
+        settled = {k for k, rs in results.items() if any(not r["problems"] for _, r in rs) or len(rs) >= max_takes}
+        up_bg = threading.Thread(target=upscale, daemon=True, args=(   # 4. (early) these takes will not change
+            [(e, clip_path(p, e, cid, clipqc.best_take(results[(e, cid)]))) for e, cid in sorted(settled)], "upscale"))
+        up_bg.start()
         for _round in range(int(qcfg.get("max_takes", 2))):
             retake = []
             for sp in specs:
@@ -215,8 +259,9 @@ def run(p: Project, eps: str | list[str], only: set[str] | None = None, takes: i
                 break
             if fl:
                 fl.pending += sum(1 for j in retake if j.renders)
+            prog.append(eta.Progress(p, "re-take", [(j.key, j.units) for j in retake if j.renders]))
             pool(run_one, retake)                                         # 3. re-take
-            pool(check, [(j.spec, j.t) for j in retake])
+            check_all([(j.spec, j.t) for j in retake], "re-check")
         with p.lock:
             for ep in eps:
                 picks_path = p.d("edit", ep) / "picks.json"
@@ -229,6 +274,9 @@ def run(p: Project, eps: str | list[str], only: set[str] | None = None, takes: i
                     left = dict(rs)[best]["problems"]
                     log(f"{ep} {cid}: using take {best}" + (f" (still: {'; '.join(left)})" if left else ""))
                 save_json(picks_path, picks)
+        up_bg.join()
+        upscale([(e, clip_path(p, e, cid, clipqc.best_take(rs))) for (e, cid), rs in sorted(results.items())
+                 if (e, cid) not in settled], "upscale re-takes")                  # 4. the re-taken clips
     finally:
         if fl:
             fl.stop()   # every server the fleet added is powered off, also after a crash
@@ -261,7 +309,8 @@ def _render(p, ep, key, clip, t, text, refs, files, seconds, track) -> None:
         foley_path(dest).unlink(missing_ok=True)
         log(f"{key}: inputs changed since the last render; old take kept as {stale.name}")
     fresh = not dest.exists()
-    files_out = [dest] if not fresh else p.run_job(key, build, p.d("clips", ep), stem(p, clip["id"], t), ("gifs", "videos"), rc["timeout_s"])
+    files_out = [dest] if not fresh else p.run_job(key, build, p.d("clips", ep), stem(p, clip["id"], t), ("gifs", "videos"),
+                                                   rc["timeout_s"], units=seconds)
     if files_out and dest not in files_out:
         # VHS saves a silent .mp4 and, with audio connected, a "-audio" one: keep the one with sound
         mp4 = sorted((f for f in files_out if f.suffix == ".mp4"), key=lambda f: media.probe(f)["audio_codec"] is None)

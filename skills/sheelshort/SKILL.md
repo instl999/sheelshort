@@ -55,10 +55,15 @@ the speaker, or someone the speaker is thinking about, never empty); listener re
 - **No jump cuts** (`check` refuses them): two adjacent cuts never show the same people at the same size, also across
   a clip boundary in the same location. The trap is *A speaks → `RX` on B → B answers in `CU`*: B's two close-ups jump.
   Instead let the reaction be someone else (a third person, the crowd), answer in an `OTS` past A's shoulder, or give
-  B one longer `CU` that reacts first and then answers.
+  B one longer `CU` that reacts first and then answers. When one person is alone (a phone call, a monologue), move the
+  camera around them: `"angle": "profile"` (or `three-quarter`, `high`, `low`) on the second shot is a real cut.
+  `check --fit` makes these repairs where it can.
 - **Cover an exchange as shot/reverse-shot:** alternate singles and `OTS`; aim for at most 65% single close-ups.
 - **Show the geography:** after the hook, every scene has a `WS` or `MS` that shows who stands where (the hero facing
-  the crowd, the table between them). Without it the singles float.
+  the crowd, the table between them). Without it the singles float. Show the room again at least every 25 s: `check`
+  notes any longer run of close-ups and over-the-shoulder shots, and `--fit` turns a silent reaction close-up in that
+  run into a medium shot of the listener among the others, where the rules allow. Fix the runs it can't by writing a
+  `WS` or `MS` beat into the scene.
 - **Screen direction is automatic:** the engine puts the two sides of each exchange on opposite sides of the line
   and makes every single look across it at the person addressed, never into the lens. Set `to` on a cut when the
   addressee is not the obvious one, and `blocking` on the episode (`{"loc": {"charid": "left"|"right"}}`) when allies
@@ -128,4 +133,9 @@ and look before spending GPU time on the whole episode.)
   of a command powers one on, which takes about 1–3 min: a quiet start is not a hang. The render adds more while clips
   wait. Servers power off about 10 min after the last command ends. `python -m sheelshort fleet <project>` shows each
   server and which run uses it, and `... fleet <project> off` powers off every server no run uses.
+- **Estimated times:** every GPU job logs when it should be done (`queued on X, done ~21:04 (in ~6 min)`). Every
+  phase (render, check, re-take, upscale) logs `done/total` with its end time. `python -m sheelshort status <project>`
+  shows the same from another terminal. Estimates learn from the servers' measured times
+  (`.cache/job_times.json`), so the first run on a new setup is rougher. Give the user the end time when they ask
+  how long a run will take.
 - Never change a tested default without an A/B; report what you changed and why.

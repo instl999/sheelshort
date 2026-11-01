@@ -22,7 +22,7 @@ import zlib
 from pathlib import Path
 from urllib.parse import urlparse
 
-from . import comfy, flows
+from . import comfy, eta, flows
 
 PKG = Path(__file__).resolve().parent
 REPO = PKG.parent
@@ -77,6 +77,8 @@ class Project:
         self._warned: dict[str, float] = {}
         self.limit_s: float | None = None   # test mode: only the opening clips of each episode, about this long
         self.only_eps: list[str] | None = None   # the episodes this run works on (casting covers only their characters)
+        self.timing = eta.Timing()
+        self.run_info = {"pid": os.getpid(), "started": time.time(), "command": "", "phases": {}}
 
     # ---------- files ----------
 
@@ -166,6 +168,12 @@ class Project:
             self.state["jobs"] = {**disk["jobs"], **{k: v for k, v in self.state["jobs"].items() if k in self._touched}}
             save_json(self.state_path, disk)
 
+    def progress(self, phase: str, info: dict) -> None:
+        """progress.json: what this run is doing, for `sheelshort status`."""
+        with self.lock:
+            self.run_info["phases"][phase] = info
+            save_json(self.root / "progress.json", self.run_info)
+
     def seed(self, key: str) -> int:
         return zlib.crc32(key.encode()) + int(self.cfg["project"].get("seed_offset", 0))
 
@@ -234,7 +242,7 @@ class Project:
     # ---------- jobs ----------
 
     def run_job(self, key: str, build, out_dir: Path, stem: str, kinds: tuple[str, ...] = comfy.OUTPUT_KEYS,
-                timeout_s: float = 3600, exclude: set[str] | frozenset = frozenset()) -> list[Path] | None:
+                timeout_s: float = 3600, exclude: set[str] | frozenset = frozenset(), units: float = 1.0) -> list[Path] | None:
         """Queue one workflow, or resume it after a crash; a finished job is never queued twice.
 
         `build(client)` returns the API-format workflow; it runs only when the job is (re)queued, so uploads happen on
@@ -264,13 +272,19 @@ class Project:
                     log(f"{key}: dry run, request written to {req}")
                     return None
                 job.clear()
-                job.update(server=c.base_url, prompt_id=c.queue(api), status="queued", queued_at=time.time())
+                job.update(server=c.base_url, prompt_id=c.queue(api), status="queued", queued_at=time.time(), units=units)
+                job["eta"] = self._eta(key, c.base_url, units)
                 self.save()   # persist before waiting, so a crash resumes instead of queuing again
-                log(f"{key}: queued on {urlparse(c.base_url).hostname}")
+                log(f"{key}: queued on {urlparse(c.base_url).hostname}, done ~{eta.clock(job['eta'])} "
+                    f"(in ~{eta.span(job['eta'] - time.time())})")
             hist = c.wait(job["prompt_id"], timeout_s=timeout_s)
+            t_dl = time.time()
             files = c.download_outputs(hist, out_dir, stem, kinds)
             job.update(status="succeeded", files=[str(f) for f in files], elapsed_s=round(time.time() - job["queued_at"], 1))
-            log(f"{key}: done in {job['elapsed_s']:.0f}s")
+            ran = eta.exec_seconds(hist)
+            if ran is not None:   # what this kind of job really costs: the server's run plus the download
+                self.timing.record(key, ran + time.time() - t_dl, job.get("units", units))
+            log(f"{key}: done in {job['elapsed_s']:.0f}s" + (f" (ran {ran:.0f}s on the server)" if ran is not None else ""))
             return files
         except comfy.ComfyError as e:
             job.update(status="failed", error=str(e)[:2000])
@@ -282,6 +296,13 @@ class Project:
                 self.release(c)
                 self.save()
         return None
+
+    def _eta(self, key: str, server: str, units: float) -> float:
+        """When a job just queued on `server` should be back: after the jobs of this run still ahead of it there."""
+        now = time.time()
+        ahead = [j.get("eta", now) for k, j in list(self.state["jobs"].items())
+                 if k != key and j.get("status") == "queued" and j.get("server") == server and k in self._touched]
+        return max([now] + ahead) + self.timing.expected(key, units)
 
     def forget(self, key: str) -> None:
         """Drop a job so the next run generates it again (a re-take)."""

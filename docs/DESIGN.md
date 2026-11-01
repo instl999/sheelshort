@@ -371,6 +371,51 @@ servers were powered on and off. The owner asked for all servers to follow the d
 Cost: a cold command now waits for a boot, which took 67–68 s to reach the pool on this app plus H3's first model
 load. In exchange, the two servers stop billing about 10 minutes after the last run ends.
 
+### 0.13 Review pass (2026-10-31): speed, shot design, estimated times
+
+A review of the E01/E03/E04 recut run (39 clips, 4 servers) and the E01 master.
+
+**Speed.**
+- **Upscales now start during re-takes.** E03 C10 was re-taken after the check phase, and for 11 minutes every server
+  but one sat idle: the extra servers powered off, and no clip could be upscaled until all picks were final. `render`
+  now upscales the chosen take of every settled clip (one with a clean take, or out of takes) right after the check
+  phase, on all servers, while the re-takes render. The re-taken clips are upscaled when their pick is made.
+  `assemble` finds the upscales done.
+- **The network is often the bottleneck, not the GPU.** An RTX upscale runs 13–22 s on the server. While the Mac's
+  route to seetacloud.com went through the VPN at 0.2 Mbit/s, each upscale took 400–670 s. A direct route measured
+  38.5 Mbit/s and 27–43 s per clip. The per-job log now prints the server's run time next to the wall time
+  (`done in 324s (ran 15s on the server)`), so a slow network is visible at once.
+
+**Shot design.**
+- **One person alone could not be repaired.** In the first new-script test, 5 of the 12 jump cuts were one person on
+  the phone. A cut now has an `angle` (front, three-quarter, profile, high, low), and the jump rule treats a
+  different angle as a real cut, which is the 30-degree rule. `fix_jump_cuts` moves the camera to profile, or to
+  three-quarter if the shot was already in profile. On that test project, all 12 jump cuts are repaired.
+- **Long runs of faces.** E01's master holds about 50 s of close-ups and over-the-shoulder shots in a row at the gate
+  (planned: 69 s), and the crowd and the table drop out of view. `check` now notes any run longer than 25 s at one
+  location. `--fit` turns the silent reaction close-up nearest the middle of the run into a medium shot of the
+  listener among the others, but only when the clip still passes every rule. Runs made only of dialogue cuts are left
+  as a note: the writer adds a WS or MS beat.
+
+**Clip QC.** E03 C10 was re-taken for "on-screen text", and the second take was flagged the same way. The shot was
+an ECU insert of a phone screen, and the vision model reads the screen's UI as a caption. ECU inserts whose
+composition shows something that carries writing (a screen, a contract, a sign, a card) are no longer judged on
+text. Close-ups and wider shots still are.
+
+**Image quality.** The cinema-pass look holds across E01: directional golden light, rim light, shallow depth of
+field, real skin, and eyelines off the lens. No change without an A/B. The next candidate is `h3_megapixels`
+0.7 → 0.85, about 25% more GPU time per clip.
+
+**Estimated times (`sheelshort/eta.py`).**
+- **Per job.** Every GPU job logs when it should be back, counting the job ahead of it on the same server.
+- **Per phase.** Render, check, re-take and upscale each log `done/total` with an end time: the jobs still running
+  finish at their own estimate, and the rest share the servers.
+- **Status from another terminal.** `python -m sheelshort status <project>` reads `progress.json` and `state.json`
+  and lists each phase and each job in flight with its end time, marking a job that is running late.
+- **Learning.** The model learns from every finished job: the server's own execution time from the ComfyUI history,
+  plus the download, measured per second of video for a render and per job otherwise. The last 30 per kind are kept
+  in `.cache/job_times.json`, shared by all projects.
+
 ---
 
 ## 1. Market research: does this already exist?
