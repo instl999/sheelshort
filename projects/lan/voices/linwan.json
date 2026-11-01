@@ -1,0 +1,15 @@
+{
+  "transcript": "这里的窗户很大，早上的阳光应该能一直照到客厅的地毯上。",
+  "heard": "这里的窗户很大,早上的阳光应该能一直照到客厅的地毯上。",
+  "cer": 0.0,
+  "origin": "designed",
+  "duration": 5.562,
+  "speech_start": 0.0,
+  "speech_end": 5.39,
+  "speech_s": 5.39,
+  "median_hz": 241.2,
+  "motion": 3.01,
+  "range_st": 11.37,
+  "loud_std_db": 11.01,
+  "voiced_runs": 25
+}

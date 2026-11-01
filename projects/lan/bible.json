@@ -1,0 +1,243 @@
+{
+ "example": "Example project: the 蓝城雲境 location pack and the showcase episode D01 (see README.md).",
+ "title": "蓝城雲境",
+ "setting": "A high-end residential development, 蓝城雲境: its 170 m² show flat, the residents' clubhouse and the underground garage. Every location is taken from the property's three official films (films/, locations/locations.json).",
+ "characters": {
+  "linwan": {
+   "name": "Lin Wan",
+   "name_zh": "林晚",
+   "card": "神秘买家",
+   "role": "young woman",
+   "look": "a 26-year-old Chinese woman with a clean oval face, straight natural brows, calm dark almond-shaped eyes, a small beauty mark under her right eye, long straight black hair tied in a low ponytail, almost no makeup, wearing a plain oatmeal-beige cotton trench coat over a white knit top and carrying a worn canvas tote bag.",
+   "keep": "small beauty mark under the right eye, long straight black hair in a low ponytail, plain oatmeal-beige trench coat, canvas tote bag",
+   "face_detail": "a small beauty mark under the right eye, calm dark eyes, natural brows, bare fresh skin with fine texture.",
+   "hair": "long straight black hair tied in a low ponytail at the nape",
+   "costume": "a plain oatmeal-beige knee-length cotton trench coat, a white knit top, light-blue jeans, flat white canvas sneakers, a worn natural canvas tote bag",
+   "voice_en": "in a calm, low, clear young female voice",
+   "voice_design": "二十六岁左右的年轻女性，音色清冷干净，中音偏低，吐字清楚，普通话标准，语速偏慢。",
+   "voice_sample": "这里的窗户很大，早上的阳光应该能一直照到客厅的地毯上。",
+   "outfits": {
+    "suit": {
+     "look": "a 26-year-old Chinese woman with a clean oval face, straight natural brows, calm dark almond-shaped eyes, a small beauty mark under her right eye, long straight black hair now worn loose over one shoulder, subtle refined makeup with muted red lips, wearing a sharp black tailored trouser suit over a black silk blouse and a slim gold watch.",
+     "keep": "small beauty mark under the right eye, long straight black hair worn loose, sharp black tailored trouser suit, slim gold watch",
+     "hair": "long straight black hair worn loose over the left shoulder",
+     "costume": "a sharp black tailored trouser suit, a black silk blouse, a slim gold watch, black pointed heels",
+     "face_detail": "a small beauty mark under the right eye, calm dark eyes, muted red lips, refined subtle makeup, fine skin texture."
+    }
+   }
+  },
+  "zhaokai": {
+   "name": "Zhao Kai",
+   "name_zh": "赵凯",
+   "card": "置业顾问",
+   "role": "man",
+   "look": "a 32-year-old Chinese man with a narrow face, raised thin brows, small sharp eyes behind thin gold-rimmed glasses, short black hair slicked back with a hard side part on his left, clean-shaven, wearing a slim navy suit, a white shirt, a navy tie and a small plain gold pin on the lapel.",
+   "keep": "thin gold-rimmed glasses, slicked-back black hair with a hard left side part, slim navy suit with a navy tie, small plain gold lapel pin",
+   "face_detail": "thin gold-rimmed glasses, small sharp eyes, raised thin brows, clean-shaven skin with fine texture.",
+   "hair": "short black hair slicked back with a hard side part on his left",
+   "costume": "a slim navy two-piece suit, a white shirt, a navy silk tie, a small plain gold pin on the left lapel, polished black shoes",
+   "voice_en": "in a smooth, slightly nasal male voice",
+   "voice_design": "三十二岁左右的成年男性，音色圆滑，略带鼻音，中音，普通话标准，语速偏快。",
+   "voice_sample": "这套房子的户型是整个项目里最好的，南北通透，采光非常充足。"
+  },
+  "zhoumin": {
+   "name": "Zhou Min",
+   "name_zh": "周敏",
+   "card": "销售总监",
+   "role": "woman",
+   "look": "a 45-year-old Chinese woman with a strong square jaw, defined brows, alert eyes with fine lines at the corners, a sleek chin-length black bob, polished makeup with deep rose lips, pearl drop earrings, wearing an ivory tailored skirt suit with a fitted jacket.",
+   "keep": "sleek chin-length black bob, pearl drop earrings, ivory tailored skirt suit, fine lines at the eye corners",
+   "face_detail": "fine lines at the corners of the eyes, defined brows, deep rose lips, polished makeup, mature skin texture.",
+   "hair": "a sleek chin-length straight black bob",
+   "costume": "an ivory tailored skirt suit with a fitted jacket, pearl drop earrings, nude pointed heels",
+   "voice_en": "in a crisp, confident mature female voice",
+   "voice_design": "四十五岁左右的成熟女性，音色干练清脆，中音，普通话标准，语速适中。",
+   "voice_sample": "我们这个项目一共只有四十八户，每一户都是按照私人定制的标准来做的。"
+  }
+ },
+ "locations": {
+  "flat_foyer": {
+   "name": "show-flat entrance foyer",
+   "name_zh": "样板间·玄关",
+   "look": "a luxury apartment entrance foyer with soft ivory leather wall panels and curved corners, a sculptural dark-bronze console table with a white-and-black marble top under a framed dark oil painting, decorative objects on the console, a grey-and-white woven checkerboard rug on light grey stone floor, a cove-lit ceiling",
+   "keep": "sculptural dark-bronze console with marble top, framed dark painting above it, ivory curved wall panels with a fluted lower band, checkerboard rug",
+   "time": "day",
+   "light": "day; soft daylight spilling in from the living room on the left, warm cove light from the ceiling"
+  },
+  "flat_living": {
+   "name": "show-flat living room",
+   "name_zh": "样板间·客厅",
+   "look": "an 8.4-metre-wide luxury living room with floor-to-ceiling windows, a long curved ivory boucle sofa and sculptural round white armchairs, a cloud-shaped white marble coffee table with a large dark-red rose arrangement, a large rug with an organic grey-and-white branch pattern, light grey stone floor, a slim white wall shelf full of art books along the side wall, a flat ceiling with linear light slots",
+   "keep": "curved ivory sofa, cloud-shaped marble coffee table with dark-red roses, grey-and-white branch-pattern rug, floor-to-ceiling window wall, long white bookshelf wall",
+   "time": "day",
+   "light": "day; bright low sun through the floor-to-ceiling windows casting long window shadows across the rug",
+   "lights": {
+    "night": "night; warm cove light and two floor lamps as the key, the city skyline glowing in deep blue and amber through the floor-to-ceiling windows, soft reflections in the glass; no daylight anywhere"
+   }
+  },
+  "flat_kitchen": {
+   "name": "show-flat open kitchen island",
+   "name_zh": "样板间·西厨岛台",
+   "look": "an open-plan luxury kitchen with a long island of black marble with white veins over a ribbed white curved base, a large dark-red and green flower arrangement, crystal decanters and glasses on the island, a wine display cabinet with glass shelves and slim black-metal glazed partitions, a window wall behind the counter, light grey stone floor",
+   "keep": "black-marble island top with a ribbed white curved base, dark-red flower arrangement, crystal decanters, wine display cabinet with black-framed glass partitions",
+   "time": "day",
+   "light": "day; cool daylight from the window behind the island, soft fill from the living room"
+  },
+  "flat_master": {
+   "name": "show-flat master bedroom",
+   "name_zh": "样板间·主卧",
+   "look": "a luxury master bedroom with a large bed in grey and ivory bedding with a fringed throw, a soft upholstered ivory headboard wall with curved panels, a corner window with sheer curtains, a pale geometric rug on a dark grey carpet, a white round bedside table and a pendant lamp, a tall black-framed glass display shelf at the door",
+   "keep": "large bed with grey fringed throw, upholstered ivory headboard wall, corner window with sheer curtains, pale geometric rug",
+   "time": "day",
+   "light": "day; strong side light from the corner window, warm and soft on the bed"
+  },
+  "flat_closet": {
+   "name": "show-flat walk-in closet",
+   "name_zh": "样板间·衣帽间",
+   "look": "a walk-in closet with a tall dark-bronze and glass display shelf holding designer handbags, curved ivory wardrobe panels, a dressing table with a round mirror beyond, warm dark wood floor",
+   "keep": "dark-bronze glass display shelf with designer handbags, curved ivory wardrobe panels",
+   "time": "day",
+   "light": "day; soft daylight from the bedroom, warm accent light on the shelves"
+  },
+  "flat_guestroom": {
+   "name": "show-flat second bedroom",
+   "name_zh": "样板间·次卧",
+   "look": "a warm second bedroom with a bed in white, grey and black bedding with patterned cushions, a full-height beige fabric headboard wall with vertical panels, two dark bedside tables with small white lamps, a pale patterned runner rug on light grey wood floor",
+   "keep": "beige vertical-panel headboard wall, white-and-black bedding with patterned cushions, two small white bedside lamps",
+   "time": "day",
+   "light": "day; soft even daylight from a window on the right, warm bedside lamps on"
+  },
+  "flat_bath": {
+   "name": "show-flat master bathroom",
+   "name_zh": "样板间·主卫",
+   "look": "a luxury bathroom with a long floating vanity in grey stone with a large mirror, a wall-hung toilet, dark grey stone floor, a tall window with frosted lower glass, white bath mat and slippers",
+   "keep": "long floating stone vanity with a large mirror, dark grey floor, tall window at the end",
+   "time": "day",
+   "light": "day; bright cool daylight from the tall window, soft mirror light"
+  },
+  "club_entrance": {
+   "name": "clubhouse main entrance",
+   "name_zh": "会所·入口",
+   "look": "a grand residential clubhouse entrance under a dark canopy, wide light-grey granite steps, polished dark-green marble columns and rose-gold metal pillars, a tall glass facade with a rose-gold revolving door",
+   "keep": "dark-green marble columns, rose-gold revolving door, wide granite steps, glass facade",
+   "time": "day",
+   "light": "day; bright low sun from the left raking across the stone steps and glinting on the bronze door, warm interior light glowing through the glass"
+  },
+  "club_lobby": {
+   "name": "clubhouse grand lobby",
+   "name_zh": "会所·大堂",
+   "look": "a double-height luxury lobby with blush-pink walls, ivory arched ceiling vaults outlined in warm light, a giant dark-red leaf sculpture standing on a round inlaid medallion in a polished dark-grey marble floor with white inlaid line bands, glowing arched niches, a floor-to-ceiling glass wall",
+   "keep": "giant dark-red leaf sculpture on the round floor medallion, ivory arched vaults with light lines, dark-grey marble floor with white inlay bands, blush-pink walls",
+   "time": "day",
+   "light": "day; soft daylight through the glass wall mixed with warm light from the vault edges and niches"
+  },
+  "club_lounge": {
+   "name": "lobby lounge",
+   "name_zh": "会所·大堂洽谈区",
+   "look": "a lobby lounge with deep ivory leather sofas and armchairs, low round tables with dark-red rose balls, tall cylindrical floor lamps, a polished dark-grey marble floor with sweeping white inlay curves, a floor-to-ceiling window wall",
+   "keep": "ivory leather sofa group, dark-red rose balls on low tables, cylindrical floor lamps, window wall",
+   "time": "day",
+   "light": "day; bright soft daylight from the window wall, warm lamps"
+  },
+  "club_corridor": {
+   "name": "lift lobby corridor",
+   "name_zh": "会所·电梯厅走廊",
+   "look": "a long luxury corridor with a polished dark-grey marble floor and parallel white inlay lines, ivory walls with curved sculpted edges and glowing pillar lamps, bronze lift doors, a large modern red-and-white painting, ending in a carved stone feature wall with white arch patterns",
+   "keep": "dark-grey marble floor with parallel white lines, carved stone feature wall at the end, bronze lift doors, red-and-white painting",
+   "time": "day",
+   "light": "day; warm wall-washer light and pillar lamps, reflections on the marble floor"
+  },
+  "club_library": {
+   "name": "clubhouse tea and reading room",
+   "name_zh": "会所·书吧茶室",
+   "look": "a dark, intimate reading and tea room with dark wood bookshelves and walls, a long dark wood table with clear rose-tinted acrylic chairs and a large red berry flower arrangement, dark grey marble floor, tall windows with sheer blinds",
+   "keep": "long dark wood table, rose-tinted acrylic chairs, red berry flower arrangement, dark wood bookshelves",
+   "time": "evening",
+   "light": "evening; warm low lamplight on the table, cool blue dusk at the windows"
+  },
+  "club_vip": {
+   "name": "VIP reception room",
+   "name_zh": "会所·VIP会客室",
+   "look": "a warm VIP reception room with blush-pink walls and tall vertical light strips, a long ivory leather built-in sofa with dark cushions, a white-and-grey triangle-pattern stone floor, a low dark marble coffee table, a pink blossom arrangement on a dark side table, glass doors to a garden",
+   "keep": "long ivory leather sofa, white-and-grey triangle-pattern floor, blush-pink walls with vertical light strips, pink blossom arrangement",
+   "time": "day",
+   "light": "day; soft daylight from the glass doors, warm vertical light strips"
+  },
+  "club_stairs": {
+   "name": "clubhouse stairwell",
+   "name_zh": "会所·楼梯间",
+   "look": "a quiet stairwell with smooth ivory wall panels, a slim dark metal handrail, dark-grey marble steps with light nosings, a warm cove light along the ceiling edge",
+   "keep": "ivory wall panels, slim dark handrail, dark-grey marble steps",
+   "time": "day",
+   "light": "day; soft warm cove light from above, gentle falloff down the stairs"
+  },
+  "club_hall": {
+   "name": "clubhouse great hall and bar",
+   "name_zh": "会所·大厅吧台",
+   "look": "a futuristic clubhouse hall with sculptural ivory tree-shaped columns branching into light-lined ceiling vaults, a long bar counter of green onyx marble with white bar stools, a backlit green onyx display wall, ivory leather sofa groups, a polished dark-grey marble floor with curving white inlay lines, a glass wall onto the garden",
+   "keep": "ivory tree-shaped columns with light-lined vaults, green onyx bar counter with white stools, dark-grey marble floor with white curving lines",
+   "time": "evening",
+   "light": "evening; warm light along the vault edges and the backlit onyx, blue dusk through the glass wall"
+  },
+  "club_billiards": {
+   "name": "billiards room",
+   "name_zh": "会所·台球室",
+   "look": "a billiards area off the great hall with a modern pool table with green cloth on a sculptural black base under a long linear lamp, ivory tree-shaped columns, a dark wooden arched door, dark-grey marble floor",
+   "keep": "green-cloth pool table on a black sculptural base, linear lamp above, ivory tree columns, arched wooden door",
+   "time": "evening",
+   "light": "evening; cool pool of light from the linear lamp on the table, dim warm surroundings"
+  },
+  "club_banquet": {
+   "name": "private banquet room",
+   "name_zh": "会所·宴会包间",
+   "look": "a private banquet room with a large round dining table for twelve with a marble lazy susan covered in red roses, ivory dining chairs, a tiered crystal chandelier, a white-and-grey triangle-pattern stone floor inlay, taupe fabric wall panels with vertical light strips, a lounge corner with grey velvet sofas",
+   "keep": "large round table with red roses on the lazy susan, tiered crystal chandelier, ivory chairs, triangle-pattern floor inlay",
+   "time": "evening",
+   "light": "evening; warm chandelier light over the table, soft wall-strip light"
+  },
+  "club_media": {
+   "name": "private media lounge",
+   "name_zh": "会所·影音室",
+   "look": "a private media and karaoke lounge with dark brown suede wall panels, a long teal-grey leather sectional sofa with rust cushions, glowing turquoise malachite stone coffee tables, mustard-yellow lounge chairs, a large projection screen on the wall, a beige curtain",
+   "keep": "glowing turquoise malachite tables, teal-grey sectional sofa, dark brown suede walls, projection screen",
+   "time": "night",
+   "light": "night; dim warm downlights, the malachite tables glowing, cool light from the screen"
+  },
+  "club_pool": {
+   "name": "indoor swimming pool",
+   "name_zh": "会所·室内泳池",
+   "look": "an indoor swimming pool with green-blue mosaic tiles, a dark wood slatted ceiling with small downlights, a full glass wall onto the garden, white sculptural sun loungers, warm wall lamps, grey stone pool deck",
+   "keep": "green-blue mosaic pool, dark slatted ceiling, glass wall, white sun loungers",
+   "time": "evening",
+   "light": "evening; warm wall lamps and downlights reflecting on the water, blue dusk through the glass wall"
+  },
+  "club_gym": {
+   "name": "yoga and fitness studio",
+   "name_zh": "会所·瑜伽健身房",
+   "look": "a bright yoga and fitness studio with a light maple wood floor, a sculptural white mushroom-shaped column with glowing light lines spreading across the ceiling, backlit display shelves with pink exercise balls and yoga mats, white rounded seats, a mirror wall",
+   "keep": "white mushroom-shaped column with glowing light lines, maple wood floor, backlit shelves with pink exercise balls",
+   "time": "evening",
+   "light": "evening; warm glowing light lines from the column and ceiling, soft even fill"
+  },
+  "garage_drive": {
+   "name": "underground garage driveway",
+   "name_zh": "地库·车道",
+   "look": "a high-end underground car park with a polished light terrazzo driveway with white lane arrows, a dark ceiling studded with hundreds of small star-like lights and long white light lines, white columns with marked letters, parked cars along the sides",
+   "keep": "starry dotted ceiling with long light lines, polished terrazzo driveway with white arrows, white columns",
+   "time": "night",
+   "light": "night; cool white light from the starry ceiling and light lines, glossy reflections on the floor"
+  },
+  "garage_lobby": {
+   "name": "garage lift lobby",
+   "name_zh": "地库·入户大堂",
+   "look": "an underground lift lobby with a glass-walled waiting room, white stone wall panels, two white chairs and a small round table with red roses, polished light grey floor, dark-framed glass doors with a face-recognition panel",
+   "keep": "glass-walled waiting room, white chairs and round table with red roses, white stone wall panels",
+   "time": "night",
+   "light": "night; clean cool white light, soft reflections on the floor"
+  }
+ },
+ "props": {},
+ "language": "zh-CN",
+ "look_preset": "cinematic",
+ "style": "The target video is a photorealistic live-action Chinese urban vertical short drama in 9:16 with cinematic composition, a refined warm-neutral film grade with soft contrast and rich deep shadows, light that is motivated by each location's own sources, and faces with natural skin texture."
+}

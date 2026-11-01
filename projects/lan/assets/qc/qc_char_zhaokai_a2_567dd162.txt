@@ -1,0 +1,13 @@
+```json
+{
+  "people": 1,
+  "sex": "man",
+  "apparent_age": 28,
+  "hair": "Black, short, styled with a side part",
+  "face_marks": [],
+  "eyewear": "Gold-rimmed round glasses",
+  "facial_hair": "None",
+  "clothing": "Navy blue suit jacket, white dress shirt, navy blue tie",
+  "text_or_watermark": false
+}
+```
