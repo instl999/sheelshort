@@ -7,6 +7,7 @@ https://www.autodl.art/docs/app_api/ . The developer token is read from $AUTODL_
 """
 from __future__ import annotations
 
+import json
 import os
 import threading
 import time
@@ -290,6 +291,23 @@ def grab(api, uuids: list[str], c: dict, log, claim: bool = True, stop=None) -> 
     return None
 
 
+CAPS = Path(__file__).resolve().parent.parent / ".cache" / "server_caps.json"
+
+
+def bad_machines() -> set[str]:
+    """Machines known to lack a feature the run needs (RTX upscaling): started last."""
+    try:
+        return set(json.loads(CAPS.read_text()).get("no_rtx_vsr_machines", []))
+    except (OSError, ValueError):
+        return set()
+
+
+def uuid_for(url: str) -> str | None:
+    """The instance whose ComfyUI answers at `url` (from the holder registry)."""
+    with _registry() as d:
+        return next((u for u, e in d.items() if e.get("url") and e["url"].rstrip("/") == url.rstrip("/")), None)
+
+
 def spawn_reaper(project_root) -> None:
     """Start the background watcher that powers idle servers off (`fleet <project> idle`), unless one is running."""
     import subprocess
@@ -373,7 +391,8 @@ class Session:
         servers = self.p.cfg["comfy"]["servers"]
         insts = {i["uuid"]: i for i in self.api.instances() if ours(self.c, i)}
         core = [u for u in self.c.get("core") or [] if u in insts]
-        order = core + sorted(u for u in insts if u not in core)
+        bad = bad_machines()   # a machine with an old driver only when nothing else is free
+        order = sorted(core + sorted(u for u in insts if u not in core), key=lambda u: insts[u].get("machine_id") in bad)
         with self.p.lock:   # a configured address of an on-demand server may be stale (6006/6008): resolved below
             servers[:] = [s for s in servers if not any(u.split("-", 1)[-1] in s for u in order)]
         cap = int(self.c.get("max_servers", 4))
@@ -409,6 +428,65 @@ class Session:
             t.join()
         if not servers:
             self.log("no server could be started")
+
+    def machines(self) -> dict[str, str]:
+        """Pool address -> AutoDL machine id (a power-on can land an instance on another machine, and drivers differ
+        from machine to machine)."""
+        try:
+            mid = {i["uuid"]: i.get("machine_id", "") for i in self.api.instances()}
+        except Exception:  # noqa: BLE001
+            return {}
+        out = {}
+        for url in list(self.p.cfg["comfy"]["servers"]):
+            u = next((x for x, v in self.held.items() if v == url), None) or uuid_for(url)
+            if u and mid.get(u):
+                out[url] = mid[u]
+        return out
+
+    def add_capable(self, avoid_machines: set[str]) -> str | None:
+        """Bring one more server into the pool on a machine not in `avoid_machines` (one whose driver cannot run a
+        feature, say RTX upscaling). At `max_servers`, an idle server on an avoided machine (this run's own, or one the
+        render's fleet added) is powered off to make room. Returns the new server's address, or None."""
+        with self.lock:
+            if len(self.p.cfg["comfy"]["servers"]) >= int(self.c.get("max_servers", 4)) and not self._make_room(avoid_machines):
+                return None
+            try:
+                insts = [i for i in self.api.instances() if ours(self.c, i)]
+            except Exception as e:  # noqa: BLE001
+                self.log(f"listing servers failed: {e}")
+                return None
+            stopped = [i["uuid"] for i in insts if i.get("status") == "shutdown" and i.get("machine_id") not in avoid_machines]
+            u = grab(self.api, stopped, self.c, self.log)
+            if not u:
+                u = Fleet(self.p, api=self.api)._create()
+                if not u:
+                    return None
+                hold(u)
+            self._up(u)
+            return self.held.get(u) or None
+
+    def _make_room(self, avoid_machines: set[str]) -> bool:
+        """Power off one idle server on an avoided machine; True if one went."""
+        where = self.machines()
+        for u, url in list(self.held.items()):
+            if url and where.get(url) in avoid_machines and not self.p._assigned.get(url):
+                self.held.pop(u)
+                with self.p.lock:
+                    if url in self.p.cfg["comfy"]["servers"]:
+                        self.p.cfg["comfy"]["servers"].remove(url)
+                if let_go(u):
+                    try:
+                        self.api.power_off(u)
+                        forget(u)
+                    except AutoDLError as e:
+                        self.log(f"{u}: power off failed ({e})")
+                self.log(f"{u}: out of the pool to make room for a machine that can do the job")
+                return True
+        scaler = getattr(self.p, "scaler", None)
+        for u, m in list(scaler.managed.items()) if scaler else []:
+            if m.get("url") and where.get(m["url"]) in avoid_machines and scaler._retire(u, "old driver, making room"):
+                return True
+        return False
 
     def _up(self, u: str) -> None:
         t0 = time.time()
@@ -597,8 +675,10 @@ class Fleet:
 
     def _power_on_stopped(self) -> str | None:
         core = self.c.get("core") or []
+        bad = bad_machines()
         insts = sorted((i for i in self.api.instances() if ours(self.c, i) and i.get("status") == "shutdown"),
-                       key=lambda i: (i["uuid"] not in core, core.index(i["uuid"]) if i["uuid"] in core else 0))
+                       key=lambda i: (i.get("machine_id") in bad, i["uuid"] not in core,
+                                      core.index(i["uuid"]) if i["uuid"] in core else 0))
         return grab(self.api, [i["uuid"] for i in insts if i["uuid"] not in self.managed], self.c, self.log, stop=self._stop)
 
     def _create(self) -> str | None:

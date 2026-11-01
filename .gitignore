@@ -24,3 +24,14 @@ projects/*/*
 
 # local notes for the owner
 PENDING_APPROVALS.md
+
+# lan example project (蓝城雲境): every asset it made is kept in git: films, location pack, plates, the location renders in
+# cache/ and, once written, its cast and episodes (state.json, logs and requests/ name the servers: they stay local)
+!projects/lan/films/
+!projects/lan/locations/
+!projects/lan/inputs/
+!projects/lan/make_locations.py
+!projects/lan/README.md
+!projects/lan/cache/
+!projects/lan/assets/
+!projects/lan/voices/

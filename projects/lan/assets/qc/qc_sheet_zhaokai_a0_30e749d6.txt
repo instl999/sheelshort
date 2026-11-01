@@ -1,0 +1,8 @@
+{
+  "figures": 3,
+  "same_person": true,
+  "views": "front, side, back",
+  "hair": "black, short and slicked back",
+  "clothing": "dark navy blue suit with a white dress shirt and dark blue tie, black leather dress shoes",
+  "text_or_watermark": false
+}

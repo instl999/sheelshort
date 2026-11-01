@@ -1,0 +1,11 @@
+{
+"people": 1,
+"sex": "man",
+"apparent_age": 27,
+"hair": "black, short, slicked back",
+"face_marks": [],
+"eyewear": "gold-rimmed glasses",
+"facial_hair": "none",
+"clothing": "dark blue suit jacket, white collared shirt, dark blue tie",
+"text_or_watermark": false
+}
