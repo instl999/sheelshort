@@ -294,6 +294,57 @@ villager (村妇), Gao Liang's aide, and a city street:
 **Result:** every take of all four episodes judged again: 51 of 57 checks pass. E02 C3's empty insert was caught and
 re-taken; take 2 is clean. The other flags were the false positives above.
 
+### 0.11 Cinema pass (2026-10-31): realism and editing
+**The owner's review of the delivered episodes:** the picture lacks realism, and the edit has little cinematic language,
+with cuts that feel jarring and nonsensical. One frame per shot of E02 showed why.
+
+**Editing.**
+- **Jump cuts in every episode (8–9 each).** The house pattern *A speaks → reaction close-up of B → B answers in
+  close-up* cuts B to B at the same size. E02 C10 also had two close-ups of Erdaye in a row.
+- **No geography.** E02 had 47 shots: 44 single close-ups, 1 over-the-shoulder shot and no wide shot. The viewer never
+  sees who stands where.
+- **No screen direction.** Nothing said where anyone looks, so singles stared into the lens.
+- **No camera language.** 93% of cuts were "static camera".
+
+**Look.**
+- The style asked for a 35mm lens and "crisp detail". The village light was "bright late-morning sunlight from a
+  clear sky, soft shadows": flat light and a wide lens, the phone look.
+- The location plate (a reference picture in every clip there) was generated **without the location's light at all**. It
+  was a flat phone snapshot with a hazy sky and a gate that read as a Japanese torii, and H3 copied it.
+
+**Engine changes.**
+- `check` refuses **jump cuts**: adjacent cuts with the same people at the same size, also across a clip boundary in
+  the same location. `check --fit` repairs the common case: a repeated close-up that carries a line becomes the reverse
+  angle, an over-the-shoulder shot past the person addressed.
+- **Screen direction.** Each character gets a side of the line of action per location: the people who talk to each
+  other most go on opposite sides (greedy max-cut), or the episode fixes it with `blocking`. Every single is framed on
+  its side and looks across the line at the person addressed (`to`, or the nearest other speaker), never into the
+  lens. Over-the-shoulder shots put the shoulder on its own side, and two-shots place both people.
+- **`WS`**, a wide shot for geography (no dialogue).
+- **Lens per shot size** (85mm with shallow focus for faces, 50mm medium, 35mm wide) and a cinema paragraph in every
+  prompt: directional key and rim light, real shadows, film colour, real skin, restrained acting, background extras who
+  never look into the lens.
+- **Plates** are lit by the location's `light` and shot as film stills.
+- **Craft notes** in `check` (advice, not errors): over 70% single close-ups, over 60% static camera, a location without
+  a wide, medium or over-the-shoulder shot, flat light words in a location, and wide-lens or "crisp" words in the style.
+- **Edit.**
+  - A flash shot under 0.6 s at either end of a take is trimmed (E02 had a 0.3 s one at a clip boundary), never
+    cutting into a line.
+  - A finishing grade (`edit.grade = "film"`): slightly lower saturation, a soft vignette and fine luma grain.
+
+**E02 rewritten under these rules.** It keeps the same lines, and its coverage is:
+- 7 over-the-shoulder shots, 2 wide shots, 2 medium shots and 3 inserts;
+- a motivated move on most cuts;
+- low golden backlight on a relit plate.
+
+The fresh render's 10 clips all passed clip QC on the first take. It runs 122.5 s with 50 detected shots, a mean of
+2.45 s. Detection over-counts slightly: a contract waved across the lens reads as a cut. The before/after sheet is
+`projects/quancun/edit/E02/compare_before_after.jpg`. The look and the coverage are a clear step up.
+
+**The fresh-agent test** on a new script (《雨夜外卖》, written only from the old skill) produced the same defects:
+12 jump cuts and around 80% static camera. So they came from the workflow, not from one adaptation. `--fit` repairs 7
+of the 12; the other 5 are one-person phone-call sequences, which need a rewrite.
+
 ---
 
 ## 1. Market research: does this already exist?

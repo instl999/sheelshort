@@ -36,8 +36,12 @@ def prop_prompt(pr: dict) -> str:
 
 
 def plate_prompt(loc: dict) -> str:
-    return (f"Photorealistic cinematic establishing still of {loc['look']} The place is empty with no people. Vertical 9:16 "
-            f"composition, eye-level camera, realistic {loc.get('time', '')} lighting, high detail, no text, no watermark.")
+    """The location plate is a reference picture in every clip there, so its light and look carry into the video: it is
+    lit as the location's `light` says and shot like a film still, not a phone snapshot (owner review 2026-10-31)."""
+    light = loc.get("light") or f"realistic {loc.get('time', '')} lighting"
+    return (f"Cinematic film still of {loc['look'].rstrip('.')}. The place is empty with no people. Light: {light.rstrip('.')}. "
+            "Shot on a cinema camera with a 35mm prime lens at eye level, natural film colour, gentle contrast, light with a "
+            "clear direction and real shadows, real textures and wear, vertical 9:16 composition, no text, no watermark.")
 
 
 def images(p: Project) -> None:

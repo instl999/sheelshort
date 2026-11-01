@@ -58,13 +58,17 @@ A complete worked example is `projects/guilai/` (bible.json, episodes/E01.json).
 
 | cut field | meaning |
 |---|---|
-| `type` | `MS` medium, `CU` close-up, `ECU`, `OTS` over-the-shoulder, `VO` inner voice (close-up pushing in) |
+| `type` | `WS` wide (geography), `MS` medium, `CU` close-up, `ECU`, `OTS` over-the-shoulder, `VO` inner voice (close-up pushing in), `RX` reaction while the previous line continues |
 | `subjects` | characters (and only they) visible in the cut |
+| `to` | optional: whom the subject looks at or addresses (default: the nearest other speaker in the clip) |
 | `speaker` / `over` | who speaks; whose shoulder is in the foreground of an OTS |
 | `line` / `say` / `act` / `emotion` / `delivery` | subtitle text / acted wording / Chinese voice direction / scoring class / English face direction |
 | `composition`, `action`, `camera`, `sound`, `end` | picture prompt text; `{charid}` and `{loc}` become H3 subject labels |
 | `props` | props visible in the cut (must exist in bible.props) |
 | `dur` | seconds (default 3); dialogue cuts are lengthened to fit the acted line |
+
+Episode (or clip) field `blocking`: `{"<location>": {"<charid>": "left" | "right"}}` fixes which side of the line of
+action each character stands on; by default the people who talk to each other most are put on opposite sides.
 
 ## Outputs
 `assets/` reference pack · `voices/` cast voices · `perform/<EP>/` takes, choice.json, timing.json, one track per clip ·

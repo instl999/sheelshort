@@ -139,7 +139,7 @@ def main(argv: list[str] | None = None) -> None:
     if a.command == "check":
         for ep in eps if a.fit else []:
             e = p.episode(ep)
-            changes = h3prompt.fit_durations({**p.bible, **e})
+            changes = h3prompt.fix_jump_cuts({**p.bible, **e}) + h3prompt.fit_durations({**p.bible, **e})
             if changes:
                 save_json(p.root / "episodes" / f"{ep}.json", e)
                 print(f"{ep}: fitted " + "; ".join(changes))
@@ -148,6 +148,8 @@ def main(argv: list[str] | None = None) -> None:
             slow = " (slower than the reference: add reaction cuts or split long shots)" if pc["mean_shot_s"] > 1.5 * h3prompt.REFERENCE_MEAN_SHOT_S else ""
             print(f"{ep}: {pc['clips']} clips, {pc['shots']} shots, {pc['duration_s']} s, mean shot {pc['mean_shot_s']} s, "
                   f"{pc['over_5s']} over 5 s; reference mean {h3prompt.REFERENCE_MEAN_SHOT_S} s{slow}")
+            for note in h3prompt.craft_notes(p.scene(ep)):
+                print(f"{ep} note: {note}")
         errs = check(p, eps)
         for e in errs:
             print(e)

@@ -9,7 +9,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 os.environ["SHEELSHORT_FLEET_OWNED"] = str(Path(tempfile.gettempdir()) / "sheelshort_test_fleet_owned.json")   # never the real one
 
-from sheelshort import assemble, h3prompt, perform, qc, speech  # noqa: E402
+from sheelshort import assemble, h3prompt, media, perform, qc, speech  # noqa: E402
 from sheelshort.project import Project  # noqa: E402
 
 
@@ -115,8 +115,23 @@ def test_qc_aligns_text_to_the_image():
     assert a["look"].startswith("a 72-year-old")
 
 
+def _talk_clip(cid="C1", loc="village_gate"):
+    def cut(t, who, line=None, **kw):
+        c = {"type": t, "subjects": [who], "composition": "", "action": "", "camera": "Static camera.", "dur": 2.4, **kw}
+        if line:
+            c |= {"speaker": who, "line": line, "act": "冷笑", "emotion": "cold", "delivery": "cold"}
+        return c
+    return {"id": cid, "location": loc, "soundscape": "Wind.", "summary": "{dahua} and {xiaokang} argue.", "cuts": [
+        cut("CU", "dahua", "你是不是脑子有病！"),
+        cut("RX", "xiaokang"),
+        cut("OTS", "xiaokang", "这合同有问题。", over="dahua"),
+        cut("CU", "dahua", "就你懂？"),
+    ]}
+
+
 def test_reaction_cuts():
-    scene = json.loads((ROOT / "projects/quancun/bible.json").read_text()) | json.loads((ROOT / "projects/quancun/episodes/T01.json").read_text())
+    scene = json.loads((ROOT / "projects/quancun/bible.json").read_text())
+    scene["clips"] = [_talk_clip()]
     assert h3prompt.check_rules(scene) == []                         # lines may run over the reaction cut after them
     bad = json.loads(json.dumps(scene))
     bad["clips"][0]["cuts"].insert(0, {"type": "RX", "subjects": ["xiaokang"], "dur": 2})
@@ -124,6 +139,66 @@ def test_reaction_cuts():
     text = h3prompt.build(scene, scene["clips"][0], h3prompt.Refs(char_pictures={"dahua": ["a.png", "b.png"], "xiaokang": ["c.png", "d.png"]},
                                                                   location_pictures=["loc.png"]))
     assert "line continues off-screen over this shot" in text
+
+
+def test_jump_cuts_are_refused():
+    scene = json.loads((ROOT / "projects/quancun/bible.json").read_text())
+    clip = _talk_clip()
+    clip["cuts"][2] = {**clip["cuts"][2], "type": "CU"}                # RX on Xiaokang, then his close-up: a jump
+    del clip["cuts"][2]["over"]
+    scene["clips"] = [clip]
+    assert any("C1 cut 3: jump cut" in e for e in h3prompt.check_rules(scene))
+    a, b = _talk_clip("C1"), _talk_clip("C2")                         # C1 ends and C2 opens on Dahua's close-up
+    scene["clips"] = [a, b]
+    assert any("C2 cut 1: jump cut" in e for e in h3prompt.check_rules(scene))
+    b["location"] = "lijia_home"                                      # a new scene: not a jump
+    assert not any("jump" in e for e in h3prompt.check_rules(scene))
+    scene["clips"] = [clip]                                           # --fit turns the repeated close-up into the reverse angle
+    assert h3prompt.fix_jump_cuts(scene) == ["C1 cut 3: close-up -> over-the-shoulder past dahua"]
+    assert clip["cuts"][2]["type"] == "OTS" and clip["cuts"][2]["over"] == "dahua"
+    assert not any("jump" in e for e in h3prompt.check_rules(scene))
+
+
+def test_singles_keep_screen_direction_and_look_off_axis():
+    scene = json.loads((ROOT / "projects/quancun/bible.json").read_text())
+    clip = _talk_clip()
+    scene["clips"] = [clip]
+    sides = h3prompt.blocking(scene, clip)
+    assert {sides["dahua"], sides["xiaokang"]} == {"left", "right"}
+    text = h3prompt.build(scene, clip, h3prompt.Refs(char_pictures={"dahua": ["a.png", "b.png"], "xiaokang": ["c.png", "d.png"]},
+                                                     location_pictures=["loc.png"]))
+    shots = text.split("detailed_description:")[1].split("[Shot ")[1:]
+    look = {"left": "right", "right": "left"}
+    assert f"toward the {look[sides['dahua']]} of frame" in shots[0] and "never looks into the lens" in shots[0]
+    assert f"toward the {look[sides['xiaokang']]} of frame" in shots[1]     # the reaction looks back across the line
+    assert f"at the {sides['dahua']} edge of frame" in shots[2]           # the shoulder sits on its own side
+    assert "85mm" in shots[0] and h3prompt.CINEMA in text
+    scene["blocking"] = {"village_gate": {"dahua": "right", "xiaokang": "left"}}
+    assert h3prompt.blocking(scene, clip) == {"dahua": "right", "xiaokang": "left"}
+
+
+def test_craft_notes_flag_flat_light_and_a_static_camera():
+    scene = json.loads((ROOT / "projects/quancun/bible.json").read_text())
+    scene["clips"] = [_talk_clip()]
+    scene["locations"]["village_gate"]["light"] = "bright natural midday sunlight, soft shadows"
+    notes = " | ".join(h3prompt.craft_notes(scene))
+    assert "flat light" in notes and "static camera" in notes and "close-ups" in notes
+    scene["locations"]["village_gate"]["light"] = "low golden sun behind the crowd, warm rim light, long shadows"
+    for c in scene["clips"][0]["cuts"]:
+        c["camera"] = "Slow push in."
+    assert not any("flat light" in n or "static" in n for n in h3prompt.craft_notes(scene))
+
+
+def test_edge_trims_drop_flash_shots_but_never_a_line():
+    real = media.shot_cuts
+    try:
+        media.shot_cuts = lambda v: [0.3, 4.0, 11.8]
+        assert assemble.edge_trims(Path("x.mp4"), 12.2, [{"start": 0.5, "end": 11.0}]) == (0.3, 11.8)
+        assert assemble.edge_trims(Path("x.mp4"), 12.2, [{"start": 0.1, "end": 12.0}]) == (0.0, 12.2)
+        media.shot_cuts = lambda v: [4.0]
+        assert assemble.edge_trims(Path("x.mp4"), 12.2, []) == (0.0, 12.2)
+    finally:
+        media.shot_cuts = real
 
 
 def test_name_card_goes_beside_the_face():
