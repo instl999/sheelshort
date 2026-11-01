@@ -408,6 +408,24 @@ def clip_props(clip: dict) -> list[str]:
     return list(dict.fromkeys(pr for cut in clip["cuts"] for pr in cut.get("props", [])))
 
 
+# In a close-up, "looks up at" makes H3 move the eyes alone with the head level: on screen it reads as an eye-roll,
+# contempt the story never asked for (林晚 in the 蓝城雲境 showcase). The head has to go back with the eyes.
+UPWARD = re.compile(r"\b(looks?|glances?|gazes?|peers?|stares?) up\b|\b(looks?|glances?|gazes?) upward|\b(raises?|lifts?) "
+                    r"(her|his|their) (eyes|gaze)\b", re.I)
+EYE_ROLL = re.compile(r"roll|白眼|contempt|scorn|disdain|sneer|不屑|鄙夷", re.I)
+FACE_SHOTS = ("CU", "MCU", "ECU", "VO", "RX", "OTS")
+
+
+def look_up_note(cut: dict) -> str:
+    """The sentence that keeps a written upward look from becoming an eye-roll, or "" (none needed, or one written)."""
+    if cut["type"] not in FACE_SHOTS or not UPWARD.search(cut.get("action", "")):
+        return ""
+    if EYE_ROLL.search(" ".join(str(cut.get(k, "")) for k in ("action", "act", "delivery", "emotion"))):
+        return ""
+    return ("To look up, the whole head tilts back with the eyes, chin rising, the gaze open and steady; the eyes never "
+            "roll upward on their own (that would read as an eye-roll).")
+
+
 def phone_only(clip: dict) -> set[str]:
     """Characters heard only through a phone in this clip (`via: "phone"`), never seen in it."""
     seen = {c for cut in clip["cuts"] for c in cut.get("subjects", []) + [cut.get("over")] if c}
@@ -658,6 +676,7 @@ def build(scene: dict, clip: dict, refs: Refs, cameras: dict[int, dict] | None =
             a, b = sorted(who[:2], key=lambda c: sides[c] != "left")
             parts.append(f"{S(a)} is on the left of frame and {S(b)} on the right, facing each other.")
         parts.append(f(cut["action"]))
+        parts.append(look_up_note(cut))
         # who else is in frame: written extras, the passers-by of a public place, or no one (an invitation to
         # "background people" in every prompt put strangers into 21% of private-scene panels)
         if cut.get("extras"):
