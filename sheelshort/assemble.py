@@ -66,8 +66,10 @@ def edl(p: Project, ep: str) -> dict:
                  for ln, v in zip(lines, vias) if v == "phone"] if len(vias) == len(lines) else []
         items.append({"clip": clip["id"], "video": str(video), "audio": audio, "foley": str(fol[0]) if fol and audio else None,
                       "start": round(t, 3), "in": head, "seconds": round(tail - head, 3), "phone": phone})
-        subs += [{"text": ln["text"], "start": round(t + ln["start"] - head, 3), "end": round(t + ln["end"] - head + 0.25, 3)}
-                 for ln in lines]
+        for ln in lines:   # a close-up whose face reaches low in the frame: the subtitle drops below it
+            face = media.face_box(video, (ln["start"] + ln["end"]) / 2) if p.cfg["edit"].get("subtitles_clear_faces", True) else None
+            subs.append({"text": ln["text"], "start": round(t + ln["start"] - head, 3), "end": round(t + ln["end"] - head + 0.25, 3),
+                         **({"face_bottom": round(face[3], 3)} if face else {})})
         cards += _cards_in(p, clip, t - head, video, introduced)
         fx += sfx.events_in(p, clip, t - head, head, tail, video)
         loc = p.locs.get(clip["location"], {})
@@ -147,6 +149,19 @@ def introduced_before(p: Project, ep: str) -> set[str]:
     return seen
 
 
+def steady_face(video: Path, *times: float) -> tuple[float, float, float, float] | None:
+    """Where the face is over a shot: the detector run at several moments, implausibly small boxes dropped (it once took
+    an eye on a three-quarter close-up for a face and put the name card on the cheek), the rest's median."""
+    import statistics
+    boxes = [b for b in (media.face_box(video, t) for t in times) if b and b[2] - b[0] >= 0.15]
+    if not boxes:
+        return None
+    x0, y0, x1, y1 = (statistics.median(b[k] for b in boxes) for k in range(4))
+    fw = x1 - x0   # the detector boxes eyes to mouth: the head, with its hair, is wider and taller
+    return (round(max(0.0, x0 - 0.3 * fw), 4), round(max(0.0, y0 - 0.25 * fw), 4),
+            round(min(1.0, x1 + 0.3 * fw), 4), round(min(1.0, y1 + 0.1 * fw), 4))
+
+
 def _cards_in(p: Project, clip: dict, t0: float, video: Path, introduced: set[str]) -> list[dict]:
     """Name cards (REFERENCE_STUDY §4): a main character's first solo close-up in the series carries their name and role,
     vertical, beside the head. `intro: true` on a cut picks the shot explicitly. The side comes from where the face is."""
@@ -161,7 +176,7 @@ def _cards_in(p: Project, clip: dict, t0: float, video: Path, introduced: set[st
         for c in cands:
             if _intro_cut(cut, c):
                 ch = p.chars[c]
-                face = media.face_box(video, at + dur / 2)
+                face = steady_face(video, at + 0.25 * dur, at + 0.5 * dur, at + 0.75 * dur)
                 out.append({"name": ch.get("name_zh") or ch["name"], "role": ch["card"], "start": round(t0 + at + 0.15, 3),
                             "end": round(t0 + at + min(dur - 0.1, 2.6), 3), "face": face})
                 introduced.add(p.base(c))   # once per character, whatever they wear
@@ -264,7 +279,7 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
             subs.append(sb)
     for i, s in enumerate(subs):
         end = min(s["end"], subs[i + 1]["start"] - 0.05) if i + 1 < len(subs) else s["end"]
-        rows.append(f"Dialogue: 0,{ass_time(s['start'])},{ass_time(end)},Line,,0,0,0,,{wrap(s['text'])}")
+        rows.append(f"Dialogue: 0,{ass_time(s['start'])},{ass_time(end)},Line,,0,0,{sub_margin(s, h)},,{wrap(s['text'])}")
         srows.append(f"{i + 1}\n{srt_time(s['start'])} --> {srt_time(end)}\n{wrap(s['text']).replace(chr(92) + 'N', chr(10))}\n")
     for card in plan.get("cards", []):
         rows += card_events(card, w, h, e.get("card_font", "Songti SC"))
@@ -273,9 +288,24 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
     return ass, srt
 
 
+SUB_MARGIN = 0.21      # the subtitle's bottom sits this far above the frame's bottom (lower third, below the faces)
+SUB_MARGIN_MIN = 0.10  # never closer to the bottom than this (the platforms' own buttons and captions live there)
+SUB_BLOCK = 0.085      # height of a two-line subtitle, as a fraction of the frame
+
+
+def sub_margin(sub: dict, h: int) -> int:
+    """The subtitle's bottom margin in pixels: the lower third, or lower still when the face of the shot it plays over
+    reaches into that space (a tight close-up), so a line never sits over a mouth or chin."""
+    m = SUB_MARGIN
+    fb = sub.get("face_bottom")
+    if fb is not None and fb > 1 - SUB_MARGIN - SUB_BLOCK - 0.02:
+        m = max(SUB_MARGIN_MIN, 1 - fb - SUB_BLOCK - 0.02)
+    return round(h * m)
+
+
 def card_events(card: dict, w: int, h: int, font: str) -> list[str]:
-    """A vertical name (large, heavy serif) and a thin role column beside it, next to the head at eye level, on the side
-    of the frame with more room; no box, a soft shadow. A location card (`kind: place`) is one vertical column of the
+    """A thin role column on the left and the vertical name (large, heavy serif) on its right, beside the head from about
+    the chin down, on the side of the frame with more room, clear of the face and the frame edge; no box, a soft shadow. A location card (`kind: place`) is one vertical column of the
     place's name at the top left as a scene opens, the way 持械入宋 and 和离后我带女儿横扫魔域 title their scenes."""
     vert = lambda t: r"\N".join(t)   # noqa: E731 - one character per line = vertical type
     if card.get("kind") == "place":
@@ -286,18 +316,25 @@ def card_events(card: dict, w: int, h: int, font: str) -> list[str]:
     fx = (face[0] + face[2]) / 2 if face else 0.5
     left = fx >= 0.5   # face right of centre: card on the left
     size, role_size = round(w * 0.1), round(w * 0.036)
+    # as the reference hits set it (王妈在顾家当保姆, 「顾家」 left of 「许管家」): the role column on the LEFT, the name on
+    # the RIGHT starting a little lower; the pair in the open space beside the face, clear of it and of the frame edge
+    gap, role_gap, edge = w * 0.05, size * 0.35, w * 0.08
+    pair = role_size + role_gap + size
     if face:
-        x = (face[0] * w - size * 0.9) if left else (face[2] * w + size * 0.9)
-        y = face[1] * h + 0.05 * h
-    else:
-        x, y = (w * 0.16 if left else w * 0.84), h * 0.24
-    x = min(max(x, size * 0.75), w - size * 0.75)
-    rx = x + (size * 0.95 if left else -size * 0.95)
+        room = face[0] * w - edge if left else w - edge - face[2] * w   # open space beside the face
+        x0 = face[0] * w - gap - pair if left else face[2] * w + gap
+        y = max(h * 0.12, face[3] * h - size * 0.6)   # from about the chin down: beside the head, never over the face
+        if room < pair + gap:   # a tight close-up: no room beside the face, so beside the shoulders, below the chin
+            x0, y = (edge if left else w - edge - pair), max(y, face[3] * h + h * 0.03)
+    else:   # no face found: low, near the edge, where faces rarely are
+        x0, y = edge, h * 0.5
+    x0 = min(max(x0, edge), w - edge - pair)
+    rx, nx = x0 + role_size / 2, x0 + role_size + role_gap + size / 2
     ts = f"{ass_time(card['start'])},{ass_time(card['end'])}"
-    name_tag = rf"{{\an8\pos({x:.0f},{y:.0f})\fn{font}\fs{size}\b1\bord0\shad3\4a&H80&\c&HFFFFFF&\fad(150,200)}}"
-    role_tag = rf"{{\an8\pos({rx:.0f},{y + size * 0.7:.0f})\fn{font}\fs{role_size}\b1\bord0\shad2\4a&H80&\c&HFFFFFF&\fad(150,200)}}"
-    return [f"Dialogue: 1,{ts},Line,,0,0,0,,{name_tag}{vert(card['name'])}",
-            f"Dialogue: 1,{ts},Line,,0,0,0,,{role_tag}{vert(card['role'])}"]
+    role_tag = rf"{{\an8\pos({rx:.0f},{y:.0f})\fn{font}\fs{role_size}\b1\bord0\shad2\4a&H80&\c&HFFFFFF&\fad(150,200)}}"
+    name_tag = rf"{{\an8\pos({nx:.0f},{y + role_size * 1.2:.0f})\fn{font}\fs{size}\b1\bord0\shad3\4a&H80&\c&HFFFFFF&\fad(150,200)}}"
+    return [f"Dialogue: 1,{ts},Line,,0,0,0,,{role_tag}{vert(card['role'])}",
+            f"Dialogue: 1,{ts},Line,,0,0,0,,{name_tag}{vert(card['name'])}"]
 
 
 def srt_time(s: float) -> str:
@@ -424,7 +461,7 @@ def run(p: Project, ep: str) -> Path:
     filt.append(f"{last}loudnorm=I={e['loudness']}:TP=-1.0:LRA=11,aresample=48000,asplit=2[aout][aclean]")
     master = out_dir / f"{p.master_name()}.mp4"
     clean = out_dir / f"{p.master_name()}_clean.mp4"   # the same cut without burned-in subtitles (dubbing, re-subtitling)
-    enc = ["-c:v", "libx264", "-preset", "medium", "-crf", "18", "-profile:v", "high", "-pix_fmt", "yuv420p",
+    enc = ["-c:v", "libx264", "-preset", "medium", "-crf", str(e.get("crf", 21)), "-profile:v", "high", "-pix_fmt", "yuv420p",
            "-c:a", "aac", "-b:a", "192k", "-movflags", "+faststart"]
     cmd = ["ffmpeg", "-y", "-v", "error", *ins, "-filter_complex", ";".join(filt),
            "-map", "[vout]", "-map", "[aout]", *enc, str(master), "-map", "[vclean]", "-map", "[aclean]", *enc, str(clean)]

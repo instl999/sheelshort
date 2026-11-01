@@ -209,7 +209,13 @@ def test_name_card_goes_beside_the_face():
     import re as _re
     x = lambda ev: float(_re.search(r"\\pos\((\d+)", ev).group(1))   # noqa: E731
     assert x(left[0]) < 540 < x(right[0])                               # face right of centre: card on the left, and back
-    assert "王\\N大\\N花" in left[0]                                  # vertical type
+    assert "王\\N大\\N花" in left[1] and "黄\\N谷" in left[0]          # vertical type; the role first...
+    for ev in (left, right):
+        role_x, name_x = x(ev[0]), x(ev[1])
+        assert role_x < name_x                                          # ...on the left, the name on the right
+        assert 1080 * 0.08 <= role_x - 1080 * 0.036 / 2 and name_x + 108 / 2 <= 1080 * 0.92   # clear of the frame edge
+    assert x(left[1]) + 108 / 2 <= 0.55 * 1080 - 1080 * 0.05 + 1       # and clear of the face
+    assert x(right[0]) - 1080 * 0.036 / 2 >= 0.45 * 1080 + 1080 * 0.05 - 1
 
 
 def test_offscreen_mention_uses_the_name():
@@ -923,9 +929,12 @@ def test_episodes_sort_in_story_order_and_a_room_keeps_its_place_at_night():
 
 def test_a_private_room_holds_only_its_written_people():
     from sheelshort import clipqc
-    chars = {"a": {"name": "A", "role": "man"}, "b": {"name": "B", "role": "woman"}}
+    chars = {"a": {"name": "A", "role": "man", "look": "a man"}, "b": {"name": "B", "role": "woman", "look": "a woman"}}
     two = {"type": "MS", "subjects": ["a", "b"]}
     assert clipqc.judge_panel(chars, 1, two, {"people": 3}, False, False)                   # a stranger at home
+    one = {"type": "MCU", "subjects": ["a"]}
+    assert not clipqc.judge_panel(chars, 1, one, {"people": 2}, False, False, room=2)       # the scene partner's shoulder
+    assert clipqc.judge_panel(chars, 1, one, {"people": 3}, False, False, room=2)           # but a third person is not
     assert not clipqc.judge_panel(chars, 1, two, {"people": 3}, False, False, crowd=True)   # a diner in a restaurant
     assert clipqc.judge_panel(chars, 1, two, {"people": 5}, False, False, crowd=True)       # but not a crowd in a two-shot
     assert not clipqc.judge_panel(chars, 1, dict(two, extras="two waiters"), {"people": 4}, False, False)
@@ -1152,6 +1161,79 @@ def test_an_outfit_close_up_is_a_head_crop_of_the_approved_close_up():
         cast.head_crop(src, dest)
         info = media.probe(dest)
         assert (info["width"], info["height"]) == (768, 1024)
+
+
+def test_a_look_up_in_a_close_up_never_becomes_an_unscripted_eye_roll():
+    from sheelshort import clipqc
+    cu = {"type": "CU", "subjects": ["a"], "action": "{a} looks up at the canopy, calm and unreadable."}
+    assert "whole head tilts back" in h3prompt.look_up_note(cu)
+    assert h3prompt.look_up_note(dict(cu, type="WS")) == ""                         # a wide shot shows the whole body
+    assert h3prompt.look_up_note(dict(cu, act="翻了个白眼")) == ""                   # an eye-roll the script wants
+    chars = {"a": {"name": "A", "role": "woman", "look": "a woman"}}
+    assert any("eye-roll" in x for x in clipqc.judge_panel(chars, 2, cu, {"people": 1, "eye_roll": True}, False, False))
+    assert not clipqc.judge_panel(chars, 2, dict(cu, delivery="a scornful eye roll"), {"people": 1, "eye_roll": True}, False, False)
+
+
+def test_a_subtitle_drops_below_a_face_that_reaches_low():
+    h = 1920
+    assert assemble.sub_margin({}, h) == round(h * 0.21)                         # lower third
+    assert assemble.sub_margin({"face_bottom": 0.5}, h) == round(h * 0.21)       # a face higher up: no change
+    low = assemble.sub_margin({"face_bottom": 0.76}, h)
+    assert round(h * 0.10) <= low < round(h * 0.21)                              # below the chin, clear of the bottom
+    assert assemble.sub_margin({"face_bottom": 0.95}, h) == round(h * 0.10)      # never closer to the bottom edge
+
+
+def test_check_asks_for_explicit_actions_and_stable_identity_anchors():
+    scene = {"clips": [{"id": "K1", "cuts": [
+        {"type": "CU", "subjects": ["a"], "action": "{a} looks up, unreadable."},
+        {"type": "MCU", "subjects": ["a"], "action": "{a} tilts her head back to look up at the canopy, eyes calm and open, lips closed, hands still at her sides."},
+        {"type": "WS", "subjects": ["a"], "action": "{a} walks."}]}]}
+    notes = " | ".join(h3prompt.action_notes(scene))
+    assert "K1 cut 1: action too short" in notes and "eye-roll" in notes and "can't show" in notes
+    assert "K1 cut 2" not in notes and "K1 cut 3" not in notes          # explicit; a wide shot is not a face shot
+    bible = {"characters": {"a": {"keep": "small beauty mark under the right eye, black bob"}, "b": {"keep": "gold glasses"}}}
+    assert [n.split(":")[0] for n in h3prompt.cast_notes(bible)] == ["character a"]
+
+
+def test_unused_takes_go_only_after_approval_and_only_when_the_disk_is_tight():
+    from sheelshort import cleanup
+    with tempfile.TemporaryDirectory() as tmp:
+        p = _scratch_project(tmp, {})
+        clips, edit = p.d("clips", "E01"), p.d("edit", "E01")
+        names = ["K1_h3_t1.mp4", "K1_h3_t1_up.mp4", "K1_h3_t1.json", "K1_h3_t2.mp4", "K1_h3_t2_up.mp4", "K1_h3_t2.json",
+                 "K1_h3_t2_stale1793.mp4", "K2_h3_t1.mp4", "K2_h3_t1_up.mp4"]
+        for n in names:
+            (clips / n).write_bytes(b"x" * 1000)
+        (edit / "picks.json").write_text(json.dumps({"K1": 2, "K2": 1}))
+        assert cleanup.clean(p, "E01") == 0.0 and all((clips / n).exists() for n in names)   # not approved: nothing goes
+        try:
+            cleanup.approve(p, "E01")
+            raise AssertionError("approved without a master")
+        except SystemExit:
+            pass
+        (edit / f"{p.master_name()}.mp4").write_bytes(b"m")
+        cleanup.approve(p, "E01")
+        p.cfg["project"]["cleanup_below_gb"] = 0                                 # plenty of space: skip the cleanup
+        assert cleanup.clean_if_tight(p) == 0.0 and (clips / "K1_h3_t1.mp4").exists()
+        p.cfg["project"]["cleanup_below_gb"] = 10 ** 9                           # the disk is "tight"
+        cleanup.clean_if_tight(p)
+        left = sorted(x.name for x in clips.iterdir())
+        assert left == ["K1_h3_t2.json", "K1_h3_t2.mp4", "K1_h3_t2_up.mp4", "K2_h3_t1.mp4", "K2_h3_t1_up.mp4"], left
+
+
+def test_a_name_card_never_lands_on_a_tight_close_up_face():
+    import re as _re
+    face = (0.2, 0.15, 0.8, 0.55)                                         # a tight close-up: no room beside it
+    ev = assemble.card_events({"name": "林晚", "role": "神秘买家", "start": 1, "end": 3, "face": face}, 1080, 1920, "Songti SC")
+    ys = [float(_re.search(r"\\pos\(\d+,(\d+)", e).group(1)) for e in ev]
+    assert min(ys) >= 0.55 * 1920                                         # below the chin, beside the shoulders
+    real = media.face_box
+    media.face_box = lambda v, t: {1: (0.56, 0.28, 0.67, 0.34), 2: (0.2, 0.2, 0.8, 0.6), 3: (0.22, 0.2, 0.8, 0.6)}[t]
+    try:
+        x0, y0, x1, y1 = assemble.steady_face(Path("x.mp4"), 1, 2, 3)   # the eye-sized box is dropped...
+        assert (x0, x1) == (0.033, 0.977) and y0 < 0.2 and y1 > 0.6        # ...and the face widened to the whole head
+    finally:
+        media.face_box = real
 
 
 if __name__ == "__main__":

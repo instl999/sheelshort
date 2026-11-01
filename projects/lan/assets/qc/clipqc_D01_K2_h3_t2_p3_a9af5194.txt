@@ -1,0 +1,1 @@
+{"panels": [{"panel": 1, "people": 2, "main_person_sex": "man", "text_or_subtitles": false, "light": "daylight", "glitch": false, "eye_roll": false}]}

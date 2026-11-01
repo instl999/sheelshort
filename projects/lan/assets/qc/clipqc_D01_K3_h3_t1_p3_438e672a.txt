@@ -1,0 +1,1 @@
+{"panels": [{"panel": 1, "people": 1, "main_person_sex": "woman", "text_or_subtitles": false, "light": "lamp", "glitch": false, "eye_roll": false}, {"panel": 2, "people": 1, "main_person_sex": "woman", "text_or_subtitles": false, "light": "lamp", "glitch": false, "eye_roll": false}]}

@@ -25,8 +25,11 @@ Characters, locations, props, visual style. Rules that matter:
 - **`style`** (opens every prompt) is lens, grade and realism only, with **no time of day or light source**. Each
   location has its own **`light`** (e.g. "deep night indoors; the only light is the single bare bulb and moonlight
   through the window; no daylight anywhere"). A sunny style sentence turned a night scene's close-ups into daylight.
-- **`look`**: one precise sentence, age, face shape, brows, eyes, one or two identity anchors (beauty mark, scar)
-  that will be *visible in a front close-up*, hair, outfit. Never a real person or celebrity.
+- **`look`**: one precise sentence, age, face shape, brows, eyes, one or two identity anchors that will be
+  *visible in a front close-up*, hair, outfit. Never a real person or celebrity. Make the anchors large and stable:
+  a hairstyle, glasses, earrings, a hair clip, a coat's colour. Small facial marks (a mole, a beauty mark, freckles,
+  a thin scar) drift and flicker from shot to shot in the video model: use one only when the story needs it, and
+  then make it clearly visible. `check` notes them.
 - **`keep`**: the short list of things that must never change (anchors, hair, outfit).
 - **`voice_design`** (Chinese): **timbre only**: age, pitch, texture, accent, pace. *No emotion, no attitude*
   ("压抑着愤怒" or "lazy, mocking" in a voice description makes every line come out in that one register).
@@ -98,7 +101,9 @@ open mid-confrontation (a slap, an accusation, a face mid-reaction) also works. 
 Something changes every 8–10 s. The episode ends on a new complication at peak emotion (cliffhanger), and **its last
 shot is a face**, a close-up or reaction held 2–3 s and cut hard, never a wide shot or a fade. The next episode
 resolves it in its first beat. Show emotion
-through observable cues (eyes drop, jaw tightens, a delayed answer), not emotion labels.
+through observable cues (eyes drop, jaw tightens, a delayed answer), not emotion labels. In a close-up never write
+"looks up at": the model moves the eyes alone and it reads as an eye-roll (contempt). Write "tilts her head back to
+look up at..." (the engine adds this too, and clip QC re-takes an eye-roll the script does not ask for).
 
 **Time of day, crowds.** Write one location per place and give it `lights` for its other times of day; a clip picks
 one with `"time": "night"` (never a second location for the same room by night). Mark public places `crowd: true`;
@@ -129,6 +134,20 @@ When no library cue fits the beat (a wooden palace door, a sword drawn, a car br
 - `python -m sheelshort sfx <project> add door_slam fs:571797 --what "a heavy door slammed in anger"` copies it into
   the project and the bible's `sfx` with its measured sync point (`--sync peak` or `end` when the moment that matters
   is not the first sound, e.g. a riser; `--level` in dB against the dialogue, default -4).
+
+**Write every small action out (H3 acts out words literally and invents what is missing).** In every face shot
+(`CU`, `MCU`, `ECU`, `OTS`, `RX`, `VO`) the `action` says, from the first frame to the last: where the eyes go and
+whether the head moves with them, what the mouth does (closed when not speaking), what the hands do, and how the
+expression starts and changes. Ten words is the floor; two sentences is normal. Never a feeling the camera can't see
+("unreadable", "complicated"): describe the face instead. Instead of → write:
+- "looks up at X" → better not in a close-up at all: show the height in a wide or low-angle shot and keep the face
+  level. If it must: "tilts her head back to look up at X, eyes calm and open" (eyes alone read as an eye-roll, and
+  even a head tilt can show the eyes travelling first)
+- "glances at X" → "turns her eyes, head still, to X for a beat, then back to Y"
+- "reacts" → the physical reaction: "her eyes widen, she holds her breath, the cup stops halfway to her lips"
+- "smirks" → "one corner of his mouth lifts slightly; his eyes stay cold"
+- "turns away" → "turns her head left, away from him, toward the window"
+`check` notes face-shot actions that are too short or vague.
 
 **Acting fields (this is what makes the voices sound acted):**
 - `line`: the clean subtitle text.
