@@ -221,8 +221,9 @@ def _stopped_for(inst: dict, clock=time.time) -> float | None:
 
 def reap_idle(api: "AutoDL", c: dict, log=print, clock=time.time, idle=queue_idle) -> float | None:
     """Power off every instance of ours that no live sheelshort process holds and whose ComfyUI queue has been empty
-    for `idle_off_minutes` (a queue with work, from the ComfyUI page say, restarts the wait), and release (delete) one
-    that has been shut down for `release_after_hours` (3; 0 = never), so idle instances cost nothing. A running core server
+    for `idle_off_minutes` (a queue with work, from the ComfyUI page say, restarts the wait), and release (delete) a
+    `name_prefix`-N one that has been shut down for `release_after_hours` (3; 0 = never), so idle instances cost nothing.
+    A core server is only ever powered off, never released. A running core server
     with no record is idle from now; a process that died without cleaning up counts as gone. Returns the seconds until
     the next check is due, None when nothing is left to watch."""
     idle_s = 60 * float(c.get("idle_off_minutes", 10))
@@ -235,6 +236,8 @@ def reap_idle(api: "AutoDL", c: dict, log=print, clock=time.time, idle=queue_idl
 
     hours = float(c.get("release_after_hours", 3))
     for u, inst in insts.items() if hours > 0 else []:
+        if not (inst.get("name") or "").startswith(c["name_prefix"]):
+            continue   # only instances this engine created are ever released: core servers are the owner's
         stopped = _stopped_for(inst, clock)
         if stopped is None or holders(u):
             continue

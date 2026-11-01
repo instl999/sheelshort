@@ -1099,10 +1099,11 @@ def test_an_instance_shut_down_for_three_hours_is_released():
     from datetime import datetime
     fleet.OWNED.unlink(missing_ok=True)
     t = datetime.fromisoformat("2026-11-01T11:00:00+08:00").timestamp()
-    api = _FakeAutoDL([_on("pro-a"), _on("pro-b", stopped="2026-11-01T13:30:00+08:00"), _on("pro-c", "running")])
+    a, b = _on("pro-a"), _on("pro-b", stopped="2026-11-01T13:30:00+08:00")
+    a["name"], b["name"] = "sheelshort-bj-1", "sheelshort-bj-2"
+    api = _FakeAutoDL([a, b, _on("pro-c", "running")])
     api.release = lambda u: api.calls.append(("release", u))
-    c = {"core": ["pro-a", "pro-b", "pro-c"], "region_names": ["北京B区"], "name_prefix": "sheelshort-bj",
-         "release_after_hours": 3}
+    c = {"core": ["pro-c"], "region_names": ["北京B区"], "name_prefix": "sheelshort-bj", "release_after_hours": 3}
     left = fleet.reap_idle(api, c, log=lambda m: None, clock=lambda: t + 3 * 3600 + 60, idle=lambda url: True)
     assert ("release", "pro-a") in api.calls and ("release", "pro-b") not in api.calls
     assert left is not None and left <= 3 * 3600                # pro-b is watched until its 3 h are up
@@ -1110,6 +1111,22 @@ def test_an_instance_shut_down_for_three_hours_is_released():
     c["release_after_hours"] = 0
     fleet.reap_idle(api, c, log=lambda m: None, clock=lambda: t + 99 * 3600, idle=lambda url: True)
     assert not any(x[0] == "release" for x in api.calls)        # 0 = never
+
+
+def test_reaper_never_releases_core_instances():
+    from sheelshort import fleet
+    from datetime import datetime
+    fleet.OWNED.unlink(missing_ok=True)
+    t = datetime.fromisoformat("2026-11-01T11:00:00+08:00").timestamp()
+    core1, core2, ss1, ss2, other = (_on(u) for u in ("pro-core1", "pro-core2", "pro-ss1", "pro-ss2", "pro-other"))
+    core2["name"] = "my-h3"                                      # a core server with a name of its own
+    ss1["name"], ss2["name"], other["name"] = "sheelshort-bj-1", "sheelshort-bj-2", "copyfilm-bj-1"
+    api = _FakeAutoDL([core1, core2, ss1, ss2, other])
+    api.release = lambda u: api.calls.append(("release", u))
+    c = {"core": ["pro-core1", "pro-core2"], "region_names": ["北京B区"], "name_prefix": "sheelshort-bj",
+         "release_after_hours": 3}
+    fleet.reap_idle(api, c, log=lambda m: None, clock=lambda: t + 99 * 3600, idle=lambda url: True)
+    assert sorted(u for x, u in api.calls if x == "release") == ["pro-ss1", "pro-ss2"]   # only sheelshort-bj-*
 
 
 def test_an_episode_is_held_back_rather_than_cut_from_a_soft_resize():
