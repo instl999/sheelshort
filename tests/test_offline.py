@@ -558,6 +558,72 @@ def test_fleet_powers_on_core_servers_before_fleet_ones():
     assert api.calls[-1] == ("power_off", "pro-b") and p.cfg["comfy"]["servers"] == ["https://pro-a.example:8443"]
 
 
+def test_eta_learns_job_times_and_chains_jobs_on_a_server():
+    import time
+    from sheelshort import eta
+    with tempfile.TemporaryDirectory() as tmp:
+        t = eta.Timing(Path(tmp) / "times.json")
+        assert t.expected("render/E01/C1_h3_t1", 10) == 300          # default: 30 s per second of video
+        t.record("render/E01/C1_h3_t1", 200, 10)                     # measured: 20 s per second
+        assert eta.Timing(Path(tmp) / "times.json").expected("render/E02/C4_h3_t1", 12) == 240   # remembered
+        p = _scratch_project(tmp, {})
+        p.timing = t
+        now = time.time()
+        p.state["jobs"]["upscale/E01/a"] = {"status": "queued", "server": "https://s1", "eta": now + 100}
+        p._touched.add("upscale/E01/a")
+        assert abs(p._eta("upscale/E01/b", "https://s1", 1) - (now + 125)) < 2      # waits for the job ahead on s1
+        assert abs(p._eta("upscale/E01/c", "https://s2", 1) - (now + 25)) < 2       # s2 is free
+        p.cfg["comfy"]["servers"] = ["https://s1", "https://s2"]
+        pr = eta.Progress(p, "upscale", [("upscale/E01/a", 1), ("upscale/E01/x", 1), ("upscale/E01/y", 1)])
+        assert abs(pr.eta() - (now + 125)) < 2                       # a ends at +100, then x and y share 2 servers
+        pr.finish("upscale/E01/a")
+        info = json.loads((p.root / "progress.json").read_text())
+        assert info["phases"]["upscale"]["done"] == 1 and info["phases"]["upscale"]["total"] == 3
+    assert eta.exec_seconds({"status": {"messages": [["execution_start", {"timestamp": 1000}],
+                                                     ["execution_success", {"timestamp": 13500}]]}}) == 12.5
+    assert eta.span(40) == "40 s" and eta.span(600) == "10 min"
+
+
+def test_a_lone_speaker_jump_cut_moves_the_camera_around_them():
+    scene = json.loads((ROOT / "projects/quancun/bible.json").read_text())
+    phone = _talk_clip()
+    phone["cuts"] = [phone["cuts"][0], json.loads(json.dumps(phone["cuts"][0]))]   # dahua alone on the phone, twice
+    phone["cuts"][1]["line"] = "你听我说。"
+    scene["clips"] = [phone]
+    assert any("jump cut" in e for e in h3prompt.check_rules(scene))
+    assert h3prompt.fix_jump_cuts(scene) == ["C1 cut 2: same framing again -> profile angle"]
+    assert not any("jump cut" in e for e in h3prompt.check_rules(scene))
+    text = h3prompt.build(scene, phone, h3prompt.Refs(char_pictures={"dahua": ["a.png", "b.png"]}, location_pictures=["loc.png"]))
+    assert "in profile from the side" in text
+
+
+def test_a_long_run_of_faces_gets_a_medium_shot():
+    scene = json.loads((ROOT / "projects/quancun/bible.json").read_text())
+    scene["clips"] = [_talk_clip(f"C{n}") for n in range(1, 5)]       # 4 x 9.6 s of close-ups at one place
+    for n, cl in enumerate(scene["clips"]):                            # alternate who opens, so no jump cuts
+        if n % 2:
+            cl["cuts"][0]["subjects"] = ["xiaokang"]; cl["cuts"][0]["speaker"] = "xiaokang"
+            cl["cuts"][1]["subjects"] = ["dahua"]
+            cl["cuts"][3]["subjects"] = ["xiaokang"]; cl["cuts"][3]["speaker"] = "xiaokang"
+    for cl in scene["clips"]:
+        cl["cuts"][0]["line"] = "好。"                                   # short enough not to need its reaction cut
+    assert h3prompt.close_runs(scene)[0][1:] == (0, 15, 38.4)
+    assert any("38 s of close-ups" in n for n in h3prompt.craft_notes(scene))
+    changes = h3prompt.fix_close_runs(scene)
+    assert changes and all("medium shot" in c for c in changes)
+    assert h3prompt.close_runs(scene) == [] and h3prompt.check_rules(scene) == []
+
+
+def test_clipqc_does_not_read_a_phone_screen_insert_as_a_caption():
+    from sheelshort import clipqc
+    chars = {"xk": {"name": "Li Xiaokang", "role": "man", "look": "a man"}}
+    pan = {"people": 0, "main_person_sex": "none", "text_or_subtitles": True}
+    ecu = {"type": "ECU", "subjects": ["xk"], "composition": "Extreme close-up of the phone screen in {xk}'s hand."}
+    assert clipqc.judge_panel(chars, 3, ecu, pan, False, False) == []
+    assert clipqc.judge_panel(chars, 3, {**ecu, "type": "CU", "composition": "Close-up of {xk} on the phone."},
+                              {**pan, "people": 1, "main_person_sex": "man"}, False, False) == ["cut 3: on-screen text"]
+
+
 if __name__ == "__main__":
     for name, fn in list(globals().items()):
         if name.startswith("test_"):
