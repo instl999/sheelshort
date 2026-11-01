@@ -72,6 +72,7 @@ class Project:
         self.bible = load_json(self.root / "bible.json")
         self.dry = dry_run
         self.waker = None   # fleet.Session when the servers are powered on on demand (`[fleet] core`)
+        self.scaler = None  # the render's fleet.Fleet while one runs (the servers it added)
         self.state_path = self.root / "state.json"
         self.state = load_json(self.state_path) if self.state_path.exists() else {"jobs": {}}
         self.lock = threading.Lock()
