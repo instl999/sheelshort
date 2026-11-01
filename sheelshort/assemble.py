@@ -15,6 +15,12 @@ from . import h3prompt, media
 from .project import REPO, Project, load_json, log, save_json
 
 CJK_PER_LINE = 13
+# Finishing grade over the whole cut (`edit.grade`): generated video is over-saturated and clean as glass; a touch less
+# saturation, a soft vignette and fine luma grain read as film (owner review 2026-10-31: "lacks realism")
+GRADES = {
+    "film": "eq=saturation=0.9:contrast=1.03,vignette=angle=PI/7,noise=c0s=5:c0f=t",
+    "none": "",
+}
 
 
 def chosen_take(p: Project, ep: str, clip_id: str) -> Path:
@@ -41,15 +47,33 @@ def edl(p: Project, ep: str) -> dict:
         else:
             seconds = media.probe(video)["duration"]
             lines, audio = heard_lines(p, ep, clip, video), None
+        head, tail = edge_trims(video, seconds, lines) if p.cfg["edit"].get("trim_flashes", True) else (0.0, seconds)
         fol = sorted(video.parent.glob(video.stem + "_foley.*"))
         items.append({"clip": clip["id"], "video": str(video), "audio": audio, "foley": str(fol[0]) if fol and audio else None,
-                      "start": round(t, 3), "seconds": seconds})
-        subs += [{"text": ln["text"], "start": round(t + ln["start"], 3), "end": round(t + ln["end"] + 0.25, 3)} for ln in lines]
-        cards += _cards_in(p, clip, t, video, introduced)
-        t += seconds
+                      "start": round(t, 3), "in": head, "seconds": round(tail - head, 3)})
+        subs += [{"text": ln["text"], "start": round(t + ln["start"] - head, 3), "end": round(t + ln["end"] - head + 0.25, 3)}
+                 for ln in lines]
+        cards += _cards_in(p, clip, t - head, video, introduced)
+        t += tail - head
     out = {"episode": ep, "duration": round(t, 3), "clips": items, "subtitles": subs, "cards": cards}
     save_json(p.d("edit", ep) / "edl.json", out)
     return out
+
+
+FLASH_S = 0.6   # a shot this short at a clip's head or tail is H3 starting the next shot early or ending late
+
+
+def edge_trims(video: Path, seconds: float, lines: list[dict]) -> tuple[float, float]:
+    """In and out points that drop a flash shot at either end of a take (E02 had a 0.3 s shot at a clip boundary), never
+    cutting into a line."""
+    cuts = media.shot_cuts(video)
+    head = max((c for c in cuts if c < FLASH_S), default=0.0)
+    tail = min((c for c in cuts if c > seconds - FLASH_S), default=seconds)
+    if any(ln["start"] < head for ln in lines):
+        head = 0.0
+    if any(ln["end"] > tail + 0.05 for ln in lines):
+        tail = seconds
+    return round(head, 3), round(tail, 3)
 
 
 def _intro_cut(cut: dict, c: str) -> bool:
@@ -275,11 +299,11 @@ def run(p: Project, ep: str) -> Path:
     ins, filt, n = [], [], len(plan["clips"])
     for i, it in enumerate(plan["clips"]):
         ins += ["-i", it["video"]]
-        filt.append(f"[{i}:v]trim=0:{it['seconds']},setpts=PTS-STARTPTS,scale={w}:{h}:force_original_aspect_ratio=increase:"
+        filt.append(f"[{i}:v]trim={it.get('in', 0)}:{it.get('in', 0) + it['seconds']},setpts=PTS-STARTPTS,scale={w}:{h}:force_original_aspect_ratio=increase:"
                     f"flags=lanczos,crop={w}:{h},fps={fps},setsar=1[v{i}]")
     k = n
     for i, it in enumerate(plan["clips"]):
-        fit = f"aresample=48000,aformat=channel_layouts=stereo,atrim=0:{it['seconds']},asetpts=PTS-STARTPTS,apad=whole_dur={it['seconds']}"
+        fit = f"aresample=48000,aformat=channel_layouts=stereo,atrim={it.get('in', 0)}:{it.get('in', 0) + it['seconds']},asetpts=PTS-STARTPTS,apad=whole_dur={it['seconds']}"
         if it["audio"]:
             ins += ["-i", it["audio"]]
             filt.append(f"[{k}:a]{fit}[d{i}]")
@@ -298,7 +322,12 @@ def run(p: Project, ep: str) -> Path:
             filt.append(f"[{i}:a]{fit}[a{i}]")
     filt.append("".join(f"[v{i}][a{i}]" for i in range(n)) + f"concat=n={n}:v=1:a=1[vc][dia]")
     fonts = e.get("fonts_dir", "/System/Library/Fonts")
-    filt.append(f"[vc]split=2[vsub][vclean];[vsub]subtitles={_esc(ass)}:fontsdir={_esc(fonts)}[vout]")
+    if GRADES.get(e.get("grade", "film")):
+        filt.append(f"[vc]{GRADES[e.get('grade', 'film')]}[vg]")
+        vc = "[vg]"
+    else:
+        vc = "[vc]"
+    filt.append(f"{vc}split=2[vsub][vclean];[vsub]subtitles={_esc(ass)}:fontsdir={_esc(fonts)}[vout]")
     music = e.get("music")
     if music == "auto":
         music = score(p, ep)

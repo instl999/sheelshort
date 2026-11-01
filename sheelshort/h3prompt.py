@@ -16,6 +16,7 @@ House rules (from the user, apply to every generation):
 from __future__ import annotations
 
 import math
+import re
 import unicodedata
 from dataclasses import dataclass, field
 
@@ -23,6 +24,7 @@ DEFAULT_CUT_S = 3
 CJK_CHARS_PER_S = 4.5          # comfortable dramatic Mandarin delivery
 WORDS_PER_S = 2.6
 SHOT_PHRASE = {
+    "WS": "A wide shot",
     "MS": "A medium shot",
     "CU": "A close-up",
     "ECU": "An extreme close-up",
@@ -30,7 +32,31 @@ SHOT_PHRASE = {
     "VO": "A close-up",
     "RX": "A close-up",   # reaction: the listener, while the previous cut's line continues off-screen
 }
+# Lens per shot size, as on a drama set: long lenses and shallow focus for faces (a wide lens on a close-up is the
+# phone look the reference series never has)
+SHOT_LENS = {
+    "WS": "on a 35mm lens",
+    "MS": "on a 50mm lens",
+    "CU": "on an 85mm lens with shallow depth of field",
+    "RX": "on an 85mm lens with shallow depth of field",
+    "VO": "on an 85mm lens with shallow depth of field",
+    "ECU": "on a 100mm macro lens with very shallow depth of field",
+    "OTS": "on a 75mm lens",
+}
+# The size a cut reads as on screen: two adjacent cuts of the same subjects at the same size are a jump cut
+SIZE_CLASS = {"WS": "wide", "MS": "medium", "CU": "close", "RX": "close", "VO": "close", "ECU": "insert", "OTS": "ots"}
 NO_TEXT = "No on-screen text, subtitles, captions, logos or watermarks appear at any point."
+# What the reference series' look has and ours lacked (REFERENCE_STUDY §3, owner review 2026-10-31: "lacks realism")
+CINEMA = ("Filmed like a high-end streaming drama on a cinema camera with prime lenses: faces are shot on long lenses with "
+          "shallow depth of field, the background falling into soft bokeh, and never with wide-angle distortion. The light "
+          "has a clear direction: a key light from one side models the faces, a gentle rim of backlight separates hair and "
+          "shoulders from the background, and shadows have real depth; never flat, even front light. Natural film colour "
+          "with gentle contrast and soft highlight roll-off. Skin is real skin with pores and fine imperfections, never "
+          "airbrushed, waxy or over-sharpened. The actors play naturally and with restraint: emotion shows in the eyes, the "
+          "breath and small movements, never in exaggerated grimaces. Characters look at each other, never into the lens. "
+          "Background people are soft and out of focus, busy with their own reactions, and never look into the lens.")
+FLAT_LIGHT = re.compile(r"\b(overcast|midday|noon|clear sky|even(ly)? lit|flat|soft shadows|shadowless|bright natural)\b", re.I)
+STATIC = re.compile(r"^\s*static", re.I)
 NO_MUSIC = "None. There is no background music or score at any point; only diegetic sound is heard."
 LANG_TAG = {"zh": "Chinese", "en": "English", "ja": "Japanese", "ko": "Korean"}
 REFERENCE_MEAN_SHOT_S = 2.07   # 全村抢 001 as released: 151 s, 73 shots
@@ -102,9 +128,78 @@ def check_rules(scene: dict) -> list[str]:
                 errs.append(f"{where}: cuts shorter than 1.2 s read as a glitch")
             if t == "VO" and not cut.get("line"):
                 errs.append(f"{where}: voice-over shot without a line")
-            if t == "MS" and cut.get("line"):
-                errs.append(f"{where}: medium shots are for positioning/movement; give dialogue its own close-up")
+            if t in ("MS", "WS") and cut.get("line"):
+                errs.append(f"{where}: medium and wide shots are for positioning/movement; give dialogue its own close-up")
+            if cut.get("to") and cut["to"] not in chars:
+                errs.append(f"{where}: unknown character {cut['to']!r} in 'to'")
+    errs += jump_cuts(scene)
     return errs
+
+
+def _framing(cut: dict) -> tuple:
+    return SIZE_CLASS.get(cut["type"]), frozenset(cut.get("subjects", [])), cut.get("over")
+
+
+def jump_cuts(scene: dict) -> list[str]:
+    """Two adjacent cuts (also across a clip boundary in the same location) showing the same people at the same size:
+    on screen the picture jumps instead of cutting. The usual cause is "A speaks / RX on B / B answers": let B's
+    close-up hold the reaction and then the answer, show another listener, or answer in an over-the-shoulder shot."""
+    errs, prev = [], None
+    for clip in scene["clips"]:
+        for i, cut in enumerate(clip["cuts"], 1):
+            here = (clip["location"], _framing(cut))
+            if prev and prev[0] == here and here[1][1]:
+                errs.append(f"{clip['id']} cut {i}: jump cut, the same framing of "
+                            f"{', '.join(sorted(here[1][1]))} as {prev[1]}; change the size or angle, show someone else, "
+                            "or merge the two cuts")
+            prev = (here, f"{clip['id']} cut {i}")
+    return errs
+
+
+def fix_jump_cuts(scene: dict) -> list[str]:
+    """Repair the common jump cut in place: a close-up line right after a close-up of the same person becomes an
+    over-the-shoulder shot past the person addressed (the reverse angle). Other jumps are left for the writer."""
+    changes, prev = [], None
+    for clip in scene["clips"]:
+        for i, cut in enumerate(clip["cuts"]):
+            here = (clip["location"], _framing(cut))
+            if prev == here and here[1][1] and cut["type"] == "CU" and cut.get("line"):
+                who, other = cut["speaker"], partner(clip, i)
+                if other and other != who and (other in clip_characters(clip) or len(clip_characters(clip)) < 3):
+                    cut.update(type="OTS", over=other, subjects=[who],
+                               composition=f"Over-the-shoulder shot past {{{other}}}'s blurred shoulder onto {{{who}}}.")
+                    here = (clip["location"], _framing(cut))
+                    changes.append(f"{clip['id']} cut {i + 1}: close-up -> over-the-shoulder past {other}")
+            prev = here
+    return changes
+
+
+def craft_notes(scene: dict) -> list[str]:
+    """Advice, not errors: where an episode departs from how the reference series is shot."""
+    notes, cuts = [], [(cl, c) for cl in scene["clips"] for c in cl["cuts"]]
+    if not cuts:
+        return notes
+    close = sum(SIZE_CLASS.get(c["type"]) == "close" for _, c in cuts) / len(cuts)
+    if close > 0.7:
+        notes.append(f"{close:.0%} of cuts are single close-ups; mix in over-the-shoulder shots for exchanges and "
+                     "medium or wide shots that show where everyone stands (aim for at most 65%)")
+    static = sum(bool(STATIC.match(c.get("camera", ""))) for _, c in cuts if c["type"] != "VO") / len(cuts)
+    if static > 0.6:
+        notes.append(f"{static:.0%} of cuts have a static camera; give the beats a motivated move (a slow push-in on a "
+                     "realisation, handheld drift in a quarrel, a pull-back to isolate someone, a rack focus between two "
+                     "faces)")
+    for loc in dict.fromkeys(cl["location"] for cl, _ in cuts):
+        if not any(c["type"] in ("WS", "MS", "OTS") for cl, c in cuts if cl["location"] == loc):
+            notes.append(f"{loc}: no wide, medium or over-the-shoulder shot; the viewer never sees where everyone "
+                         "stands. Open the scene's geography after the hook")
+    for loc, v in scene["locations"].items():
+        if FLAT_LIGHT.search(v.get("light", "")) and loc in {cl["location"] for cl, _ in cuts}:
+            notes.append(f"location {loc}: flat light ({FLAT_LIGHT.search(v['light']).group(0)!r}); describe a light with a "
+                         "direction (low sun behind or beside the actors, a practical lamp as key, window light)")
+    if re.search(r"crisp|ultra.?sharp|8k|deep focus|wide.?angle|\b(14|18|21|24|28|35)\s?mm", scene.get("style", ""), re.I):
+        notes.append("style asks for sharpness or a wide lens (crisp, 35mm, deep focus...); the reference look is long "
+                     "lenses, shallow focus and soft natural detail")
+    return notes
 
 
 @dataclass
@@ -182,6 +277,66 @@ def speaker_order(clip: dict) -> list[str]:
     return list(dict.fromkeys(c["speaker"] for c in clip["cuts"] if c.get("line")))
 
 
+def partner(clip: dict, i: int) -> str | None:
+    """Whom the subject of cut `i` (0-based) is looking at: the cut's `to`; for a reaction, the speaker whose line runs
+    over it; for a speaker, the nearest other speaker in the clip (the one answering or being answered); otherwise the
+    nearest speaker, then anyone else in the clip."""
+    cuts = clip["cuts"]
+    cut = cuts[i]
+    if cut.get("to"):
+        return cut["to"]
+    me = cut.get("speaker") if cut.get("line") else (cut.get("subjects") or [None])[0]
+    if cut["type"] == "RX":
+        prev = next((c for c in reversed(cuts[:i]) if c.get("line")), None)
+        if prev and prev["speaker"] != me:
+            return prev["speaker"]
+    order = sorted(range(len(cuts)), key=lambda j: (abs(j - i), j < i))   # nearest first, later before earlier
+    for j in order:
+        c = cuts[j]
+        if j != i and c.get("line") and c["speaker"] != me:
+            return c["speaker"]
+    return next((c for c in clip_characters(clip) if c != me), None)
+
+
+def blocking(scene: dict, clip: dict) -> dict[str, str]:
+    """Which side of the line of action each character stands on in this clip's location ("left"/"right"), the same in
+    every clip there, so the cuts keep screen direction: someone on the left looks toward the right of frame. The
+    episode may fix it (`blocking: {loc: {char: side}}`, or on the clip); otherwise the people who talk to each
+    other most are put on opposite sides (allies who mostly address the same person end up together)."""
+    fixed = clip.get("blocking") or scene.get("blocking", {}).get(clip["location"])
+    if fixed:
+        return dict(fixed)
+    talk: dict[str, dict[str, int]] = {}
+    for cl in scene.get("clips", [clip]):
+        if cl["location"] != clip["location"]:
+            continue
+        for i, cut in enumerate(cl["cuts"]):
+            me = cut.get("speaker") if cut.get("line") else (cut.get("subjects") or [None])[0]
+            other = partner(cl, i)
+            if me and other and me != other:
+                talk.setdefault(me, {}).setdefault(other, 0)
+                talk.setdefault(other, {}).setdefault(me, 0)
+                talk[me][other] += 1
+                talk[other][me] += 1
+    side: dict[str, str] = {}
+    for c in sorted(talk, key=lambda c: (-sum(talk[c].values()), c)):   # greedy max-cut: most talk across the line
+        pull = {s: sum(n for o, n in talk[c].items() if side.get(o) == s) for s in ("left", "right")}
+        side[c] = "left" if not side else ("right" if pull["left"] >= pull["right"] else "left")
+    return side
+
+
+def gaze(who: str, other: str | None, sides: dict[str, str], label) -> str:
+    """The eyeline of a single: off-axis toward the partner, on the side screen direction says; never into the lens."""
+    if not other:
+        return f"{label(who)} looks just off camera, never into the lens."
+    s = sides.get(who)
+    if s and sides.get(other) and sides[other] != s:
+        look = "right" if s == "left" else "left"
+        return (f"{label(who)} is framed slightly {s} of centre and looks toward the {look} of frame at {label(other)}, "
+                f"who is just off camera; {label(who)} never looks into the lens.")
+    return f"{label(who)} looks at {label(other)}, who is just off camera beside the lens; {label(who)} never looks into the lens."
+
+
 class _Labels(dict):
     """Subject labels for the clip's cast; a character or prop mentioned but not on screen falls back to its name."""
 
@@ -208,6 +363,7 @@ def build(scene: dict, clip: dict, refs: Refs, cameras: dict[int, dict] | None =
     props = clip_props(clip)
     prop_defs = scene.get("props", {})
     sid = {c: i for i, c in enumerate(speaker_order(clip), 1)}
+    sides = blocking(scene, clip)
 
     # ---- labels ----
     pic_no: dict[str, list[int]] = {}
@@ -304,7 +460,7 @@ def build(scene: dict, clip: dict, refs: Refs, cameras: dict[int, dict] | None =
 
     # ---- detailed_description ----
     light = f" Lighting in every shot: {loc['light'].rstrip('.')}." if loc.get("light") else ""
-    body = [f"{scene['style']}{light} {NO_TEXT}"]
+    body = [f"{scene['style']} {CINEMA}{light} {NO_TEXT}"]
     introduced: set[str] = set()
     t = 0.0
     for i, cut in enumerate(clip["cuts"], 1):
@@ -317,9 +473,12 @@ def build(scene: dict, clip: dict, refs: Refs, cameras: dict[int, dict] | None =
             phrase = size[0].upper() + size[1:] if i == 1 else size
             frame = f"{phrase} of {' and '.join(S(c) for c in cut['subjects'])}" if cut.get("subjects") else phrase
         elif typ == "OTS":
-            frame = f"{phrase} from behind {S(cut['over'])}'s shoulder, which is soft and out of focus in the foreground, onto {S(cut['subjects'][0])}"
+            edge = f"at the {sides[cut['over']]} edge of frame" if cut["over"] in sides else "in the foreground"
+            frame = (f"{phrase} {SHOT_LENS[typ]} from behind {S(cut['over'])}'s shoulder, which is soft and out of focus "
+                     f"{edge}, onto {S(cut['subjects'][0])}")
         else:
             frame = f"{phrase} of {' and '.join(S(c) for c in cut['subjects'])}" if cut.get("subjects") else phrase
+            frame += f" {SHOT_LENS[typ]}"
         replaced = bool(cam and cam.get("replace") and typ != "VO")
         parts = [f"{head} {frame}. {f(cam['text']) if replaced else f(cut['composition'])}"]
         if cam and not replaced:
@@ -342,6 +501,14 @@ def build(scene: dict, clip: dict, refs: Refs, cameras: dict[int, dict] | None =
             faces = [cut["speaker"]] if typ == "OTS" and cut.get("speaker") else cut.get("subjects", [])
             for c in faces:
                 parts.append(f"Fine facial detail on {S(c)}: {chars[c]['face_detail']}")
+        who = cut.get("subjects", [])
+        if typ in ("CU", "RX") and len(who) == 1:
+            parts.append(gaze(who[0], partner(clip, i - 1), sides, lambda c: labels[c]))
+        elif typ == "OTS" and who:
+            parts.append(gaze(who[0], cut["over"], sides, lambda c: labels[c]))
+        elif typ in ("MS", "WS") and len(who) >= 2 and len({sides.get(c) for c in who[:2]} - {None}) == 2:
+            a, b = sorted(who[:2], key=lambda c: sides[c] != "left")
+            parts.append(f"{S(a)} is on the left of frame and {S(b)} on the right, facing each other.")
         parts.append(f(cut["action"]))
         if typ == "VO":
             parts.append("The camera starts as a close-up and slowly pushes in to an extreme close-up of the eyes, with small amplitude and at slow speed.")

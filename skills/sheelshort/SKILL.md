@@ -46,9 +46,32 @@ the bible. Their first solo close-up in the series (or a cut with `"intro": true
 head, as in the reference series. Write that shot as a held chest-up close-up composed off-centre.
 
 **Shot grammar (enforced by `check`):** speaking character → `CU`; two-person dialogue → `OTS` (`over` = whose
-shoulder, never the speaker); positioning and movement → `MS`; reactions and actions → `CU`; inner voice → `VO`
-(close-up pushing in, lips closed; `subjects` is who is on screen: the speaker, or someone the speaker is thinking
-about, never empty); listener reacting while a line continues → `RX` (one listener, no line). Dialogue never in an `MS`. One line per cut, one speaker per cut.
+shoulder, never the speaker); positioning and movement → `MS`; a scene's geography → `WS` (wide, no dialogue);
+reactions and actions → `CU`; inner voice → `VO` (close-up pushing in, lips closed; `subjects` is who is on screen:
+the speaker, or someone the speaker is thinking about, never empty); listener reacting while a line continues → `RX`
+(one listener, no line). Dialogue never in an `MS` or `WS`. One line per cut, one speaker per cut.
+
+**Editing like a cutter, not a slideshow** (owner review: "cuts feel jarring and nonsensical"):
+- **No jump cuts** (`check` refuses them): two adjacent cuts never show the same people at the same size, also across
+  a clip boundary in the same location. The trap is *A speaks → `RX` on B → B answers in `CU`*: B's two close-ups jump.
+  Instead let the reaction be someone else (a third person, the crowd), answer in an `OTS` past A's shoulder, or give
+  B one longer `CU` that reacts first and then answers.
+- **Cover an exchange as shot/reverse-shot:** alternate singles and `OTS`; aim for at most 65% single close-ups.
+- **Show the geography:** after the hook, every scene has a `WS` or `MS` that shows who stands where (the hero facing
+  the crowd, the table between them). Without it the singles float.
+- **Screen direction is automatic:** the engine puts the two sides of each exchange on opposite sides of the line
+  and makes every single look across it at the person addressed, never into the lens. Set `to` on a cut when the
+  addressee is not the obvious one, and `blocking` on the episode (`{"loc": {"charid": "left"|"right"}}`) when allies
+  must stand together.
+- **Cut on a reason:** a new line, a reaction to it, an action, a reveal. Each cut's `camera` should carry the beat:
+  a slow push-in on a realisation, handheld drift in a quarrel, a pull-back to isolate someone, a rack focus between a
+  foreground and a background face, a tilt down to the prop. Keep "static" for stillness that means something.
+- **Inserts** (`ECU` on a prop or hands, 1–1.5 s) carry plot: the contract, the pen, the money.
+
+**Look:** `style` names the medium and grade, never a wide lens or "crisp" detail (the engine adds long lenses, shallow
+focus, directional light, real skin and restrained acting to every prompt). Each location's `light` has a direction and
+a source: low golden sun behind or beside the actors with a warm rim, a bare bulb as key with blue window light, neon
+reflections on wet ground. "Bright midday sun, soft shadows" or "overcast" gives the flat AI look; `check` notes it.
 
 **Micro-drama structure:** the first cut of every episode is the most dramatic moment (a slap, an accusation, a
 reveal, a face mid-reaction), never an establishing shot. Something changes every 8–10 s. The episode ends on a
