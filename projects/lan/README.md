@@ -26,7 +26,7 @@ the showcase cast in `assets/` and `voices/`. Only `state.json`, logs and `reque
 
 `showcase/D01_雲境_preview.mp4` (720p, 60.7 s) and `showcase/D01_poster.jpg`. Written in `episodes/D01.json`; cast in
 `assets/` (林晚 with her evening outfit `suit`, 赵凯, 周敏) and `voices/`; the show flat's night light relit from its
-plates (`assets/loc_flat_living__night*.png`). Rebuild the full-quality master with `python -m sheelshort make lan D01`
+plates (`assets/loc_flat_living__night*.png`). Rebuild the full-quality master with `python -m sheelshort make lan D01 --allow-thin` (written before the full-detail rules)
 (every take is re-rendered from these files; the masters themselves are not kept in git).
 
 ## Locations
