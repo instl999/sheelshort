@@ -184,7 +184,12 @@ and look before spending GPU time on the whole episode.)
 - **Servers are on demand:** with `[fleet] core` set, every server is off while nothing renders. The first GPU job
   of a command powers one on, which takes about 1–3 min: a quiet start is not a hang. The render adds more while clips
   wait. Servers power off about 10 min after the last command ends. `python -m sheelshort fleet <project>` shows each
-  server and which run uses it, and `... fleet <project> off` powers off every server no run uses.
+  server and which run uses it, and `... fleet <project> off` powers off every server no run uses. When AutoDL has no
+  GPU in stock the run keeps asking (every stopped server, several rounds, then every minute) and waits. Every server
+  is probed for RTX upscaling each time it powers on (a power-on can land on another GPU); one that cannot is replaced:
+  a new server is acquired and probed first, then the old one is powered off. An episode no server could upscale is
+  held back and reported, never cut from a soft resize. Instances shut down for 3 hours are released (deleted);
+  `fleet <project> release <uuid>` releases one at once.
 - **Estimated times:** every GPU job logs when it should be done (`queued on X, done ~21:04 (in ~6 min)`). Every
   phase (render, check, re-take, upscale) logs `done/total` with its end time. `python -m sheelshort status <project>`
   shows the same from another terminal. Estimates learn from the servers' measured times

@@ -238,7 +238,7 @@ class Project:
         if self.waker:
             self.waker.ensure()
 
-    def pick(self, exclude: set[str] | frozenset = frozenset()) -> comfy.ComfyClient:
+    def pick(self, exclude: set[str] | frozenset = frozenset(), only: str | None = None) -> comfy.ComfyClient:
         """The least busy server with a free slot. A server holds at most `[comfy] in_flight` of this run's jobs (one
         running, one queued behind it); the others wait here, not in a server's queue, so a server the fleet adds
         mid-run gets work at once instead of finding everything already queued elsewhere.
@@ -255,7 +255,7 @@ class Project:
             self.wake()   # on-demand servers: also retries while AutoDL has no GPU in stock
             now = time.time()
             with self.lock:
-                urls = [u for u in self.cfg["comfy"]["servers"] if u not in exclude]
+                urls = [u for u in self.cfg["comfy"]["servers"] if u not in exclude and (only is None or u == only)]
                 busy = [u for u in urls if self._assigned.get(u, 0) >= cap]
                 free = [u for u in urls if u not in busy and self._down_until.get(u, 0) <= now]
             loads = {}
@@ -308,7 +308,8 @@ class Project:
     # ---------- jobs ----------
 
     def run_job(self, key: str, build, out_dir: Path, stem: str, kinds: tuple[str, ...] = comfy.OUTPUT_KEYS,
-                timeout_s: float = 3600, exclude: set[str] | frozenset = frozenset(), units: float = 1.0) -> list[Path] | None:
+                timeout_s: float = 3600, exclude: set[str] | frozenset = frozenset(), units: float = 1.0,
+                only: str | None = None) -> list[Path] | None:
         """Queue one workflow, or resume it after a crash; a finished job is never queued twice.
 
         `build(client)` returns the API-format workflow; it runs only when the job is (re)queued, so uploads happen on
@@ -320,7 +321,9 @@ class Project:
         tries = 1 + int(self.cfg["comfy"].get("job_retries", 2))
         avoid = set(exclude)
         for attempt in range(tries):
-            files, failed_on = self._run_once(key, build, out_dir, stem, kinds, timeout_s, frozenset(avoid), units)
+            files, failed_on = self._run_once(key, build, out_dir, stem, kinds, timeout_s, frozenset(avoid), units, only)
+            if only and files is None:
+                break   # pinned to one server (a probe of that server): never retried elsewhere
             if files is not None or failed_on is None:
                 return files
             if attempt < tries - 1:   # a dropped server, a lost prompt, a network error: try again on another server
@@ -336,7 +339,7 @@ class Project:
                 job["status"] = "retrying"
         return None
 
-    def _run_once(self, key, build, out_dir, stem, kinds, timeout_s, exclude, units) -> tuple[list[Path] | None, str | None]:
+    def _run_once(self, key, build, out_dir, stem, kinds, timeout_s, exclude, units, only=None) -> tuple[list[Path] | None, str | None]:
         """One attempt of run_job: (files, None) on success, (None, server) when it failed there and may be retried
         elsewhere, (None, None) when it must not be retried (a dry run, an invalid workflow)."""
         job = self.state["jobs"][key]
@@ -356,7 +359,7 @@ class Project:
                     self.wake()   # a dry run only uses a server that is already running, for its node schemas
                     if not self.cfg["comfy"]["servers"]:
                         raise comfy.ComfyError("dry run: no server is running to validate against")
-                c = self.pick(exclude) if not self.dry else self.client(self.cfg["comfy"]["servers"][0])
+                c = self.pick(exclude, only) if not self.dry else self.client(self.cfg["comfy"]["servers"][0])
                 picked = not self.dry
                 api = build(c)
                 problems = comfy.validate(api, self.object_info(c))

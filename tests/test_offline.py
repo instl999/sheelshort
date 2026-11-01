@@ -1008,45 +1008,99 @@ def _wait_for(cond, s=5.0):
     return cond()
 
 
-def test_an_old_driver_machine_is_replaced_first_then_powered_off_and_never_restarted():
+def test_a_probe_runs_on_the_server_it_tests_and_nowhere_else():
+    from sheelshort import fleet
     with tempfile.TemporaryDirectory() as tmp:
-        fleet, api, p, old = _swap_fixture(tmp, [
-            {"uuid": "pro-a", "name": "", "status": "running", "region_name": "北京B区", "machine_id": "m-old"},
-            {"uuid": "pro-c", "name": "", "status": "shutdown", "region_name": "北京B区", "machine_id": "m-old2"},
-            {"uuid": "pro-b", "name": "", "status": "shutdown", "region_name": "北京B区", "machine_id": "m-new"}],
-            probe=lambda url: "pro-b" in url)
-        fleet.note_machine("m-old2", False)                       # known old driver: never started again
+        p = _scratch_project(tmp, {})
+        p.cfg["comfy"]["servers"] = ["https://a", "https://b"]
+        old = fleet.CAPS
+        fleet.CAPS = Path(tmp) / "caps.json"
+        ran = []
+
+        def run_job(key, build, out_dir, stem, kinds, timeout, exclude=frozenset(), units=1.0, only=None):
+            url = only or "https://b"                                 # a later server would have won the pick
+            ran.append(url)
+            p.state["jobs"][key] = {"server": url, "status": "failed", "error": "ComfyError: prompt 1 failed: NvVFX_Load failed"}
+            return None
+        p.run_job = run_job
+        try:
+            assert fleet.probe_rtx(p, "https://a") is False and ran == ["https://a"]
+            p.run_job = lambda key, *a, **k: p.state["jobs"].__setitem__(key, {"server": "https://b"}) or None
+            assert fleet.probe_rtx(p, "https://a") is None              # ran elsewhere: no verdict about a
+            assert (Path(tmp) / "rtx_probe_832x1504.mp4").exists()     # a take-sized test clip
+        finally:
+            fleet.CAPS = old
+        import time as _t
+        p2 = _scratch_project(tmp + "/x", {}) if False else p
+        p2.client = lambda url: type("C", (), {"queue_info": lambda self, quick=False: (0, 0), "base_url": url})()
+        p2.cfg["comfy"]["servers"] = ["https://a", "https://b"]
+        assert Project.pick(p2, only="https://b").base_url == "https://b"
+
+
+def _on(uuid, status="shutdown", started="2026-11-01T10:00:00+08:00", stopped="2026-11-01T11:00:00+08:00"):
+    return {"uuid": uuid, "name": "", "status": status, "region_name": "北京B区",
+            "started_at": {"Time": started, "Valid": True}, "stopped_at": {"Time": stopped, "Valid": status == "shutdown"}}
+
+
+def test_a_server_that_cannot_upscale_is_replaced_first_then_powered_off():
+    with tempfile.TemporaryDirectory() as tmp:
+        fleet, api, p, old = _swap_fixture(tmp, [_on("pro-a", "running"), _on("pro-b")], probe=lambda url: "pro-b" in url)
+        real_set = api._set
+
+        def power_on_new_gpu(uuid, status):   # a power-on starts a new power-on (and maybe another GPU)
+            real_set(uuid, status)
+            for i in api.list:
+                if i["uuid"] == uuid and status == "running":
+                    i["started_at"] = {"Time": "2026-11-01T12:00:00+08:00", "Valid": True}
+        api._set = power_on_new_gpu
         try:
             p.waker = fleet.Session(p, api=api, spawn=lambda root: None)
-            p.waker.ensure()                                       # pro-a is already running: it joins, and is probed
+            p.waker.ensure()                                       # pro-a is running: it joins and is probed: fails
             assert _wait_for(lambda: ("power_off", "pro-a") in api.calls)
             calls = api.calls
             assert calls.index(("power_on", "pro-b")) < calls.index(("power_off", "pro-a"))   # acquired first
-            assert ("power_on", "pro-c") not in calls
             assert p.cfg["comfy"]["servers"] == ["https://pro-b.example:8443"]
-            assert fleet.machine_known("m-old") is False and fleet.machine_known("m-new") is True
+            assert fleet.rtx_known("pro-a@2026-11-01T10:00:00+08:00") is False
+            assert fleet.rtx_known("pro-b@2026-11-01T12:00:00+08:00") is True
+            assert fleet.rtx_known("pro-a@2026-11-01T13:00:00+08:00") is None   # its next power-on is judged afresh
         finally:
             fleet.CAPS, fleet.probe_rtx = old
 
 
-def test_a_replacement_that_fails_too_is_powered_off_and_the_window_is_bounded():
+def test_new_servers_that_cannot_upscale_stay_on_until_a_capable_one_joins():
     with tempfile.TemporaryDirectory() as tmp:
-        fleet, api, p, old = _swap_fixture(tmp, [
-            {"uuid": "pro-a", "name": "", "status": "running", "region_name": "北京B区", "machine_id": "m-old"},
-            {"uuid": "pro-b", "name": "", "status": "shutdown", "region_name": "北京B区", "machine_id": "m-also-old"}],
-            probe=lambda url: False)
-        p.cfg["fleet"]["replace_max_new"] = 1
+        fleet, api, p, old = _swap_fixture(tmp, [_on("pro-a", "running"), _on("pro-b"), _on("pro-c")],
+                                           probe=lambda url: "pro-c" in url)
         p.cfg["fleet"]["probe_rtx"] = False                        # vetted by hand below
         try:
             p.waker = fleet.Session(p, api=api, spawn=lambda root: None)
             p.waker.ensure()
-            fleet.note_machine("m-old", False)
-            assert p.waker.replace("pro-a", "https://pro-a.example:8443") is False
-            assert ("power_on", "pro-b") in api.calls and ("power_off", "pro-b") in api.calls   # tried, failed, off
-            assert ("power_off", "pro-a") not in api.calls          # no replacement: the old one keeps rendering
-            assert fleet.machine_known("m-also-old") is False
+            fleet.note_rtx(fleet.power_key(api.list[0]), False)
+            assert p.waker.replace("pro-a", "https://pro-a.example:8443") is True
+            c = api.calls
+            assert c.index(("power_on", "pro-c")) < c.index(("power_off", "pro-b"))   # the failed new one waited
+            assert ("power_off", "pro-a") in c and ("power_on", "pro-a") not in c
+            assert p.waker.replace() is True                       # a capable server is in: nothing more to acquire
         finally:
             fleet.CAPS, fleet.probe_rtx = old
+
+
+def test_an_instance_shut_down_for_three_hours_is_released():
+    from sheelshort import fleet
+    from datetime import datetime
+    fleet.OWNED.unlink(missing_ok=True)
+    t = datetime.fromisoformat("2026-11-01T11:00:00+08:00").timestamp()
+    api = _FakeAutoDL([_on("pro-a"), _on("pro-b", stopped="2026-11-01T13:30:00+08:00"), _on("pro-c", "running")])
+    api.release = lambda u: api.calls.append(("release", u))
+    c = {"core": ["pro-a", "pro-b", "pro-c"], "region_names": ["北京B区"], "name_prefix": "sheelshort-bj",
+         "release_after_hours": 3}
+    left = fleet.reap_idle(api, c, log=lambda m: None, clock=lambda: t + 3 * 3600 + 60, idle=lambda url: True)
+    assert ("release", "pro-a") in api.calls and ("release", "pro-b") not in api.calls
+    assert left is not None and left <= 3 * 3600                # pro-b is watched until its 3 h are up
+    api.calls.clear()
+    c["release_after_hours"] = 0
+    fleet.reap_idle(api, c, log=lambda m: None, clock=lambda: t + 99 * 3600, idle=lambda url: True)
+    assert not any(x[0] == "release" for x in api.calls)        # 0 = never
 
 
 def test_an_episode_is_held_back_rather_than_cut_from_a_soft_resize():
@@ -1058,9 +1112,9 @@ def test_an_episode_is_held_back_rather_than_cut_from_a_soft_resize():
         p.cfg["edit"]["upscale"] = "rtx"
         old = fleet.CAPS
         fleet.CAPS = Path(tmp) / "caps.json"
-        fleet.note_machine("m-old", False)
+        fleet.note_rtx("pro-old@t1", False)
         asked = []
-        p.waker = type("W", (), {"machines": lambda self: {"https://old": "m-old"},
+        p.waker = type("W", (), {"power_keys": lambda self: {"https://old": "pro-old@t1"},
                                  "replace": lambda self: asked.append(1) or False})()
         take = p.d("clips", "E01") / "K1_h3_t1.mp4"
         subprocess.run(["ffmpeg", "-v", "error", "-f", "lavfi", "-i", "color=c=gray:s=360x640:d=1", "-c:v", "libx264", str(take)], check=True)

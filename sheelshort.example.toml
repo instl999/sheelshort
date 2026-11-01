@@ -107,9 +107,11 @@ stock_retry_s = 60                   # no server could start (no GPU in stock): 
 stock_wait_minutes = 360             # ...and waits this long for stock before its jobs fail
 grab_rounds = 6                      # each attempt asks every stopped server this many rounds (a GPU often frees up in seconds)
 grab_gap_s = 10                      # ...this far apart
-probe_rtx = true                     # each server that joins is probed for RTX upscaling (a 1 s test clip); a machine
-                                     # with an old driver is replaced: a new one is acquired and probed first, then the
-                                     # old one is powered off and never started again
+probe_rtx = true                     # each server is probed for RTX upscaling every time it joins (a 1 s take-sized
+                                     # clip): a power-on can land on another GPU, so a verdict holds for that power-on
+                                     # only. One that cannot is replaced: a new server is acquired and probed first,
+                                     # then the old one is powered off
+release_after_hours = 3              # an instance shut down this long is released (deleted) by the reaper; 0 = never
 replace_window_minutes = 20          # how long a replacement may take (no stock: tried every minute)...
 replace_max_new = 3                  # ...and how many new machines it may try, so a run doesn't burn hours of GPU time
 tick_s = 20

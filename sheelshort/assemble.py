@@ -322,10 +322,8 @@ def upscaled(p: Project, ep: str, video: Path) -> Path:
     from . import fleet
     out = None
     for _ in range(max(1, len(p.cfg["comfy"]["servers"])) + 2):
-        bad_m = fleet.bad_machines()
-        where = p.waker.machines() if p.waker else {}
-        known_bad = set(fleet._caps().get("no_rtx_vsr", []))
-        bad = {u for u, m in where.items() if m in bad_m} | {u for u in known_bad if u not in where}
+        keys = p.waker.power_keys() if p.waker else {}
+        bad = {u for u, k in keys.items() if fleet.rtx_known(k) is False}   # judged per power-on: GPUs move
         if p.waker and not set(p.cfg["comfy"]["servers"]) - bad:
             # every server in the pool has an old driver: acquire one that can upscale, then the old one goes
             log(f"{video.stem}: no server in the pool can run RTX upscaling; bringing in one that can")
@@ -337,10 +335,11 @@ def upscaled(p: Project, ep: str, video: Path) -> Path:
         job = p.state["jobs"].get(key, {})
         if out or "NvVFX" not in job.get("error", ""):
             break
-        # this machine's NVIDIA video-effects runtime cannot load RTX VSR (an old driver): remember the machine
-        m = (p.waker.machines() if p.waker else {}).get(job["server"])
-        fleet.note_machine(m or f"url:{job['server']}", False, job["server"])
-        log(f"{video.stem}: RTX upscaling unavailable on {urlparse(job['server']).hostname} (machine {m or '?'}); "
+        # this power-on's GPU driver cannot load RTX VSR: remember it for as long as the server stays on
+        k = (p.waker.power_keys() if p.waker else {}).get(job["server"])
+        if k:
+            fleet.note_rtx(k, False)
+        log(f"{video.stem}: RTX upscaling unavailable on {urlparse(job['server']).hostname} (this power-on); "
             "moving to another server")
         p.forget(key)
     mp4 = [f for f in out or [] if f.suffix == ".mp4"]
