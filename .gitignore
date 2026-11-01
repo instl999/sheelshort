@@ -24,3 +24,10 @@ projects/*/*
 
 # local notes for the owner
 PENDING_APPROVALS.md
+
+# lan branch: the 蓝城雲境 drama keeps its films, location pack and plates in git (job cache and logs stay local)
+!projects/lan/films/
+!projects/lan/locations/
+!projects/lan/inputs/
+!projects/lan/make_locations.py
+!projects/lan/README.md
