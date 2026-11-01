@@ -1,0 +1,15 @@
+{
+  "transcript": "这套房子的户型是整个项目里最好的，南北通透，采光非常充足。",
+  "heard": "这套房子的户型是整个项目里最好的,南北通透,采光非常充足。",
+  "cer": 0.0,
+  "origin": "designed",
+  "duration": 6.52,
+  "speech_start": 0.0,
+  "speech_end": 6.4,
+  "speech_s": 6.4,
+  "median_hz": 117.8,
+  "motion": 3.44,
+  "range_st": 13.18,
+  "loud_std_db": 21.57,
+  "voiced_runs": 21
+}

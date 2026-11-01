@@ -1,4 +1,10 @@
-# 蓝城雲境: location pack
+# 蓝城雲境: example project (location pack + showcase episode)
+
+> **Example project.** These assets are examples: use them to demo sheelshort to people, or as the starting point
+> for a real series set at 蓝城雲境. The showcase episode `episodes/D01.json` (《雲境》, 58 s) and its cast
+> (林晚 with an evening outfit, 赵凯, 周敏) show what one finished episode looks like. A real series is its own
+> project (`python -m sheelshort new <name> --script <file>`); copy `locations/`, `inputs/` and the `locations`
+> section of `bible.json` into it to shoot at the same property.
 
 The short drama is set in a high-end residential development, 蓝城雲境. The property's three official films are the
 source for every location in it:
@@ -9,8 +15,8 @@ source for every location in it:
 | `films/clubhouse.mp4` | the clubhouse: entrance, lobby, corridors, function rooms, pool and gym (landscape, day into evening, 4:12) |
 | `films/garage.mp4` | the underground garage and its lift lobby (landscape, 0:30) |
 
-This project lives on the `lan` branch only. Everything for this drama (films, location pack, plates, scripts) is
-committed here; `main` is untouched.
+Everything this project made is committed with it: films, location pack, plates, the location renders in `cache/`,
+the showcase cast in `assets/` and `voices/`. Only `state.json`, logs and `requests/` stay local (they name the servers).
 
 ## Locations
 

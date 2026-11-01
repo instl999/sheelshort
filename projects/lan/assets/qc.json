@@ -1,0 +1,71 @@
+{
+  "char_linwan": {
+    "attempt": 0,
+    "attempts": 1,
+    "problems": [],
+    "seen": {
+      "people": 1,
+      "sex": "woman",
+      "apparent_age": 22,
+      "hair": "black, long, pulled back into a ponytail",
+      "face_marks": [
+        {
+          "kind": "mole",
+          "on": "cheek",
+          "image_side": "left"
+        },
+        {
+          "kind": "mole",
+          "on": "cheek",
+          "image_side": "right"
+        }
+      ],
+      "eyewear": "none",
+      "facial_hair": "none",
+      "clothing": "beige trench coat over a white top",
+      "text_or_watermark": false
+    }
+  },
+  "sheet_linwan": {
+    "attempt": 0,
+    "attempts": 1,
+    "problems": [],
+    "seen": {
+      "figures": 3,
+      "same_person": true,
+      "views": "front, side, back",
+      "hair": "black, long, tied in a low ponytail",
+      "clothing": "beige double-breasted trench coat with black buttons, white top, light blue jeans, white sneakers, and a beige tote bag",
+      "text_or_watermark": false
+    }
+  },
+  "char_zhaokai": {
+    "attempt": 2,
+    "attempts": 3,
+    "problems": [],
+    "seen": {
+      "people": 1,
+      "sex": "man",
+      "apparent_age": 28,
+      "hair": "Black, short, styled with a side part",
+      "face_marks": [],
+      "eyewear": "Gold-rimmed round glasses",
+      "facial_hair": "None",
+      "clothing": "Navy blue suit jacket, white dress shirt, navy blue tie",
+      "text_or_watermark": false
+    }
+  },
+  "sheet_zhaokai": {
+    "attempt": 0,
+    "attempts": 1,
+    "problems": [],
+    "seen": {
+      "figures": 3,
+      "same_person": true,
+      "views": "front, side, back",
+      "hair": "black, short and slicked back",
+      "clothing": "dark navy blue suit with a white dress shirt and dark blue tie, black leather dress shoes",
+      "text_or_watermark": false
+    }
+  }
+}
