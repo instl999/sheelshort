@@ -18,6 +18,13 @@ source for every location in it:
 Everything this project made is committed with it: films, location pack, plates, the location renders in `cache/`,
 the showcase cast in `assets/` and `voices/`. Only `state.json`, logs and `requests/` stay local (they name the servers).
 
+## Showcase episode: 《雲境》 (D01)
+
+`showcase/D01_雲境_preview.mp4` (720p, 60.7 s) and `showcase/D01_poster.jpg`. Written in `episodes/D01.json`; cast in
+`assets/` (林晚 with her evening outfit `suit`, 赵凯, 周敏) and `voices/`; the show flat's night light relit from its
+plates (`assets/loc_flat_living__night*.png`). Rebuild the full-quality master with `python -m sheelshort make lan D01`
+(every take is re-rendered from these files; the masters themselves are not kept in git).
+
 ## Locations
 
 `locations/locations.json` is the plan: the locations picked from the films, which frames to use, the crop, and the

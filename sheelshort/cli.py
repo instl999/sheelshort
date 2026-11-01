@@ -17,6 +17,8 @@ everything deterministic. Every command is resumable: run it again after a crash
   python -m sheelshort status <project>               what a running command is doing, and when each part ends
   python -m sheelshort fleet <project> [off|idle]      AutoDL servers: list them (off: power off every one no run uses;
                                                        idle: watch and power off idle ones, run in the background)
+  python -m sheelshort fleet <project> release <uuid>...   delete stopped instances no longer needed (the reaper
+                                                       does this by itself after `release_after_hours`, 3)
   python -m sheelshort evaluate <project> EP           A/B per line: acted vs. H3-voiced renders (edit/<EP>/dialogue_ab.md)
   python -m sheelshort sfx <project>                   the sound-effect cues a cut can ask for (library + the bible's own)
   python -m sheelshort sfx <project> search "<English query>" [--license cc0|by|any]
@@ -128,7 +130,9 @@ def status(p: Project) -> None:
         end = ph.get("eta")
         tail = f", done ~{eta.clock(end)} (in ~{eta.span(end - now)})" if end and alive else ""
         print(f"  {phase}: {ph['done']}/{ph['total']}{tail}")
-    jobs = [(k, j) for k, j in p.state["jobs"].items() if j.get("status") == "queued"]
+    # only this run's jobs: one left "queued" by an earlier run that died is not in flight
+    jobs = [(k, j) for k, j in p.state["jobs"].items()
+            if j.get("status") == "queued" and j.get("queued_at", 0) >= info.get("started", 0) - 1]
     if alive and jobs:
         print("in flight:")
         for k, j in sorted(jobs, key=lambda kj: kj[1].get("eta") or 0):
@@ -282,6 +286,19 @@ def _dispatch(a, p: Project) -> None:
         api, fc = fleet.AutoDL(), p.cfg["fleet"]
         if a.episode == "idle":
             fleet.watch_idle(api, fc, log)
+            return
+        if a.episode == "release":   # fleet <project> release <uuid>...: delete instances confirmed as no longer needed
+            insts = {i["uuid"]: i for i in api.instances()}
+            for u in a.rest:
+                i = insts.get(u)
+                if not i or not fleet.ours(fc, i):
+                    log(f"{u}: not one of ours; left alone")
+                elif i.get("status") != "shutdown" or fleet.holders(u):
+                    log(f"{u}: {i.get('status')}{', in use' if fleet.holders(u) else ''}; power it off first")
+                else:
+                    api.release(u)
+                    fleet.forget(u)
+                    log(f"{u}: released")
             return
         fleet.reap_idle(api, fc, log)
         for inst in [i for i in api.instances() if fleet.ours(fc, i)]:

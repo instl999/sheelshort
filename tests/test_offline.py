@@ -778,6 +778,7 @@ def test_an_outfit_is_the_same_person_in_other_clothes():
         assert any("no outfit 'tux'" in e for e in wardrobe.check(p.bible, ep))
         from sheelshort import cast
         assert "Change only the clothing to: charcoal suit" in cast.outfit_prompt(suit)
+        assert "Keep every identifying mark exactly where it is, unchanged in size: scar." in cast.outfit_prompt(suit)
 
 
 def test_a_phone_line_is_heard_through_the_phone_and_extras_are_written_in():
@@ -984,70 +985,173 @@ def test_only_one_run_works_on_a_project_at_a_time():
         cli._RUN_LOCK.close()
 
 
-def test_an_upscale_moves_off_a_machine_with_an_old_driver():
-    import subprocess
+def _swap_fixture(tmp, instances, probe):
     from sheelshort import fleet
     fleet.OWNED.unlink(missing_ok=True)
-    api = _FakeAutoDL([{"uuid": "pro-a", "name": "", "status": "shutdown", "region_name": "北京B区", "machine_id": "m-old"},
-                       {"uuid": "pro-b", "name": "", "status": "shutdown", "region_name": "北京B区", "machine_id": "m-new"}])
+    api = _FakeAutoDL(instances)
+    p = _scratch_project(tmp, {})
+    p.cfg["fleet"].update({"enabled": True, "dry_run": False, "core": [i["uuid"] for i in instances], "min_servers": 1,
+                           "max_servers": 1, "grab_gap_s": 0})
+    p.cfg["comfy"]["servers"] = []
+    p.cfg["edit"]["upscale"] = "rtx"
+    old = (fleet.CAPS, fleet.probe_rtx)
+    fleet.CAPS = Path(tmp) / "caps.json"
+    fleet.probe_rtx = lambda p_, url: probe(url)
+    return fleet, api, p, old
+
+
+def _wait_for(cond, s=5.0):
+    import time as _t
+    t0 = _t.time()
+    while not cond() and _t.time() - t0 < s:
+        _t.sleep(0.05)
+    return cond()
+
+
+def test_a_probe_runs_on_the_server_it_tests_and_nowhere_else():
+    from sheelshort import fleet
     with tempfile.TemporaryDirectory() as tmp:
         p = _scratch_project(tmp, {})
-        p.cfg["fleet"].update({"enabled": True, "dry_run": False, "core": ["pro-a", "pro-b"], "min_servers": 1, "max_servers": 1})
-        p.cfg["comfy"]["servers"] = []
-        p.cfg["edit"]["upscale"] = "rtx"
-        old_caps = assemble.CAPS
-        assemble.CAPS = Path(tmp) / "caps.json"
-        p.waker = fleet.Session(p, api=api, spawn=lambda root: None)
-        p.waker.ensure()
-        assert p.cfg["comfy"]["servers"] == ["https://pro-a.example:8443"]
-        take = p.d("clips", "E01") / "K1_h3_t1.mp4"
-        subprocess.run(["ffmpeg", "-v", "error", "-f", "lavfi", "-i", "color=c=gray:s=360x640:d=1", "-f", "lavfi", "-i",
-                        "anullsrc", "-shortest", "-c:v", "libx264", "-c:a", "aac", str(take)], check=True)
+        p.cfg["comfy"]["servers"] = ["https://a", "https://b"]
+        old = fleet.CAPS
+        fleet.CAPS = Path(tmp) / "caps.json"
         ran = []
 
-        def run_job(key, build, out_dir, stem, kinds, timeout, exclude=frozenset(), units=1.0):
-            url = next(u for u in p.cfg["comfy"]["servers"] if u not in exclude)
+        def run_job(key, build, out_dir, stem, kinds, timeout, exclude=frozenset(), units=1.0, only=None):
+            url = only or "https://b"                                 # a later server would have won the pick
             ran.append(url)
-            if "pro-a" in url:
-                p.state["jobs"][key] = {"server": url, "status": "failed", "error": "ComfyError: prompt 1 failed: "
-                                        "RTXVideoSuperResolution #2: NvVFX_Load failed: The requested feature was not found"}
-                return None
-            out = out_dir / f"{stem}.mp4"
-            out.write_bytes(take.read_bytes())
-            return [out]
+            p.state["jobs"][key] = {"server": url, "status": "failed", "error": "ComfyError: prompt 1 failed: NvVFX_Load failed"}
+            return None
         p.run_job = run_job
         try:
-            up = assemble.upscaled(p, "E01", take)
+            assert fleet.probe_rtx(p, "https://a") is False and ran == ["https://a"]
+            p.run_job = lambda key, *a, **k: p.state["jobs"].__setitem__(key, {"server": "https://b"}) or None
+            assert fleet.probe_rtx(p, "https://a") is None              # ran elsewhere: no verdict about a
+            assert (Path(tmp) / "rtx_probe_832x1504.mp4").exists()     # a take-sized test clip
         finally:
-            assemble.CAPS = old_caps
-        assert up.name == "K1_h3_t1_up.mp4" and ran == ["https://pro-a.example:8443", "https://pro-b.example:8443"]
-        assert ("power_off", "pro-a") in api.calls and ("power_on", "pro-b") in api.calls       # swapped at max_servers
-        assert json.loads((Path(tmp) / "caps.json").read_text())["no_rtx_vsr_machines"] == ["m-old"]
-        p.waker.release()
+            fleet.CAPS = old
+        import time as _t
+        p2 = _scratch_project(tmp + "/x", {}) if False else p
+        p2.client = lambda url: type("C", (), {"queue_info": lambda self, quick=False: (0, 0), "base_url": url})()
+        p2.cfg["comfy"]["servers"] = ["https://a", "https://b"]
+        assert Project.pick(p2, only="https://b").base_url == "https://b"
+
+
+def _on(uuid, status="shutdown", started="2026-11-01T10:00:00+08:00", stopped="2026-11-01T11:00:00+08:00"):
+    return {"uuid": uuid, "name": "", "status": status, "region_name": "北京B区",
+            "started_at": {"Time": started, "Valid": True}, "stopped_at": {"Time": stopped, "Valid": status == "shutdown"}}
+
+
+def test_a_server_that_cannot_upscale_is_replaced_first_then_powered_off():
+    with tempfile.TemporaryDirectory() as tmp:
+        fleet, api, p, old = _swap_fixture(tmp, [_on("pro-a", "running"), _on("pro-b")], probe=lambda url: "pro-b" in url)
+        real_set = api._set
+
+        def power_on_new_gpu(uuid, status):   # a power-on starts a new power-on (and maybe another GPU)
+            real_set(uuid, status)
+            for i in api.list:
+                if i["uuid"] == uuid and status == "running":
+                    i["started_at"] = {"Time": "2026-11-01T12:00:00+08:00", "Valid": True}
+        api._set = power_on_new_gpu
+        try:
+            p.waker = fleet.Session(p, api=api, spawn=lambda root: None)
+            p.waker.ensure()                                       # pro-a is running: it joins and is probed: fails
+            assert _wait_for(lambda: ("power_off", "pro-a") in api.calls)
+            calls = api.calls
+            assert calls.index(("power_on", "pro-b")) < calls.index(("power_off", "pro-a"))   # acquired first
+            assert p.cfg["comfy"]["servers"] == ["https://pro-b.example:8443"]
+            assert fleet.rtx_known("pro-a@2026-11-01T10:00:00+08:00") is False
+            assert fleet.rtx_known("pro-b@2026-11-01T12:00:00+08:00") is True
+            assert fleet.rtx_known("pro-a@2026-11-01T13:00:00+08:00") is None   # its next power-on is judged afresh
+        finally:
+            fleet.CAPS, fleet.probe_rtx = old
+
+
+def test_new_servers_that_cannot_upscale_stay_on_until_a_capable_one_joins():
+    with tempfile.TemporaryDirectory() as tmp:
+        fleet, api, p, old = _swap_fixture(tmp, [_on("pro-a", "running"), _on("pro-b"), _on("pro-c")],
+                                           probe=lambda url: "pro-c" in url)
+        p.cfg["fleet"]["probe_rtx"] = False                        # vetted by hand below
+        try:
+            p.waker = fleet.Session(p, api=api, spawn=lambda root: None)
+            p.waker.ensure()
+            fleet.note_rtx(fleet.power_key(api.list[0]), False)
+            assert p.waker.replace("pro-a", "https://pro-a.example:8443") is True
+            c = api.calls
+            assert c.index(("power_on", "pro-c")) < c.index(("power_off", "pro-b"))   # the failed new one waited
+            assert ("power_off", "pro-a") in c and ("power_on", "pro-a") not in c
+            assert p.waker.replace() is True                       # a capable server is in: nothing more to acquire
+        finally:
+            fleet.CAPS, fleet.probe_rtx = old
+
+
+def test_an_instance_shut_down_for_three_hours_is_released():
+    from sheelshort import fleet
+    from datetime import datetime
+    fleet.OWNED.unlink(missing_ok=True)
+    t = datetime.fromisoformat("2026-11-01T11:00:00+08:00").timestamp()
+    api = _FakeAutoDL([_on("pro-a"), _on("pro-b", stopped="2026-11-01T13:30:00+08:00"), _on("pro-c", "running")])
+    api.release = lambda u: api.calls.append(("release", u))
+    c = {"core": ["pro-a", "pro-b", "pro-c"], "region_names": ["北京B区"], "name_prefix": "sheelshort-bj",
+         "release_after_hours": 3}
+    left = fleet.reap_idle(api, c, log=lambda m: None, clock=lambda: t + 3 * 3600 + 60, idle=lambda url: True)
+    assert ("release", "pro-a") in api.calls and ("release", "pro-b") not in api.calls
+    assert left is not None and left <= 3 * 3600                # pro-b is watched until its 3 h are up
+    api.calls.clear()
+    c["release_after_hours"] = 0
+    fleet.reap_idle(api, c, log=lambda m: None, clock=lambda: t + 99 * 3600, idle=lambda url: True)
+    assert not any(x[0] == "release" for x in api.calls)        # 0 = never
 
 
 def test_an_episode_is_held_back_rather_than_cut_from_a_soft_resize():
     import subprocess
+    from sheelshort import fleet
     with tempfile.TemporaryDirectory() as tmp:
         p = _scratch_project(tmp, {})
         p.cfg["comfy"]["servers"] = ["https://old"]
-        p.cfg["edit"].update(upscale="rtx", upscale_wait_minutes=0)
-        old_caps = assemble.CAPS
-        assemble.CAPS = Path(tmp) / "caps.json"
-        assemble.CAPS.write_text(json.dumps({"no_rtx_vsr_machines": ["m-old"]}))
+        p.cfg["edit"]["upscale"] = "rtx"
+        old = fleet.CAPS
+        fleet.CAPS = Path(tmp) / "caps.json"
+        fleet.note_rtx("pro-old@t1", False)
         asked = []
-        p.waker = type("W", (), {"machines": lambda self: {"https://old": "m-old"},
-                                 "add_capable": lambda self, bad: asked.append(bad)})()
+        p.waker = type("W", (), {"power_keys": lambda self: {"https://old": "pro-old@t1"},
+                                 "replace": lambda self: asked.append(1) or False})()
         take = p.d("clips", "E01") / "K1_h3_t1.mp4"
         subprocess.run(["ffmpeg", "-v", "error", "-f", "lavfi", "-i", "color=c=gray:s=360x640:d=1", "-c:v", "libx264", str(take)], check=True)
         try:
-            assemble.upscaled(p, "E01", take)
-            raise AssertionError("should have held the episode back")
-        except RuntimeError as e:
-            assert "held back" in str(e) and asked == [{"m-old"}]
-        p.cfg["edit"]["upscale_fallback"] = "resize"
-        assert assemble.upscaled(p, "E01", take) == take                      # only when asked for
-        assemble.CAPS = old_caps
+            try:
+                assemble.upscaled(p, "E01", take)
+                raise AssertionError("should have held the episode back")
+            except RuntimeError as e:
+                assert "held back" in str(e) and asked == [1]
+            p.cfg["edit"]["upscale_fallback"] = "resize"
+            assert assemble.upscaled(p, "E01", take) == take                      # only when asked for
+        finally:
+            fleet.CAPS = old
+
+
+def test_more_replacement_tries_when_heavy_work_is_queued():
+    from sheelshort import fleet
+    with tempfile.TemporaryDirectory() as tmp:
+        p = _scratch_project(tmp, {})
+        ses = fleet.Session(p, api=_FakeAutoDL([]), spawn=lambda root: None)
+        assert ses.replace_budget() == (20 * 60, 3)                       # nothing queued: the base
+        p.scaler = type("F", (), {"pending": 30})()                       # 30 renders x 5 min = 150 GPU min
+        secs, n = ses.replace_budget()
+        assert n == 8 and secs == 60 * 60                                 # 3 + 150 // 30; window capped at 60 min
+        p.scaler.pending = 400
+        assert ses.replace_budget()[1] == 10                              # never more than replace_max_new_heavy
+
+
+def test_an_outfit_close_up_is_a_head_crop_of_the_approved_close_up():
+    import subprocess
+    from sheelshort import cast
+    with tempfile.TemporaryDirectory() as tmp:
+        src, dest = Path(tmp) / "char_a.png", Path(tmp) / "char_a__suit.png"
+        subprocess.run(["ffmpeg", "-v", "error", "-f", "lavfi", "-i", "color=c=gray:s=768x1024", "-frames:v", "1", str(src)], check=True)
+        cast.head_crop(src, dest)
+        info = media.probe(dest)
+        assert (info["width"], info["height"]) == (768, 1024)
 
 
 if __name__ == "__main__":

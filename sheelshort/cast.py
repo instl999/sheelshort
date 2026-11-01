@@ -26,9 +26,23 @@ def portrait_prompt(ch: dict) -> str:
 
 def outfit_prompt(ch: dict) -> str:
     """Re-dress a character's close-up for another outfit: the image editor keeps the face, so it stays the same person."""
-    return ("Keep exactly the same person as image 1: the identical face, features, skin, marks, age, hair and expression, "
-            f"the same head-and-shoulders framing, front view, plain light-grey studio backdrop and soft even light. Change "
-            f"only the clothing to: {ch['costume']}. Photorealistic, no text, no watermark.")
+    # the editor smooths small marks away unless they are named (林晚's beauty mark vanished from her evening look)
+    marks = "; ".join(a for a in qc.anchors(ch) if re.search(r"scar|mole|beauty mark|freckle|birthmark|tattoo|dimple", a, re.I))
+    keep = f" Keep every identifying mark exactly where it is, unchanged in size: {marks}." if marks else ""
+    return ("Keep exactly the same person as image 1: the identical face, features, skin, marks, age and expression, "
+            f"the same head-and-shoulders framing, front view, plain light-grey studio backdrop and soft even light.{keep} "
+            f"Change only the clothing{' and hair' if ch.get('hair') else ''} to: {ch['costume']}"
+            f"{'; hair: ' + ch['hair'] if ch.get('hair') else ''}. Photorealistic, no text, no watermark.")
+
+
+def head_crop(src, dest, keep: float = 0.52) -> None:
+    """The top of a head-and-shoulders close-up (face and hair, no clothes), at the close-up's own size."""
+    info = media.probe(src)
+    w, h = info["width"], info["height"]
+    ch = int(h * keep) // 2 * 2
+    cw = min(w, int(ch * w / h) // 2 * 2)
+    media._run(["ffmpeg", "-y", "-v", "error", "-i", str(src), "-vf",
+                f"crop={cw}:{ch}:{(w - cw) // 2}:0,scale={w}:{h}:flags=lanczos", "-frames:v", "1", str(dest)])
 
 
 def relight_prompt(loc: dict) -> str:
@@ -151,6 +165,19 @@ def character(p: Project, c: str) -> None:
         return out[0] if out else None
 
     user_portrait = p.supplied(f"char_{c}", IMAGE_EXTS) is not None
+    if base != c and not user_portrait and not portrait.exists():
+        # an outfit's close-up is a head crop of the character's own approved close-up: the face and its marks stay
+        # exactly the same person. Re-dressing it with the image editor drew a small full-body figure instead, the
+        # beauty mark gone or moved. The outfit itself comes from its sheet, made from this crop below.
+        src = p.asset(f"char_{base}")
+        if not src.exists():
+            log(f"cast {c}: no close-up of {base} yet")
+            return
+        head_crop(src, portrait)
+        qc.report(p, {f"char_{c}": {"attempt": 0, "attempts": 0, "problems": [], "seen": {},
+                                    "note": f"head crop of char_{base}"}})
+        done = load_json(p.root / "assets" / "qc.json")
+        p.asset(f"sheet_{c}").unlink(missing_ok=True)
     if not qcfg.get("enabled", True):
         if not portrait.exists():
             f = make_portrait(0, [])
