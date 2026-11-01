@@ -248,7 +248,7 @@ class Project:
         from concurrent.futures import ThreadPoolExecutor
         cap = int(self.cfg["comfy"].get("in_flight", 2))
         give_up = float(self.cfg["comfy"].get("unreachable_minutes", 10)) * 60
-        stock_wait = float(self.cfg.get("fleet", {}).get("stock_wait_minutes", 180)) * 60
+        stock_wait = float(self.cfg.get("fleet", {}).get("stock_wait_minutes", 360)) * 60
         alone_since, said = None, 0.0
         while True:
             self.wake()   # on-demand servers: also retries while AutoDL has no GPU in stock
