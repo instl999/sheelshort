@@ -1,0 +1,10 @@
+```json
+{
+  "figures": 3,
+  "same_person": true,
+  "views": "front, side, back",
+  "hair": "long, straight, black",
+  "clothing": "black blazer, black satin shirt, black trousers, black high heels",
+  "text_or_watermark": false
+}
+```

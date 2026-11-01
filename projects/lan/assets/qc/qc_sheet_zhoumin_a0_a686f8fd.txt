@@ -1,0 +1,10 @@
+```json
+{
+  "figures": 3,
+  "same_person": true,
+  "views": "front, side, back",
+  "hair": "black, short bob",
+  "clothing": "cream tailored jacket and matching knee-length pencil skirt with nude high heels",
+  "text_or_watermark": false
+}
+```

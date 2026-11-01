@@ -1,0 +1,15 @@
+{
+  "transcript": "我们这个项目一共只有四十八户，每一户都是按照私人定制的标准来做的。",
+  "heard": "我们这个项目一共只有48户, 每一户都是按照私人定制的标准来做的。",
+  "cer": 0.097,
+  "origin": "designed",
+  "duration": 5.723,
+  "speech_start": 0.0,
+  "speech_end": 5.63,
+  "speech_s": 5.63,
+  "median_hz": 238.4,
+  "motion": 2.42,
+  "range_st": 14.22,
+  "loud_std_db": 12.64,
+  "voiced_runs": 25
+}
