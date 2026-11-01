@@ -153,8 +153,9 @@ def _best_of(p: Project, name: str, dest, make, check, c: str, attempts: int, ke
 
 
 def speakers(p: Project) -> list[str]:
+    """Characters with a line in the clips in scope (a test run casts voices only for its own opening)."""
     out = {}
-    for ep in p.episodes():
+    for ep in (p.only_eps or p.episodes()) if p.limit_s else p.episodes():
         for clip in p.clips(ep):
             for cut in clip["cuts"]:
                 if cut.get("line"):

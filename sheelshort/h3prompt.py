@@ -304,14 +304,14 @@ def craft_notes(scene: dict) -> list[str]:
     elif dur < EPISODE_S[0]:
         notes.append(f"the episode runs only {dur:.0f} s; the reference hits run a median 64-88 s an episode")
     cold, prev = [], None
-    for cl in scene["clips"]:
-        if cl["location"] != prev and cl["cuts"] and cl["cuts"][0]["type"] not in ("WS", "MS"):
+    for n, cl in enumerate(scene["clips"]):   # the episode's own opening may be a cold open on a face
+        if n and cl["location"] != prev and cl["cuts"] and cl["cuts"][0]["type"] not in ("WS", "MS"):
             cold.append(f"{cl['id']} ({cl['location']})")
         prev = cl["location"]
     if cold:
         notes.append("scenes that open without a wide or medium shot of the place: " + ", ".join(cold) + ". The reference "
                      "hits open most scenes on 1.5-3 s of a wide shot that already has action in it (the location card "
-                     "sits on it), then cut in")
+                     "sits on it), then cut in; only the episode's opening may be a cold open")
     last = scene["clips"][-1]["cuts"][-1] if scene["clips"] and scene["clips"][-1]["cuts"] else None
     if last and (SIZE_CLASS.get(last["type"]) not in ("close", "mcu", "ots") or cut_len(last) < 2.0):
         notes.append(f"the episode's last shot is {last['type']}, {cut_len(last):g} s; every reference hit ends on a face at the "
