@@ -5,6 +5,10 @@
 > (林晚 with an evening outfit, 赵凯, 周敏) show what one finished episode looks like. A real series is its own
 > project (`python -m sheelshort new <name> --script <file>`); copy `locations/`, `inputs/` and the `locations`
 > section of `bible.json` into it to shoot at the same property.
+>
+> **Status (2026-11-01):** the scene references (locations, plates and the show flat's night relight) are **approved**
+> for the real series. The showcase's characters, story and voices are a demo only: the series' cast, storylines and
+> voice tones wait for the screenwriter's scripts.
 
 The short drama is set in a high-end residential development, 蓝城雲境. The property's three official films are the
 source for every location in it:
