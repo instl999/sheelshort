@@ -121,3 +121,7 @@ replace_max_new = 3                  # ...and how many new machines it may try, 
 replace_max_new_heavy = 10           # with heavy work queued: one more machine per 30 GPU min of it, up to this many...
 replace_window_minutes_heavy = 60    # ...and a window growing by 1 min per 3 GPU min of work, up to this long
 tick_s = 20
+
+[check]
+detail = "strict"               # "strict": a cut that isn't fully written out (composition, every movement, camera, last
+                                # frame) fails `check`, and make/render refuse to start; "notes": report only
