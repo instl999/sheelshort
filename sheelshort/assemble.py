@@ -149,6 +149,16 @@ def introduced_before(p: Project, ep: str) -> set[str]:
     return seen
 
 
+def steady_face(video: Path, *times: float) -> tuple[float, float, float, float] | None:
+    """Where the face is over a shot: the detector run at several moments, implausibly small boxes dropped (it once took
+    an eye on a three-quarter close-up for a face and put the name card on the cheek), the rest's median."""
+    import statistics
+    boxes = [b for b in (media.face_box(video, t) for t in times) if b and b[2] - b[0] >= 0.15]
+    if not boxes:
+        return None
+    return tuple(round(statistics.median(b[k] for b in boxes), 4) for k in range(4))
+
+
 def _cards_in(p: Project, clip: dict, t0: float, video: Path, introduced: set[str]) -> list[dict]:
     """Name cards (REFERENCE_STUDY §4): a main character's first solo close-up in the series carries their name and role,
     vertical, beside the head. `intro: true` on a cut picks the shot explicitly. The side comes from where the face is."""
@@ -163,7 +173,7 @@ def _cards_in(p: Project, clip: dict, t0: float, video: Path, introduced: set[st
         for c in cands:
             if _intro_cut(cut, c):
                 ch = p.chars[c]
-                face = media.face_box(video, at + dur / 2)
+                face = steady_face(video, at + 0.25 * dur, at + 0.5 * dur, at + 0.75 * dur)
                 out.append({"name": ch.get("name_zh") or ch["name"], "role": ch["card"], "start": round(t0 + at + 0.15, 3),
                             "end": round(t0 + at + min(dur - 0.1, 2.6), 3), "face": face})
                 introduced.add(p.base(c))   # once per character, whatever they wear
@@ -308,10 +318,13 @@ def card_events(card: dict, w: int, h: int, font: str) -> list[str]:
     gap, role_gap, edge = w * 0.05, size * 0.35, w * 0.08
     pair = role_size + role_gap + size
     if face:
+        room = face[0] * w - edge if left else w - edge - face[2] * w   # open space beside the face
         x0 = face[0] * w - gap - pair if left else face[2] * w + gap
         y = max(h * 0.12, face[3] * h - size * 0.6)   # from about the chin down: beside the head, never over the face
-    else:
-        x0, y = (w * 0.12 if left else w * 0.88 - pair), h * 0.24
+        if room < pair + gap:   # a tight close-up: no room beside the face, so beside the shoulders, below the chin
+            x0, y = (edge if left else w - edge - pair), max(y, face[3] * h + h * 0.03)
+    else:   # no face found: low, near the edge, where faces rarely are
+        x0, y = edge, h * 0.5
     x0 = min(max(x0, edge), w - edge - pair)
     rx, nx = x0 + role_size / 2, x0 + role_size + role_gap + size / 2
     ts = f"{ass_time(card['start'])},{ass_time(card['end'])}"

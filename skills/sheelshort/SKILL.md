@@ -140,7 +140,9 @@ When no library cue fits the beat (a wooden palace door, a sword drawn, a car br
 whether the head moves with them, what the mouth does (closed when not speaking), what the hands do, and how the
 expression starts and changes. Ten words is the floor; two sentences is normal. Never a feeling the camera can't see
 ("unreadable", "complicated"): describe the face instead. Instead of → write:
-- "looks up at X" → "tilts her head back to look up at X, eyes calm and open" (eyes alone read as an eye-roll)
+- "looks up at X" → better not in a close-up at all: show the height in a wide or low-angle shot and keep the face
+  level. If it must: "tilts her head back to look up at X, eyes calm and open" (eyes alone read as an eye-roll, and
+  even a head tilt can show the eyes travelling first)
 - "glances at X" → "turns her eyes, head still, to X for a beat, then back to Y"
 - "reacts" → the physical reaction: "her eyes widen, she holds her breath, the cup stops halfway to her lips"
 - "smirks" → "one corner of his mouth lifts slightly; his eyes stay cold"
