@@ -440,6 +440,71 @@ VAGUE = [
 MIN_ACTION_WORDS = 10   # a face shot's action shorter than this leaves H3 to invent the acting
 
 
+# What a complete cut must say, because H3 acts words out literally and invents whatever is missing (the owner,
+# 2026-11-01: "prompts should be as complete and explicit as possible"). `check` fails a cut that leaves any out.
+PARTS = {
+    "eyes": re.compile(r"\b(eyes?|gaze|look(s|ing)?|stares?|glances?|blinks?|watch(es|ing)?)\b", re.I),
+    "head": re.compile(r"\b(head|chin|nods?|tilts?|face (turns|lifts|lowers))\b", re.I),
+    "mouth": re.compile(r"\b(mouth|lips?|jaw|teeth|smil\w*|speaks?|says?|whispers?|breath\w*|swallows?)\b", re.I),
+    "hands": re.compile(r"\b(hands?|fingers?|fists?|arms?|grips?|holds?|holding|clutch\w*|palms?|wrists?)\b", re.I),
+    "body": re.compile(r"\b(stands?|sits?|walks?|steps?|leans?|shoulders?|posture|body|kneels?|turns?|moves?|rises?|stops?|"
+                       r"freezes?|straightens?|slumps?|backs? away|strides?|hurr\w+)\b", re.I),
+    "expression": re.compile(r"\b(expression|brows?|frown\w*|smil\w*|tears?|eyes (widen|narrow|soften|glisten)|calm|tense|"
+                             r"pale|flush\w*|grin\w*|scowl\w*|composed|steady|blank|stern|warm|cold|soft\w*)\b", re.I),
+}
+PLACE = re.compile(r"\b(left|right|foreground|background|centre|center|behind|beside|between|facing|across|in front|"
+                   r"near|far|opposite|doorway|window|edge)\b", re.I)
+MOVE = re.compile(r"\b(static|still|locked|push(es)?|pull(s)?|dolly|track(s|ing)?|pan(s)?|tilt(s)?|crane|handheld|drift\w*|"
+                  r"follow\w*|zoom\w*|rack|whip|orbit\w*|arc\w*)\b", re.I)
+MIN_WORDS = {"composition": 12, "action": 15, "camera": 4, "end": 6, "delivery": 5}
+EXTRA_PER_SUBJECT = 8   # more action words for each further person in the shot
+
+
+def _words(text: str) -> int:
+    return len(re.findall(r"[A-Za-z']+", re.sub(r"\{\w+\}", " ", text or "")))
+
+
+def detail_problems(scene: dict) -> list[str]:
+    """Cuts that are not fully specified: each field long enough, every person in the shot named in the composition and
+    the action, a face shot's action covering at least four of eyes, head, mouth, hands, body and expression, a wide or
+    medium shot placing people and moving them, the camera's move named, and the final frame described."""
+    errs = []
+    for cl in scene["clips"]:
+        for i, cut in enumerate(cl["cuts"], 1):
+            where, t, subj = f"{cl['id']} cut {i}", cut["type"], cut.get("subjects", [])
+            for k, n in MIN_WORDS.items():
+                if k == "delivery" and not cut.get("line"):
+                    continue
+                need = n + (EXTRA_PER_SUBJECT * max(0, len(subj) - 1) if k == "action" else 0)
+                if _words(cut.get(k, "")) < need:
+                    errs.append(f"{where}: `{k}` has {_words(cut.get(k, ''))} words; write at least {need} "
+                                f"({'who stands where, what is behind them' if k == 'composition' else 'the last frame: pose, gaze, expression' if k == 'end' else 'the move, its speed and height' if k == 'camera' else 'the face as the line is said' if k == 'delivery' else 'every movement from the first frame to the last'})")
+            for c in subj:
+                for k in ("composition", "action"):
+                    if "{" + c + "}" not in cut.get(k, ""):
+                        errs.append(f"{where}: `{k}` never names {{{c}}}; say what {c} is doing and where")
+            act = cut.get("action", "") + " " + cut.get("end", "")
+            if t in FACE_SHOTS and subj:
+                have = [k for k, rx in PARTS.items() if rx.search(act)]
+                if len(have) < 4:
+                    miss = [k for k in PARTS if k not in have]
+                    errs.append(f"{where}: a {t} must say what the {', '.join(miss)} do (it covers only {', '.join(have) or 'none'})")
+            elif t in ("MS", "WS") and subj:
+                if not PARTS["body"].search(act):
+                    errs.append(f"{where}: say how each person's body moves or holds still (stands, steps, turns...)")
+                if not PLACE.search(cut.get("composition", "") + " " + act):
+                    errs.append(f"{where}: place the people in the frame (left, right, foreground, by the window...)")
+            if cut.get("camera") and not MOVE.search(cut["camera"]):
+                errs.append(f"{where}: `camera` names no move (static, slow push in, handheld drift, pan left...)")
+            for rx, how in VAGUE:
+                if t in FACE_SHOTS and rx.search(cut.get("action", "")):
+                    errs.append(f"{where}: {how}")
+            if t in FACE_SHOTS and UPWARD.search(cut.get("action", "")) and "head" not in cut.get("action", "").lower():
+                errs.append(f"{where}: 'looks up' in a face shot reads as an eye-roll; keep the face level or write "
+                            "'tilts her head back to look up at...'")
+    return errs
+
+
 def cast_notes(bible: dict) -> list[str]:
     """Advice on the cast: identity anchors H3 can hold from shot to shot."""
     out = []
@@ -731,6 +796,11 @@ def build(scene: dict, clip: dict, refs: Refs, cameras: dict[int, dict] | None =
             parts.append(f"{S(a)} is on the left of frame and {S(b)} on the right, facing each other.")
         parts.append(f(cut["action"]))
         parts.append(look_up_note(cut))
+        if typ in ("CU", "MCU", "ECU", "OTS", "MS"):   # spelled out: whoever has no line here keeps their lips closed
+            quiet = [c for c in cut.get("subjects", []) if not (cut.get("line") and cut.get("speaker") == c and cut.get("via") != "phone")]
+            if quiet:
+                parts.append(f"{' and '.join(S(c) for c in quiet)} {'does' if len(quiet) == 1 else 'do'} not speak in this "
+                             "shot; lips stay closed.")
         # who else is in frame: written extras, the passers-by of a public place, or no one (an invitation to
         # "background people" in every prompt put strangers into 21% of private-scene panels)
         if cut.get("extras"):

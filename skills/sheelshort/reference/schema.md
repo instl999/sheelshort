@@ -85,7 +85,7 @@ clean (comedy, bright urban stories); `glossy` is warm and glowing with soft bok
 | `angle` | optional camera angle: `front` (default), `three-quarter`, `profile`, `high`, `low`. A changed angle makes a cut to the same person at the same size a real cut |
 | `speaker` / `over` | who speaks; whose shoulder is in the foreground of an OTS |
 | `line` / `say` / `act` / `emotion` / `delivery` | subtitle text / acted wording / Chinese voice direction / scoring class / English face direction |
-| `composition`, `action`, `camera`, `sound`, `end` | picture prompt text; `{charid}` and `{loc}` become H3 subject labels |
+| `composition`, `action`, `camera`, `sound`, `end` | picture prompt text; `{charid}` and `{loc}` become H3 subject labels. All but `sound` are required and checked for completeness (SKILL.md: every cut written out in full) |
 | `props` | props visible in the cut (must exist in bible.props) |
 | `dur` | seconds (default 3); dialogue cuts are lengthened to fit the acted line |
 | `via` | `"phone"`: the line is heard through a phone from the other end; the shot shows the listener (the speaker is not in `subjects`), and the edit puts the line in the telephone band |

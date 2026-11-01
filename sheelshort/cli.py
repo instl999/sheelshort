@@ -66,6 +66,8 @@ def check(p: Project, eps: list[str]) -> list[str]:
     for ep in eps:
         scene = p.scene(ep)
         errs += [f"{ep} {e}" for e in h3prompt.check_rules(scene) + sfx.check(scene) + wardrobe.check(b, p.episode(ep))]
+        if p.cfg.get("check", {}).get("detail", "strict") == "strict":   # every cut fully written out, or no GPU time
+            errs += [f"{ep} {e}" for e in h3prompt.detail_problems(scene)]
         for clip in scene["clips"]:
             if len(h3prompt.clip_characters(clip)) > 3:
                 errs.append(f"{ep} {clip['id']}: more than 3 characters; split the clip")
@@ -208,6 +210,8 @@ def main(argv: list[str] | None = None) -> None:
     ap.add_argument("--seconds", type=float, help="test mode: only the opening clips of the episode, about this long (e.g. 20)")
     ap.add_argument("--dry-run", action="store_true")
     ap.add_argument("--fit", action="store_true", help="check: lengthen dialogue cuts that are too short for their lines")
+    ap.add_argument("--allow-thin", action="store_true", help="render episodes that fail check (old examples written before "
+                    "the detail rules)")
     ap.add_argument("--license", choices=["cc0", "by", "any"], default="cc0", help="sfx search: licences to show")
     ap.add_argument("--what", help="sfx add: what the cue is for (shown to the writer)")
     ap.add_argument("--sync", default="onset", help="sfx add: the moment that lands on the cue time: onset, peak, end or seconds")
@@ -331,6 +335,13 @@ def _dispatch(a, p: Project) -> None:
         for url in p.cfg["comfy"]["servers"]:
             p.client(url).http.post("/free", json={"unload_models": True, "free_memory": True})
         return
+    if a.command in ("cast", "perform", "render", "make") and eps and not a.allow_thin:
+        errs = check(p, eps if a.command != "cast" else p.episodes())
+        if errs:   # nothing goes to the GPU from an episode that is not fully written and valid
+            for e in errs[:40]:
+                print(e)
+            raise SystemExit(f"{len(errs)} problem(s) in the episode files (check); fix them first. "
+                             "--allow-thin runs anyway (old example episodes)")
     if a.command in ("cast", "make"):
         cast.images(p)
         cast.voices(p)
