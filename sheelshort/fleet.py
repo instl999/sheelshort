@@ -256,6 +256,40 @@ def reap_idle(api: "AutoDL", c: dict, log=print, clock=time.time, idle=queue_idl
 REAPER_PID = OWNED.with_name("fleet_reaper.pid")
 
 
+STOCK = ("暂无库存", "服务正忙", "ServerBusy", "库存")   # AutoDL's "no GPU free right now": worth asking again at once
+
+
+def grab(api, uuids: list[str], c: dict, log, claim: bool = True, stop=None) -> str | None:
+    """Power on the first of `uuids` AutoDL will start. A GPU often frees up within seconds, so a "no stock" or "busy"
+    answer is retried: every server in turn, `grab_rounds` (6) rounds `grab_gap_s` (10) apart."""
+    rounds, gap = int(c.get("grab_rounds", 6)), float(c.get("grab_gap_s", 10))
+    last = ""
+    for r in range(rounds):
+        busy = False   # only a "no stock" answer is worth another round
+        for u in uuids:
+            if claim and not hold(u, claim=True):   # another run is starting it
+                continue
+            try:
+                api.power_on(u)
+                log(f"{u}: powered on" + (f" (round {r + 1})" if r else ""))
+                return u
+            except AutoDLError as e:
+                if claim:
+                    let_go(u)
+                last = str(e)
+                if any(k in last for k in STOCK):
+                    busy = True
+                else:
+                    log(f"{u}: power on failed ({e})")
+        if not busy or (stop is not None and stop.is_set()):
+            break
+        if r < rounds - 1:
+            time.sleep(gap)
+    if last:
+        log(f"no GPU free after {rounds} rounds: {last[:80]}")
+    return None
+
+
 def spawn_reaper(project_root) -> None:
     """Start the background watcher that powers idle servers off (`fleet <project> idle`), unless one is running."""
     import subprocess
@@ -319,10 +353,10 @@ class Session:
 
     def ensure(self) -> None:
         """Wake the servers on the first GPU job; while none could start (AutoDL out of stock: "暂无库存"), try again
-        every `stock_retry_s` (180) instead of giving the run up."""
+        every `stock_retry_s` (60) instead of giving the run up."""
         with self.lock:
             now = time.time()
-            if self.woken and (self.p.cfg["comfy"]["servers"] or now - self.tried_at < float(self.c.get("stock_retry_s", 180))):
+            if self.woken and (self.p.cfg["comfy"]["servers"] or now - self.tried_at < float(self.c.get("stock_retry_s", 60))):
                 return
             if self.woken:
                 self.log("no server is up yet; trying to start one again")
@@ -356,17 +390,12 @@ class Session:
         if need <= 0 or self.p.dry:
             return
         started = []
-        for u in order:
-            if len(started) == need:
+        stopped = [u for u in order if insts[u].get("status") == "shutdown"]
+        while len(started) < need:
+            u = grab(self.api, [x for x in stopped if x not in started], self.c, self.log)
+            if not u:
                 break
-            if insts[u].get("status") == "shutdown" and hold(u, claim=True):
-                try:
-                    self.api.power_on(u)
-                    self.log(f"{u}: powered on")
-                    started.append(u)
-                except AutoDLError as e:
-                    let_go(u)
-                    self.log(f"{u}: power on failed ({e})")
+            started.append(u)
         while len(started) < need:   # nothing stopped could start: create one (the Fleet's rule, same app and region)
             u = Fleet(self.p, api=self.api)._create()
             if not u:
@@ -542,7 +571,7 @@ class Fleet:
                 return
             uuid = self._power_on_stopped() or self._create()
             if not uuid:
-                self.backoff_until = self.clock() + 60 * float(self.c.get("retry_minutes", 5))
+                self.backoff_until = self.clock() + 60 * float(self.c.get("retry_minutes", 1))
                 return
             self.managed[uuid] = {"url": "", "idle_since": None}   # owned from here on, so `stop` powers it off
             hold(uuid)                                             # and the reaper does if this run dies
@@ -562,7 +591,7 @@ class Fleet:
             self.log(f"{uuid}: in the pool after {self.clock() - t0:.0f}s -> {url}")
         except Exception as e:  # noqa: BLE001
             self.log(f"scale up failed: {e}")
-            self.backoff_until = self.clock() + 60 * float(self.c.get("retry_minutes", 5))
+            self.backoff_until = self.clock() + 60 * float(self.c.get("retry_minutes", 1))
         finally:
             self.starting = False
 
@@ -570,17 +599,7 @@ class Fleet:
         core = self.c.get("core") or []
         insts = sorted((i for i in self.api.instances() if ours(self.c, i) and i.get("status") == "shutdown"),
                        key=lambda i: (i["uuid"] not in core, core.index(i["uuid"]) if i["uuid"] in core else 0))
-        for inst in insts:
-            if inst["uuid"] in self.managed or not hold(inst["uuid"], claim=True):   # another run is starting it
-                continue
-            try:
-                self.api.power_on(inst["uuid"])
-                self.log(f"{inst['uuid']}: powered on")
-                return inst["uuid"]
-            except AutoDLError as e:
-                let_go(inst["uuid"])
-                self.log(f"{inst['uuid']}: power on failed ({e})")
-        return None
+        return grab(self.api, [i["uuid"] for i in insts if i["uuid"] not in self.managed], self.c, self.log, stop=self._stop)
 
     def _create(self) -> str | None:
         n = 1 + sum(1 for i in self.api.instances() if (i.get("name") or "").startswith(self.c["name_prefix"]))
