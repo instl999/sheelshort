@@ -936,6 +936,22 @@ def test_a_private_room_holds_only_its_written_people():
     assert "No one else is in the shot: only <Subject 1>." in text and "Background people" not in text
 
 
+def test_a_run_keeps_trying_to_start_a_server_while_none_is_in_stock():
+    fleet, api, p = _core_fleet()
+    ses = fleet.Session(p, api=api, spawn=lambda root: None)
+    tries = []
+    ses._wake = lambda: tries.append(1)                           # AutoDL: no stock, nothing starts
+    ses.ensure(); ses.ensure()
+    assert len(tries) == 1                                        # not on every job
+    ses.tried_at -= 200
+    ses.ensure()
+    assert len(tries) == 2                                        # but again after stock_retry_s
+    p.cfg["comfy"]["servers"].append("https://up")
+    ses.tried_at -= 200
+    ses.ensure()
+    assert len(tries) == 2                                        # and never once a server is up
+
+
 if __name__ == "__main__":
     for name, fn in list(globals().items()):
         if name.startswith("test_"):
