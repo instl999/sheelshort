@@ -15,6 +15,8 @@ everything deterministic. Every command is resumable: run it again after a crash
   python -m sheelshort make <project> EP --seconds 20  fast test: only the opening ~20 s, finished (edit/<EP>/master_20s.mp4)
   python -m sheelshort package <project>               delivery/: episodes, clean cuts, SRTs, cover, thumbnails, metadata
   python -m sheelshort status <project>               what a running command is doing, and when each part ends
+  python -m sheelshort approve <project> EP[,EP]       the final cut is approved: its unused takes may be deleted
+                                                       once the disk is getting full (`cleanup_below_gb`, 40)
   python -m sheelshort fleet <project> [off|idle]      AutoDL servers: list them (off: power off every one no run uses;
                                                        idle: watch and power off idle ones, run in the background)
   python -m sheelshort fleet <project> release <uuid>...   delete stopped instances no longer needed (the reaper
@@ -194,7 +196,7 @@ def main(argv: list[str] | None = None) -> None:
         signal.signal(sig, _exit_on_signal)
     ap = argparse.ArgumentParser(prog="sheelshort", description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("command", choices=["new", "doctor", "check", "cast", "perform", "render", "assemble", "review", "make", "free", "evaluate", "fleet", "package",
-                                        "status", "sfx"])
+                                        "status", "sfx", "approve"])
     ap.add_argument("project")
     ap.add_argument("episode", nargs="?", help="episode id, or several separated by commas (E03,E04)")
     ap.add_argument("rest", nargs="*", help="sfx: the search query, or the cue name and fs:<id> to add")
@@ -228,6 +230,13 @@ def main(argv: list[str] | None = None) -> None:
         return
     if a.command == "sfx":
         sfx_command(p, a)
+        return
+    if a.command == "approve":   # approve <project> EP[,EP]: the final cut; unused takes may go once the disk is tight
+        from . import cleanup
+        for ep in (a.episode or "").split(","):
+            if ep:
+                cleanup.approve(p, ep)
+        cleanup.clean_if_tight(p)
         return
     if a.command in ("cast", "perform", "render", "assemble", "review", "make", "evaluate", "package"):
         run_lock(p)
@@ -274,8 +283,10 @@ def _dispatch(a, p: Project) -> None:
             slow = " (slower than the reference: add reaction cuts or split long shots)" if pc["mean_shot_s"] > 1.5 * h3prompt.REFERENCE_MEAN_SHOT_S else ""
             print(f"{ep}: {pc['clips']} clips, {pc['shots']} shots, {pc['duration_s']} s, mean shot {pc['mean_shot_s']} s, "
                   f"{pc['over_5s']} over 5 s; reference mean {h3prompt.REFERENCE_MEAN_SHOT_S} s{slow}")
-            for note in h3prompt.craft_notes(p.scene(ep)) + sfx.note(p.scene(ep)):
+            for note in h3prompt.craft_notes(p.scene(ep)) + h3prompt.action_notes(p.scene(ep)) + sfx.note(p.scene(ep)):
                 print(f"{ep} note: {note}")
+        for note in h3prompt.cast_notes(p.bible):
+            print(f"note: {note}")
         errs = check(p, eps)
         for e in errs:
             print(e)
@@ -351,7 +362,10 @@ def _dispatch(a, p: Project) -> None:
 
 
 def disk_guard(p: Project) -> None:
-    """Stop cleanly before the disk fills (a full disk mid-write leaves broken takes and masters)."""
+    """Stop cleanly before the disk fills (a full disk mid-write leaves broken takes and masters); when it is getting
+    full, approved episodes' unused takes go first."""
+    from . import cleanup
+    cleanup.clean_if_tight(p)
     need = float(p.cfg["project"].get("min_free_gb", 15))
     free = shutil.disk_usage(p.root).free / 1e9
     if free < need:
