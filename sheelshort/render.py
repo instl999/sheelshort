@@ -7,6 +7,7 @@ dialogue = "h3": H3 voices the lines itself from the cast voice references (the 
 from __future__ import annotations
 
 import hashlib
+import json
 import threading
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
@@ -30,8 +31,7 @@ def refs_for(p: Project, clip: dict, acted: bool, ep: str = "") -> tuple[h3promp
         refs.prop_pictures[pr] = [x.name]
         files[x.name] = x
     room = IMAGE_BUDGET - len(refs.images())
-    locs = sorted((p.root / "inputs").glob(f"loc_{clip['location']}*")) if (p.root / "inputs").exists() else []
-    locs = locs or [p.asset(f"loc_{clip['location']}")]
+    locs = p.plates(clip["location"])
     for x in locs[:max(1, room)]:
         refs.location_pictures.append(x.name)
         files[x.name] = x
@@ -135,11 +135,15 @@ def run(p: Project, eps: str | list[str], only: set[str] | None = None, takes: i
         for clip in p.clips(ep):
             if only and clip["id"] not in only:
                 continue
-            text, refs, files, seconds = prompt_for(p, ep, clip, acted)
-            track = None
-            if acted:
-                tm = load_json(p.root / "perform" / ep / "timing.json")[clip["id"]]
-                track = Path(tm["track"]) if tm["track"] else None
+            try:
+                text, refs, files, seconds = prompt_for(p, ep, clip, acted)
+                track = None
+                if acted:
+                    tm = load_json(p.root / "perform" / ep / "timing.json")[clip["id"]]
+                    track = Path(tm["track"]) if tm["track"] else None
+            except Exception as e:  # noqa: BLE001 - one clip's missing reference must not stop every episode
+                log(f"{ep} {clip['id']}: SKIPPED, cannot be prepared: {type(e).__name__}: {str(e)[:300]}")
+                continue
             specs.append((ep, clip, text, refs, files, seconds, track))
 
     def take_job(spec, t):
@@ -147,8 +151,7 @@ def run(p: Project, eps: str | list[str], only: set[str] | None = None, takes: i
         job = lambda: _render(p, ep, f"render/{ep}/{stem(p, clip['id'], t)}", clip, t, text, refs, files, seconds, track)  # noqa: E731
         dest = clip_path(p, ep, clip["id"], t)
         meta = dest.with_suffix(".json")
-        job.renders = not dest.exists() or (meta.exists() and load_json(meta).get("fingerprint")
-                                             != fingerprint(text, files, track, seconds))   # a current take needs no GPU
+        job.renders = not dest.exists() or not current(p, meta, ep, clip, text, files, track, seconds)   # a current take needs no GPU
         job.key, job.units = f"render/{ep}/{stem(p, clip['id'], t)}", seconds
         return job
 
@@ -163,6 +166,7 @@ def run(p: Project, eps: str | list[str], only: set[str] | None = None, takes: i
     if p.cfg.get("fleet", {}).get("enabled") and not p.dry:
         from .fleet import Fleet
         fl = Fleet(p)
+        fl.linger_s = 120   # clip QC and upscales follow the renders: an added server stays for them (waimai2 lost it)
         fl.start(sum(1 for j in jobs if getattr(j, "renders", False)))   # only real renders are work worth a server
     workers = 2 * max(len(p.cfg["comfy"]["servers"]), int(p.cfg["fleet"]["max_servers"]) if fl else 0)
 
@@ -236,7 +240,7 @@ def run(p: Project, eps: str | list[str], only: set[str] | None = None, takes: i
             t, out = 1, []
             while (dest := clip_path(p, ep, clip["id"], t)).exists():
                 meta = dest.with_suffix(".json")
-                if not meta.exists() or load_json(meta).get("fingerprint") == fingerprint(text, files, track, seconds):
+                if current(p, meta, ep, clip, text, files, track, seconds):
                     out.append(t)
                 t += 1
             return out
@@ -251,7 +255,14 @@ def run(p: Project, eps: str | list[str], only: set[str] | None = None, takes: i
             retake = []
             for sp in specs:
                 rs = sorted(results.get((sp[0], sp[1]["id"]), []))
-                if rs and all(r["problems"] for _, r in rs) and len(rs) < int(qcfg.get("max_takes", 2)):
+                if not rs and _round == 0:   # every take of it failed to render (a server lost, a network error)
+                    t = 1
+                    while clip_path(p, sp[0], sp[1]["id"], t).exists():
+                        t += 1
+                    log(f"{sp[0]} {sp[1]['id']}: no take rendered; rendering take {t} again")
+                    retake.append(take_job(sp, t))
+                    retake[-1].spec, retake[-1].t = sp, t
+                elif rs and all(r["problems"] for _, r in rs) and len(rs) < int(qcfg.get("max_takes", 2)):
                     log(f"{sp[0]} {sp[1]['id']}: no clean take yet; rendering take {len(rs) + 1}")
                     retake.append(take_job(sp, len(rs) + 1))
                     retake[-1].spec, retake[-1].t = sp, len(rs) + 1
@@ -299,7 +310,7 @@ def _render(p, ep, key, clip, t, text, refs, files, seconds, track) -> None:
     dest = clip_path(p, ep, clip["id"], t)
     fp = fingerprint(text, files, track, seconds)
     meta = dest.with_suffix(".json")
-    if dest.exists() and meta.exists() and load_json(meta).get("fingerprint") != fp:
+    if dest.exists() and not current(p, meta, ep, clip, text, files, track, seconds):
         # the prompt, a reference or the acted track changed since this take was rendered: keep it aside, render again
         stale = dest.with_name(dest.stem + f"_stale{int(meta.stat().st_mtime)}.mp4")
         dest.replace(stale)
@@ -323,12 +334,44 @@ def _render(p, ep, key, clip, t, text, refs, files, seconds, track) -> None:
         p.save()
         log(f"{key}: -> {dest.name}")
     if dest.exists() and (fresh or not meta.exists()):   # a take rendered now records the inputs it was rendered from
-        save_json(meta, {"fingerprint": fp, "seconds": seconds, "seed": seed})
+        save_json(meta, {"fingerprint": fp, "inputs": inputs_fingerprint(p, ep, clip, files, track, seconds),
+                         "seconds": seconds, "seed": seed})
     if dest.exists() and track is None:
         from . import assemble
         assemble.heard_lines(p, ep, clip, dest)   # subtitle timing, computed while the other clips still render
     if dest.exists() and track is not None and rc.get("foley", True):
         foley(p, ep, clip, dest, seconds)
+
+
+def inputs_fingerprint(p: Project, ep: str, clip: dict, files: dict[str, Path], track: Path | None, seconds) -> str:
+    """What the writer and the cast decided for a clip: the clip itself, the bible entries it uses, a hand-written
+    prompt override, the reference files and the acted track; not the engine's prompt wording."""
+    b = p.bible
+    used = h3prompt.clip_characters(clip)
+    sub = {"clip": clip, "chars": {c: p.chars.get(c) for c in used}, "loc": p.locs.get(clip["location"]),
+           "props": {pr: b.get("props", {}).get(pr) for pr in h3prompt.clip_props(clip)},
+           "style": b.get("style"), "look": b.get("look_preset"), "language": b.get("language")}
+    override = p.root / "prompts" / ep / f"{clip['id']}.txt"
+    h = hashlib.sha1(json.dumps(sub, sort_keys=True, ensure_ascii=False).encode())
+    if override.exists():
+        h.update(override.read_bytes())
+    return fingerprint(h.hexdigest(), files, track, seconds)
+
+
+def current(p: Project, meta: Path, ep: str, clip: dict, text: str, files: dict[str, Path], track: Path | None, seconds) -> bool:
+    """Is the take whose metadata is `meta` rendered from the clip as it is now? The same prompt, or (unless
+    `render.rerender_on_engine_change`) the same writer inputs: a change of the engine's wording alone must not
+    re-render every finished episode of a long batch."""
+    if not meta.exists():   # a take without its record: only one with sound (a crash could leave VHS's silent file)
+        take = meta.with_suffix(".mp4")
+        return not take.exists() or media.probe(take)["audio_codec"] is not None
+    m = load_json(meta)
+    if m.get("fingerprint") == fingerprint(text, files, track, seconds):
+        if not m.get("inputs"):   # a take from before writer inputs were recorded: record them now
+            save_json(meta, {**m, "inputs": inputs_fingerprint(p, ep, clip, files, track, seconds)})
+        return True
+    return bool(m.get("inputs")) and not p.cfg["render"].get("rerender_on_engine_change", False) \
+        and m["inputs"] == inputs_fingerprint(p, ep, clip, files, track, seconds)
 
 
 def fingerprint(text: str, files: dict[str, Path], track: Path | None, seconds) -> str:

@@ -100,6 +100,10 @@ shot is a face**, a close-up or reaction held 2–3 s and cut hard, never a wide
 resolves it in its first beat. Show emotion
 through observable cues (eyes drop, jaw tightens, a delayed answer), not emotion labels.
 
+**Time of day, crowds.** Write one location per place and give it `lights` for its other times of day; a clip picks
+one with `"time": "night"` (never a second location for the same room by night). Mark public places `crowd: true`;
+a private room shows only the people written into the shot.
+
 **Costume changes, phone calls, extras.** A character who changes clothes gets bible `outfits`, and the episode (or
 clip) says who wears what (`"outfits": {"chenmo": "suit"}`). A line heard over the phone is `"via": "phone"` on a shot
 of the listener (`MCU`/`CU` of them holding the phone; the caller is not in `subjects`); cut to the caller without
@@ -172,6 +176,11 @@ and look before spending GPU time on the whole episode.)
 - **Picture:** still sample frames of each clip (ffmpeg `-vf fps=1`) and look: faces match the close-ups, the right
   person speaks, no extra people, no on-screen text, mouths move on the lines. A failed clip:
   `render ... --only K2 --takes 2`, then choose the take in `edit/<EP>/picks.json` (`{"K2": 2}`) and re-assemble.
+- **Long batches:** `make <project> E001,E002,...` keeps going when an episode fails (it is listed in
+  `BATCH_REPORT.md` with the reason, the others are finished), retries a failed job on another server, re-renders a
+  clip whose takes all failed, keeps the Mac awake, and stops cleanly when the disk runs low (`min_free_gb`). Use
+  zero-padded ids for long series (E001). A take is kept when only the engine's prompt wording changed, not when the
+  writer changed the clip, a reference or a voice.
 - **Servers are on demand:** with `[fleet] core` set, every server is off while nothing renders. The first GPU job
   of a command powers one on, which takes about 1–3 min: a quiet start is not a hang. The render adds more while clips
   wait. Servers power off about 10 min after the last command ends. `python -m sheelshort fleet <project>` shows each

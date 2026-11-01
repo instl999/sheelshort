@@ -41,6 +41,11 @@ and makes a sheet from it. Never make a second character for a change of clothes
 `{"door_slam": {"file": "inputs/sfx/door_slam.mp3", "url": "...", "source": "freesound.org/s/571797", "license": "CC0",
 "what": "...", "sync": 1.01, "len": 1.67, "level": -4}}`. `sync` is the second of the file that lands on the cue time.
 
+A location may have `crowd: true` (a restaurant, a lobby, a street: passers-by may fill the background) and `lights`
+for other times of day: `"lights": {"night": "night; warm floor lamps as key, the city glowing blue through the
+window"}`. A clip (or episode) chooses one with `"time": "night"`; `cast` relights the location's plates with the
+image editor, so it stays the same room. Without `crowd`, a shot holds only its written people (and `extras`).
+
 `look_preset` (optional, default `cinematic`) sets the light, colour and acting of every prompt, the location plates
 and the finishing grade: `cinematic` is moody and directional (rural, period, thriller); `bright` is high-key and
 clean (comedy, bright urban stories); `glossy` is warm and glowing with soft bokeh (romance). A location's `name_zh`

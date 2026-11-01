@@ -67,9 +67,10 @@ def edl(p: Project, ep: str) -> dict:
                  for ln in lines]
         cards += _cards_in(p, clip, t - head, video, introduced)
         fx += sfx.events_in(p, clip, t - head, head, tail, video)
-        loc = p.bible["locations"].get(clip["location"], {})
-        if clip["location"] != prev_loc and loc.get("name_zh") and p.cfg["edit"].get("location_cards", True) \
-                and clip["location"] not in {pl["loc"] for pl in places}:
+        loc = p.locs.get(clip["location"], {})
+        place = loc.get("base", clip["location"])   # the same room by night is the same place: one card
+        if place != prev_loc and loc.get("name_zh") and p.cfg["edit"].get("location_cards", True) \
+                and place not in {pl["loc"] for pl in places}:
             # the card sits on the scene's first wide or medium shot (a cold open on a face gets it when the room shows)
             at, x0, x1 = 0.0, head, tail
             for cut in clip["cuts"]:
@@ -77,9 +78,9 @@ def edl(p: Project, ep: str) -> dict:
                     x0, x1 = at, min(tail, at + h3prompt.cut_len(cut))
                     break
                 at += h3prompt.cut_len(cut)
-            places.append({"kind": "place", "loc": clip["location"], "name": loc["name_zh"], "start": round(t - head + x0 + 0.1, 3),
+            places.append({"kind": "place", "loc": place, "name": loc["name_zh"], "start": round(t - head + x0 + 0.1, 3),
                            "end": round(t - head + min(x0 + 2.6, x1 - 0.1), 3)})
-        prev_loc = clip["location"]
+        prev_loc = place
         t += tail - head
     for pl in list(places):   # both stand at the top of the frame: a name card waits until the location card is gone,
         for c in cards:         # or, when that would leave it too short to read, the location card gives way
@@ -133,8 +134,9 @@ def _intro_cut(cut: dict, c: str) -> bool:
 def introduced_before(p: Project, ep: str) -> set[str]:
     """Characters whose name card was already shown in an earlier episode (their first solo close-up)."""
     seen: set[str] = set()
+    from .project import episode_key
     for e in p.episodes():
-        if e >= ep:
+        if episode_key(e) >= episode_key(ep):
             break
         for clip in p.episode(e)["clips"]:
             for cut in clip["cuts"]:
@@ -388,11 +390,16 @@ def run(p: Project, ep: str) -> Path:
     music = e.get("music")
     if music == "auto":
         music = score(p, ep)
+    sources = [(Path(it["audio"] or it["video"]), it["seconds"]) for it in plan["clips"]]
     if music:
         mi = ins.count("-i")
         ins += ["-stream_loop", "-1", "-i", str(Path(music).expanduser())]
+        # the bed sits a fixed distance under the dialogue's measured loudness: raw beds differ by up to 7 LU, and a
+        # fixed -16 dB made the music-to-dialogue balance swing from episode to episode
+        bed_lufs = sfx.loudness(Path(music).expanduser())
+        gain = (sfx.program_loudness(sources) - float(e.get("music_under_lu", 18)) - bed_lufs) if bed_lufs is not None else -16.0
         filt.append("[dia]asplit=2[dia1][key]")
-        filt.append(f"[{mi}:a]aresample=48000,aformat=channel_layouts=stereo,volume=-16dB,atrim=0:{plan['duration']},"
+        filt.append(f"[{mi}:a]aresample=48000,aformat=channel_layouts=stereo,volume={gain:.1f}dB,atrim=0:{plan['duration']},"
                     f"afade=t=out:st={max(0, plan['duration'] - 1.5)}:d=1.5[bed]")
         filt.append("[bed][key]sidechaincompress=threshold=0.03:ratio=8:attack=20:release=400[duck]")
         filt.append("[dia1][duck]amix=inputs=2:normalize=0[mix]")
@@ -400,7 +407,6 @@ def run(p: Project, ep: str) -> Path:
     else:
         last = "[dia]"
     if plan["sfx"]:   # cues sit at a level set against the dialogue's own loudness, before the master is normalised
-        sources = [(Path(it["audio"] or it["video"]), it["seconds"]) for it in plan["clips"]]
         last = sfx.mix(p, plan, ins, filt, last, sources)
     filt.append(f"{last}loudnorm=I={e['loudness']}:TP=-1.0:LRA=11,aresample=48000,asplit=2[aout][aclean]")
     master = out_dir / f"{p.master_name()}.mp4"
@@ -410,8 +416,44 @@ def run(p: Project, ep: str) -> Path:
     cmd = ["ffmpeg", "-y", "-v", "error", *ins, "-filter_complex", ";".join(filt),
            "-map", "[vout]", "-map", "[aout]", *enc, str(master), "-map", "[vclean]", "-map", "[aclean]", *enc, str(clean)]
     subprocess.run(cmd, check=True)
+    for f in (master, clean):
+        settle_loudness(f, float(e["loudness"]))
     log(f"{ep}: master {plan['duration']:.1f}s -> {master}")
     return master
+
+
+def loudness_stats(f: Path) -> tuple[float, float]:
+    """Integrated loudness (LUFS) and true peak (dBTP) of a file's audio."""
+    r = subprocess.run(["ffmpeg", "-hide_banner", "-nostats", "-i", str(f), "-vn", "-af", "ebur128=peak=true", "-f", "null", "-"],
+                       capture_output=True, text=True).stderr
+    summary = r[r.rfind("Summary:"):]
+    i = re.search(r"I:\s+(-?[0-9.]+) LUFS", summary)
+    tp = re.search(r"Peak:\s+(-?[0-9.]+) dBFS", summary)
+    return (float(i.group(1)) if i else -70.0), (float(tp.group(1)) if tp else -70.0)
+
+
+def settle_loudness(f: Path, target: float, tol: float = 0.5, ceiling: float = -1.0) -> None:
+    """Measure the encoded master and, when it misses the target (single-pass loudnorm landed 1-4 LU low on every
+    master so far) or peaks above the ceiling, correct its audio with a plain gain and a limiter (the video is copied)."""
+    i, tp = loudness_stats(f)
+    if abs(i - target) <= tol and tp <= ceiling:
+        return
+    tmp = f.with_name(f.stem + "_level" + f.suffix)
+    gain, best = target - i, None
+    for _ in range(3):   # the limiter takes back some of the gain: add the shortfall and go again from the original
+        subprocess.run(["ffmpeg", "-y", "-v", "error", "-i", str(f), "-map", "0", "-c:v", "copy",
+                        "-af", f"volume={gain:.2f}dB,alimiter=limit={10 ** ((ceiling - 0.5) / 20):.3f}:level=false:attack=1:release=50",
+                        "-c:a", "aac", "-b:a", "192k", "-movflags", "+faststart", str(tmp)], check=True)
+        i2, tp2 = loudness_stats(tmp)
+        if best is None or abs(i2 - target) < abs(best[0] - target):
+            best = (i2, tp2)
+            tmp.replace(tmp.with_name(tmp.stem + "_best" + tmp.suffix))
+        if abs(i2 - target) <= tol:
+            break
+        gain += target - i2
+    tmp.unlink(missing_ok=True)
+    tmp.with_name(tmp.stem + "_best" + tmp.suffix).replace(f)
+    log(f"{f.name}: loudness {i:.1f} LUFS / {tp:.1f} dBTP -> {best[0]:.1f} LUFS / {best[1]:.1f} dBTP (target {target:g})")
 
 
 DEFAULT_MUSIC = ("cinematic tense underscore, Chinese short drama, instrumental, slow, low strings, soft piano, deep drone, "
