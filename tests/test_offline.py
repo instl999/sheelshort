@@ -929,9 +929,12 @@ def test_episodes_sort_in_story_order_and_a_room_keeps_its_place_at_night():
 
 def test_a_private_room_holds_only_its_written_people():
     from sheelshort import clipqc
-    chars = {"a": {"name": "A", "role": "man"}, "b": {"name": "B", "role": "woman"}}
+    chars = {"a": {"name": "A", "role": "man", "look": "a man"}, "b": {"name": "B", "role": "woman", "look": "a woman"}}
     two = {"type": "MS", "subjects": ["a", "b"]}
     assert clipqc.judge_panel(chars, 1, two, {"people": 3}, False, False)                   # a stranger at home
+    one = {"type": "MCU", "subjects": ["a"]}
+    assert not clipqc.judge_panel(chars, 1, one, {"people": 2}, False, False, room=2)       # the scene partner's shoulder
+    assert clipqc.judge_panel(chars, 1, one, {"people": 3}, False, False, room=2)           # but a third person is not
     assert not clipqc.judge_panel(chars, 1, two, {"people": 3}, False, False, crowd=True)   # a diner in a restaurant
     assert clipqc.judge_panel(chars, 1, two, {"people": 5}, False, False, crowd=True)       # but not a crowd in a two-shot
     assert not clipqc.judge_panel(chars, 1, dict(two, extras="two waiters"), {"people": 4}, False, False)
