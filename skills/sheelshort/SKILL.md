@@ -140,6 +140,32 @@ When no library cue fits the beat (a wooden palace door, a sword drawn, a car br
   the project and the bible's `sfx` with its measured sync point (`--sync peak` or `end` when the moment that matters
   is not the first sound, e.g. a riser; `--level` in dB against the dialogue, default -4).
 
+**Every cut is written out in full: `check` refuses an episode that isn't, and nothing renders until it passes.**
+The video model takes words literally and invents whatever is missing, and what it invents is often wrong (an eye-roll
+that made the heroine read as contemptuous). So every cut states everything the camera will see, from its first frame to
+its last:
+- `composition` (12+ words): the framing, who stands where (left, right, foreground, by the window), what is behind them.
+- `action` (15+ words, 8 more for each further person): for each person, by `{id}`: the body (stands, steps, leans,
+  turns which way), the head, where the eyes go and when, the mouth (speaking, or closed), the hands, and how the
+  expression starts and changes. A face shot covers at least four of eyes, head, mouth, hands, body, expression; a wide
+  or medium shot places everyone and moves them.
+- `camera` (4+ words): the move (static, slow push in, handheld drift, pan left), its speed and height.
+- `end` (6+ words): the last frame: where each person is, their pose, gaze and expression.
+- `delivery` (5+ words, with a line): the face while the line is said.
+- No vague verbs and no feelings the camera can't see (see below).
+
+A complete cut:
+```json
+{"type": "MCU", "subjects": ["linwan"], "speaker": "linwan", "line": "就这套吧。全款。", "say": "就这套吧。……全款。",
+ "act": "平静，像在买一杯咖啡，最后两个字轻轻落下", "emotion": "calm",
+ "delivery": "calm and offhand, a faint easy smile on the last word, eyes steady on the view",
+ "composition": "Medium close-up from mid-chest up of {linwan} on the right of frame against the bright floor-to-ceiling window, the city soft and out of focus behind her.",
+ "action": "{linwan} stands still facing the window, shoulders relaxed, her left hand resting on the tote strap. She keeps her head level and her eyes on the view while she speaks, lips moving only on the words, then turns her head slowly to her right toward {zhoumin} off screen, a faint easy smile settling on her face.",
+ "camera": "Static at eye level, the lens slightly below her shoulder line.",
+ "end": "{linwan} holds the faint smile, head turned right, eyes calm and level.", "dur": 2.6}
+```
+`--allow-thin` renders anyway; it exists for example episodes written before these rules, never for new work.
+
 **Write every small action out (H3 acts out words literally and invents what is missing).** In every face shot
 (`CU`, `MCU`, `ECU`, `OTS`, `RX`, `VO`) the `action` says, from the first frame to the last: where the eyes go and
 whether the head moves with them, what the mouth does (closed when not speaking), what the hands do, and how the
