@@ -32,6 +32,11 @@ A complete worked example is `projects/waimai2/` (bible.json, episodes/E01.json,
 }
 ```
 
+A character may have `outfits` for costume changes: `"outfits": {"suit": {"look": "...the whole look sentence in this
+outfit...", "keep": "...anchors + this outfit...", "costume": "a charcoal three-piece suit, white shirt, black tie"}}`.
+The outfit is the same person (name, voice, face): `cast` re-dresses the character's close-up with the image editor
+and makes a sheet from it. Never make a second character for a change of clothes.
+
 `sfx` (optional) holds the project's own sound-effect cues, written by `python -m sheelshort sfx <project> add`:
 `{"door_slam": {"file": "inputs/sfx/door_slam.mp3", "url": "...", "source": "freesound.org/s/571797", "license": "CC0",
 "what": "...", "sync": 1.01, "len": 1.67, "level": -4}}`. `sync` is the second of the file that lands on the cue time.
@@ -77,7 +82,12 @@ clean (comedy, bright urban stories); `glossy` is warm and glowing with soft bok
 | `composition`, `action`, `camera`, `sound`, `end` | picture prompt text; `{charid}` and `{loc}` become H3 subject labels |
 | `props` | props visible in the cut (must exist in bible.props) |
 | `dur` | seconds (default 3); dialogue cuts are lengthened to fit the acted line |
+| `via` | `"phone"`: the line is heard through a phone from the other end; the shot shows the listener (the speaker is not in `subjects`), and the edit puts the line in the telephone band |
+| `extras` | optional background people who never speak (`"two lawyers in black suits behind {chenmo}"`); not in close-ups. Without it a shot holds only its `subjects`, and clip QC re-takes a close or medium shot with a crowd in it |
 | `sfx` | optional sound effect(s) on the cut's first frame: a cue name (`"hit"`), a list, or `{"cue": "slap", "at": 0.8}` for a moment inside the cut |
+
+Episode (or clip) field `outfits`: `{"<charid>": "<outfit>"}` dresses a character in one of their bible `outfits` for the
+episode (a clip's entry overrides it; `"default"` is the character's own costume).
 
 Episode (or clip) field `blocking`: `{"<location>": {"<charid>": "left" | "right"}}` fixes which side of the line of
 action each character stands on; by default the people who talk to each other most are put on opposite sides.

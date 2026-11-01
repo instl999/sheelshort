@@ -33,7 +33,7 @@ import shutil
 import sys
 from pathlib import Path
 
-from . import assemble, cast, evaluate, h3prompt, perform, render, review, sfx
+from . import assemble, cast, evaluate, h3prompt, perform, render, review, sfx, wardrobe
 from .project import REPO, Project, log, save_json
 
 
@@ -60,7 +60,7 @@ def check(p: Project, eps: list[str]) -> list[str]:
             errs.append(f"location {loc}: missing `light` (time of day and light sources for every shot there)")
     for ep in eps:
         scene = p.scene(ep)
-        errs += [f"{ep} {e}" for e in h3prompt.check_rules(scene) + sfx.check(scene)]
+        errs += [f"{ep} {e}" for e in h3prompt.check_rules(scene) + sfx.check(scene) + wardrobe.check(b, p.episode(ep))]
         for clip in scene["clips"]:
             if len(h3prompt.clip_characters(clip)) > 3:
                 errs.append(f"{ep} {clip['id']}: more than 3 characters; split the clip")

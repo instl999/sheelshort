@@ -58,8 +58,11 @@ def edl(p: Project, ep: str) -> dict:
             lines, audio = heard_lines(p, ep, clip, video), None
         head, tail = edge_trims(video, seconds, lines) if p.cfg["edit"].get("trim_flashes", True) else (0.0, seconds)
         fol = sorted(video.parent.glob(video.stem + "_foley.*"))
+        vias = [c.get("via") for c in clip["cuts"] if c.get("line")]
+        phone = [(round(max(0.0, ln["start"] - head - 0.1), 3), round(ln["end"] - head + 0.1, 3))
+                 for ln, v in zip(lines, vias) if v == "phone"] if len(vias) == len(lines) else []
         items.append({"clip": clip["id"], "video": str(video), "audio": audio, "foley": str(fol[0]) if fol and audio else None,
-                      "start": round(t, 3), "in": head, "seconds": round(tail - head, 3)})
+                      "start": round(t, 3), "in": head, "seconds": round(tail - head, 3), "phone": phone})
         subs += [{"text": ln["text"], "start": round(t + ln["start"] - head, 3), "end": round(t + ln["end"] - head + 0.25, 3)}
                  for ln in lines]
         cards += _cards_in(p, clip, t - head, video, introduced)
@@ -93,6 +96,16 @@ def edl(p: Project, ep: str) -> dict:
     out = {"episode": ep, "duration": round(t, 3), "clips": items, "subtitles": subs, "cards": cards, "sfx": fx}
     save_json(p.d("edit", ep) / "edl.json", out)
     return out
+
+
+def phone_filter(src: str, dst: str, windows: list[tuple[float, float]], tag: str) -> list[str]:
+    """A line heard through a phone (`via: "phone"`): telephone band (350-3400 Hz), squeezed, only inside its windows."""
+    on = "+".join(f"between(t,{a:.3f},{b:.3f})" for a, b in windows)
+    return [f"{src}asplit=2[{tag}c][{tag}p]",
+            f"[{tag}c]volume=0:enable='{on}'[{tag}cm]",
+            f"[{tag}p]highpass=f=350,highpass=f=350,lowpass=f=3400,lowpass=f=3400,"
+            f"acompressor=threshold=0.05:ratio=6:attack=5:release=80,volume=3dB,volume=0:enable='not({on})'[{tag}pm]",
+            f"[{tag}cm][{tag}pm]amix=inputs=2:normalize=0{dst}"]
 
 
 MIN_SUB_S = 1.0   # seconds a subtitle stays up at least, when the next line allows it
@@ -137,16 +150,16 @@ def _cards_in(p: Project, clip: dict, t0: float, video: Path, introduced: set[st
     out, at = [], 0.0
     for cut in clip["cuts"]:
         dur = h3prompt.cut_len(cut)
-        cands = [c for c in cut.get("subjects", []) if p.chars.get(c, {}).get("card") and c not in introduced]
+        cands = [c for c in cut.get("subjects", []) if p.chars.get(c, {}).get("card") and p.base(c) not in introduced]
         if cut.get("intro") is True:
-            cands = [c for c in cut.get("subjects", []) if c not in introduced and p.chars.get(c, {}).get("card")][:1]
+            cands = cands[:1]
         for c in cands:
             if _intro_cut(cut, c):
                 ch = p.chars[c]
                 face = media.face_box(video, at + dur / 2)
                 out.append({"name": ch.get("name_zh") or ch["name"], "role": ch["card"], "start": round(t0 + at + 0.15, 3),
                             "end": round(t0 + at + min(dur - 0.1, 2.6), 3), "face": face})
-                introduced.add(c)
+                introduced.add(p.base(c))   # once per character, whatever they wear
                 break
         at += dur
     return out
@@ -345,6 +358,7 @@ def run(p: Project, ep: str) -> Path:
     k = n
     for i, it in enumerate(plan["clips"]):
         fit = f"aresample=48000,aformat=channel_layouts=stereo,atrim={it.get('in', 0)}:{it.get('in', 0) + it['seconds']},asetpts=PTS-STARTPTS,apad=whole_dur={it['seconds']}"
+        out = f"[p{i}]" if it.get("phone") else f"[a{i}]"
         if it["audio"]:
             ins += ["-i", it["audio"]]
             filt.append(f"[{k}:a]{fit}[d{i}]")
@@ -355,12 +369,14 @@ def run(p: Project, ep: str) -> Path:
                 filt.append(f"[{k}:a]{fit},loudnorm=I=-38:TP=-9[f{i}]")
                 filt.append(f"[d{i}]asplit=2[dd{i}][key{i}]")
                 filt.append(f"[f{i}][key{i}]sidechaincompress=threshold=0.02:ratio=3:attack=30:release=500[fd{i}]")
-                filt.append(f"[dd{i}][fd{i}]amix=inputs=2:normalize=0[a{i}]")
+                filt.append(f"[dd{i}][fd{i}]amix=inputs=2:normalize=0{out}")
                 k += 1
             else:
-                filt.append(f"[d{i}]anull[a{i}]")
+                filt.append(f"[d{i}]anull{out}")
         else:
-            filt.append(f"[{i}:a]{fit}[a{i}]")
+            filt.append(f"[{i}:a]{fit}{out}")
+        if it.get("phone"):
+            filt += phone_filter(f"[p{i}]", f"[a{i}]", it["phone"], f"ph{i}")
     filt.append("".join(f"[v{i}][a{i}]" for i in range(n)) + f"concat=n={n}:v=1:a=1[vc][dia]")
     fonts = e.get("fonts_dir", "/System/Library/Fonts")
     if grade(p):

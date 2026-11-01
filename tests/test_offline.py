@@ -109,10 +109,12 @@ def test_qc_aligns_text_to_the_image():
             "looks about 72, written as 56", "glasses missing"],
             {"face_marks": [{"kind": "scar", "on": "nose bridge", "image_side": "center"}]})
         a = json.loads((p.root / "bible.json").read_text())["characters"]["a"]
-    assert left == ["glasses missing"]                                  # text cannot fix a missing object
+    assert left == ["looks about 72, written as 56", "glasses missing"]  # text cannot fix an object; the age is the script's
     assert "mole on his left cheekbone" in a["look"] and "left cheekbone" in a["keep"]
     assert "scar on the nose bridge" in a["keep"] and "eyebrow" not in a["face_detail"]
-    assert a["look"].startswith("a 72-year-old")
+    assert a["look"].startswith("a 56-year-old")
+    from sheelshort import cast
+    assert "exactly 56 years old" in cast.age_hint(left, a) and "no deep wrinkles" in cast.age_hint(left, a)
 
 
 def _talk_clip(cid="C1", loc="village_gate"):
@@ -745,6 +747,70 @@ def test_sound_effects_land_on_the_rendered_cut_at_a_level_set_by_the_dialogue()
         assert abs(onset - 3.2) < 0.03, onset                                   # the tone's onset, not the file's start
         lift = 20 * np.log10(env[int(3.4 * 8000)] / np.median(env))
         assert 1.5 < lift < 6, lift                                             # about as loud as the dialogue (level 0)
+
+
+def test_an_outfit_is_the_same_person_in_other_clothes():
+    from sheelshort import wardrobe
+    ch = {"name": "Chen Mo", "name_zh": "陈默", "role": "man", "look": "a 28-year-old man in a blue raincoat", "keep": "scar, blue raincoat",
+          "costume": "blue raincoat", "card": "外卖员",
+          "outfits": {"suit": {"look": "a 28-year-old man in a charcoal suit", "keep": "scar, charcoal suit", "costume": "charcoal suit"}}}
+    with tempfile.TemporaryDirectory() as tmp:
+        p = _scratch_project(tmp, ch)
+        p.bible["characters"]["b"] = {"name": "B", "role": "woman"}
+        ep = {"id": "E02", "outfits": {"a": "suit"}, "blocking": {"room": {"a": "left", "b": "right"}}, "clips": [
+            {"id": "K1", "location": "room", "summary": "{a} enters.", "cuts": [
+                {"type": "MCU", "subjects": ["a"], "speaker": "a", "to": "b", "line": "我回来了。", "action": "{a} smiles at {b}."}]},
+            {"id": "K2", "location": "room", "outfits": {"a": "default"}, "cuts": [{"type": "CU", "subjects": ["a"]}]}]}
+        (p.root / "episodes" / "E02.json").write_text(json.dumps(ep, ensure_ascii=False))
+        k1, k2 = p.clips("E02")
+        cut = k1["cuts"][0]
+        assert cut["subjects"] == ["a__suit"] and cut["speaker"] == "a__suit" and cut["to"] == "b"
+        assert cut["action"] == "{a__suit} smiles at {b}." and k1["summary"] == "{a__suit} enters."
+        assert k1["blocking"] == {"a__suit": "left", "b": "right"} and k2["cuts"][0]["subjects"] == ["a"]
+        suit = p.chars["a__suit"]
+        assert suit["costume"] == "charcoal suit" and suit["name_zh"] == "陈默" and "outfits" not in suit
+        assert p.voice("a__suit") == p.voice("a") and p.base("a__suit") == "a"
+        assert p.episode("E02")["clips"][0]["cuts"][0]["subjects"] == ["a"]       # the file keeps the writer's ids
+        assert p.scene("E02")["clips"][0]["cuts"][0]["subjects"] == ["a__suit"]
+        assert wardrobe.check(p.bible, ep) == []
+        ep["clips"][1]["outfits"] = {"a": "tux"}
+        assert any("no outfit 'tux'" in e for e in wardrobe.check(p.bible, ep))
+        from sheelshort import cast
+        assert "Change only the clothing to: charcoal suit" in cast.outfit_prompt(suit)
+
+
+def test_a_phone_line_is_heard_through_the_phone_and_extras_are_written_in():
+    scene = json.loads((ROOT / "projects/quancun/bible.json").read_text())
+    clip = _talk_clip()
+    clip["cuts"] = [{"type": "MCU", "subjects": ["xiaokang"], "speaker": "dahua", "via": "phone", "line": "你爹出事了。",
+                     "act": "急促", "emotion": "fear", "delivery": "breathless", "composition": "", "action": "", "camera": "Static camera.", "dur": 3},
+                    {"type": "MS", "subjects": ["xiaokang"], "extras": "two villagers mending a net", "composition": "",
+                     "action": "", "camera": "Static camera.", "dur": 2}]
+    scene["clips"] = [clip]
+    assert h3prompt.check_rules(scene) == []
+    text = h3prompt.build(scene, clip, h3prompt.Refs(char_pictures={"xiaokang": ["a.png", "b.png"], "dahua": ["c.png", "d.png"]},
+                                                     location_pictures=["l.png"]))
+    assert "never appears in the picture of this clip" in text and "voice comes through the phone held by" in text
+    assert "inner voice" not in text and "In the background: two villagers mending a net" in text
+    clip["cuts"][0]["subjects"] = ["dahua"]
+    assert any("heard from the other end" in e for e in h3prompt.check_rules(scene))
+    from sheelshort import clipqc
+    chars = scene["characters"]
+    crowd = {"people": 6, "main_person_sex": "man"}
+    assert any("6 people" in x for x in clipqc.judge_panel(chars, 1, {"type": "MS", "subjects": ["xiaokang"]}, crowd, False, False))
+    assert not any("people in" in x for x in clipqc.judge_panel(chars, 1, clip["cuts"][1], crowd, False, False))
+
+
+def test_phone_filter_thins_only_the_phone_line():
+    import subprocess
+    import numpy as np
+    filt = ["[0:a]anull[p0]"] + assemble.phone_filter("[p0]", "[a0]", [(1.0, 2.0)], "ph0")
+    raw = subprocess.run(["ffmpeg", "-v", "error", "-f", "lavfi", "-i", "sine=f=120:d=3", "-filter_complex", ";".join(filt),
+                          "-map", "[a0]", "-ac", "1", "-ar", "8000", "-f", "s16le", "-"], capture_output=True, check=True).stdout
+    a = np.frombuffer(raw, np.int16).astype(np.float32)
+    rms = lambda t0, t1: float(np.sqrt(np.mean(a[int(t0 * 8000):int(t1 * 8000)] ** 2)))
+    assert rms(1.2, 1.8) < 0.1 * rms(0.2, 0.8)                                 # 120 Hz is cut inside the window
+    assert abs(rms(2.2, 2.8) - rms(0.2, 0.8)) < 0.05 * rms(0.2, 0.8)           # and untouched outside it
 
 
 if __name__ == "__main__":
