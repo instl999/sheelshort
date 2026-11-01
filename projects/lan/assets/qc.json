@@ -67,5 +67,54 @@
       "clothing": "dark navy blue suit with a white dress shirt and dark blue tie, black leather dress shoes",
       "text_or_watermark": false
     }
+  },
+  "char_zhoumin": {
+    "attempt": 0,
+    "attempts": 1,
+    "problems": [],
+    "seen": {
+      "people": 1,
+      "sex": "woman",
+      "apparent_age": 45,
+      "hair": "Black, shoulder-length, straight bob",
+      "face_marks": [],
+      "eyewear": "none",
+      "facial_hair": "none",
+      "clothing": "Cream-colored top with a round neckline",
+      "text_or_watermark": false
+    }
+  },
+  "sheet_zhoumin": {
+    "attempt": 0,
+    "attempts": 1,
+    "problems": [],
+    "seen": {
+      "figures": 3,
+      "same_person": true,
+      "views": "front, side, back",
+      "hair": "black, short bob",
+      "clothing": "cream tailored jacket and matching knee-length pencil skirt with nude high heels",
+      "text_or_watermark": false
+    }
+  },
+  "char_linwan__suit": {
+    "attempt": 0,
+    "attempts": 0,
+    "problems": [],
+    "seen": {},
+    "note": "head crop of char_linwan"
+  },
+  "sheet_linwan__suit": {
+    "attempt": 0,
+    "attempts": 1,
+    "problems": [],
+    "seen": {
+      "figures": 3,
+      "same_person": true,
+      "views": "front, side, back",
+      "hair": "long, straight, black",
+      "clothing": "black blazer, black satin shirt, black trousers, black high heels, gold wristwatch",
+      "text_or_watermark": false
+    }
   }
 }

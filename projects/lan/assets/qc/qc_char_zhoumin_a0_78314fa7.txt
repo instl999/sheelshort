@@ -1,0 +1,13 @@
+```json
+{
+  "people": 1,
+  "sex": "woman",
+  "apparent_age": 45,
+  "hair": "Black, shoulder-length, straight bob",
+  "face_marks": [],
+  "eyewear": "none",
+  "facial_hair": "none",
+  "clothing": "Cream-colored top with a round neckline",
+  "text_or_watermark": false
+}
+```

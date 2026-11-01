@@ -204,9 +204,25 @@ def queue_idle(url: str) -> bool:
         return True   # ComfyUI not answering: nothing is running there
 
 
+def _stopped_for(inst: dict, clock=time.time) -> float | None:
+    """Seconds an instance has been shut down, or None while it is not shut down."""
+    from datetime import datetime
+    if inst.get("status") != "shutdown":
+        return None
+    st = inst.get("stopped_at") or {}
+    when = st.get("Time") if isinstance(st, dict) and st.get("Valid", True) else None
+    if not when:
+        return None
+    try:
+        return max(0.0, clock() - datetime.fromisoformat(when.replace("Z", "+00:00")).timestamp())
+    except ValueError:
+        return None
+
+
 def reap_idle(api: "AutoDL", c: dict, log=print, clock=time.time, idle=queue_idle) -> float | None:
     """Power off every instance of ours that no live sheelshort process holds and whose ComfyUI queue has been empty
-    for `idle_off_minutes` (a queue with work, from the ComfyUI page say, restarts the wait). A running core server
+    for `idle_off_minutes` (a queue with work, from the ComfyUI page say, restarts the wait), and release (delete) one
+    that has been shut down for `release_after_hours` (3; 0 = never), so idle instances cost nothing. A running core server
     with no record is idle from now; a process that died without cleaning up counts as gone. Returns the seconds until
     the next check is due, None when nothing is left to watch."""
     idle_s = 60 * float(c.get("idle_off_minutes", 10))
@@ -216,6 +232,23 @@ def reap_idle(api: "AutoDL", c: dict, log=print, clock=time.time, idle=queue_idl
     def due_in(s):
         nonlocal nxt
         nxt = s if nxt is None else min(nxt, s)
+
+    hours = float(c.get("release_after_hours", 3))
+    for u, inst in insts.items() if hours > 0 else []:
+        stopped = _stopped_for(inst, clock)
+        if stopped is None or holders(u):
+            continue
+        left = hours * 3600 - stopped
+        if left > 0:
+            due_in(left)   # keep watching until it is due
+            continue
+        try:
+            api.release(u)
+            forget(u)
+            log(f"fleet: {u}: released (shut down for {stopped / 3600:.1f} h)")
+        except AutoDLError as err:
+            log(f"fleet: {u}: release failed ({err}); trying again later")
+            due_in(600)
 
     with _registry() as d:
         for u in c.get("core") or []:
@@ -294,12 +327,67 @@ def grab(api, uuids: list[str], c: dict, log, claim: bool = True, stop=None) -> 
 CAPS = Path(__file__).resolve().parent.parent / ".cache" / "server_caps.json"
 
 
-def bad_machines() -> set[str]:
-    """Machines known to lack a feature the run needs (RTX upscaling): started last."""
+_caps_lock = threading.Lock()
+
+
+def _caps() -> dict:
     try:
-        return set(json.loads(CAPS.read_text()).get("no_rtx_vsr_machines", []))
+        return json.loads(CAPS.read_text())
     except (OSError, ValueError):
-        return set()
+        return {}
+
+
+def power_key(inst: dict) -> str:
+    """One power-on of an instance: its uuid and when it last started. A power cycle can put an instance on another
+    GPU, so what it can do is known only for the power-on it was seen in."""
+    started = inst.get("started_at") or {}
+    return f"{inst['uuid']}@{started.get('Time', '') if isinstance(started, dict) else started}"
+
+
+def rtx_known(key: str) -> bool | None:
+    """True: this power-on ran RTX upscaling; False: it could not; None: not tried yet."""
+    v = _caps().get("rtx", {}).get(key)
+    return v if isinstance(v, bool) else None
+
+
+def note_rtx(key: str, ok: bool) -> None:
+    with _caps_lock:
+        c = _caps()
+        c["rtx"] = {k: v for k, v in c.get("rtx", {}).items() if isinstance(v, bool)}
+        c["rtx"][key] = ok
+        for old in ("no_rtx_vsr", "no_rtx_vsr_machines", "rtx_vsr_ok_machines"):   # per machine: wrong (GPUs move)
+            c.pop(old, None)
+        CAPS.parent.mkdir(parents=True, exist_ok=True)
+        CAPS.write_text(json.dumps(c, indent=1))
+
+
+def probe_rtx(p, url: str) -> bool | None:
+    """Can the server at `url` run RTX upscaling? A one-second test clip, upscaled there: True, False (the NVIDIA
+    effects runtime does not load: an old driver), or None (the probe could not run: a network error, say)."""
+    import subprocess
+    from . import flows
+    # exactly what a real upscale is: an H3 take's size and frame rate, at the scale the edit asks for (a tiny clip at
+    # 2x once failed on a machine that upscaled real takes fine)
+    w, h, fps = 832, 1504, 24
+    e = p.cfg["edit"]
+    scale = max(e["width"] / w, e["height"] / h) + 0.005
+    clip = CAPS.parent / f"rtx_probe_{w}x{h}.mp4"
+    if not clip.exists():
+        CAPS.parent.mkdir(parents=True, exist_ok=True)
+        subprocess.run(["ffmpeg", "-y", "-v", "error", "-f", "lavfi", "-i", f"testsrc2=s={w}x{h}:d=1:r={fps}", "-f", "lavfi",
+                        "-i", "anullsrc", "-shortest", "-c:v", "libx264", "-pix_fmt", "yuv420p", "-c:a", "aac", str(clip)],
+                       check=True)
+    key = f"probe/rtx/{url.split('//')[-1].split('.')[0]}_{int(time.time())}"
+    out = p.run_job(key, lambda cl: flows.upscale_rtx(p.put(cl, clip), scale, "sheelshort/rtx_probe"),
+                    CAPS.parent / "probe", "rtx_probe", ("gifs", "videos"), 300, only=url)   # on that server and no other
+    for f in out or []:
+        f.unlink(missing_ok=True)
+    job = p.state["jobs"].get(key, {})
+    if job.get("server") != url:
+        return None   # it did not run there: no verdict about this machine
+    if out:
+        return True
+    return False if "NvVFX" in job.get("error", "") else None
 
 
 def uuid_for(url: str) -> str | None:
@@ -366,6 +454,8 @@ class Session:
         self.spawn = spawn
         self.held: dict[str, str] = {}   # uuid -> ComfyUI address
         self.lock = threading.Lock()
+        self.swap_lock = threading.Lock()   # one machine swap at a time (never held around ensure's fast path)
+        self.vetting: set[str] = set()      # uuids being probed right now
         self.woken = False
         self.tried_at = 0.0
 
@@ -391,8 +481,7 @@ class Session:
         servers = self.p.cfg["comfy"]["servers"]
         insts = {i["uuid"]: i for i in self.api.instances() if ours(self.c, i)}
         core = [u for u in self.c.get("core") or [] if u in insts]
-        bad = bad_machines()   # a machine with an old driver only when nothing else is free
-        order = sorted(core + sorted(u for u in insts if u not in core), key=lambda u: insts[u].get("machine_id") in bad)
+        order = core + sorted(u for u in insts if u not in core)
         with self.p.lock:   # a configured address of an on-demand server may be stale (6006/6008): resolved below
             servers[:] = [s for s in servers if not any(u.split("-", 1)[-1] in s for u in order)]
         cap = int(self.c.get("max_servers", 4))
@@ -429,64 +518,169 @@ class Session:
         if not servers:
             self.log("no server could be started")
 
-    def machines(self) -> dict[str, str]:
-        """Pool address -> AutoDL machine id (a power-on can land an instance on another machine, and drivers differ
-        from machine to machine)."""
+    def power_keys(self) -> dict[str, str]:
+        """Pool address -> the power-on it is in (`power_key`): what a server can do is judged per power-on."""
         try:
-            mid = {i["uuid"]: i.get("machine_id", "") for i in self.api.instances()}
+            insts = {i["uuid"]: i for i in self.api.instances()}
         except Exception:  # noqa: BLE001
             return {}
         out = {}
         for url in list(self.p.cfg["comfy"]["servers"]):
             u = next((x for x, v in self.held.items() if v == url), None) or uuid_for(url)
-            if u and mid.get(u):
-                out[url] = mid[u]
+            if u in insts:
+                out[url] = power_key(insts[u])
         return out
 
-    def add_capable(self, avoid_machines: set[str]) -> str | None:
-        """Bring one more server into the pool on a machine not in `avoid_machines` (one whose driver cannot run a
-        feature, say RTX upscaling). At `max_servers`, an idle server on an avoided machine (this run's own, or one the
-        render's fleet added) is powered off to make room. Returns the new server's address, or None."""
-        with self.lock:
-            if len(self.p.cfg["comfy"]["servers"]) >= int(self.c.get("max_servers", 4)) and not self._make_room(avoid_machines):
-                return None
-            try:
-                insts = [i for i in self.api.instances() if ours(self.c, i)]
-            except Exception as e:  # noqa: BLE001
-                self.log(f"listing servers failed: {e}")
-                return None
-            stopped = [i["uuid"] for i in insts if i.get("status") == "shutdown" and i.get("machine_id") not in avoid_machines]
-            u = grab(self.api, stopped, self.c, self.log)
-            if not u:
-                u = Fleet(self.p, api=self.api)._create()
-                if not u:
-                    return None
-                hold(u)
-            self._up(u)
-            return self.held.get(u) or None
+    def needs_rtx(self) -> bool:
+        return (self.p.cfg["edit"].get("upscale", "rtx") == "rtx" and bool(self.c.get("probe_rtx", True))
+                and not self.p.dry)
 
-    def _make_room(self, avoid_machines: set[str]) -> bool:
-        """Power off one idle server on an avoided machine; True if one went."""
-        where = self.machines()
-        for u, url in list(self.held.items()):
-            if url and where.get(url) in avoid_machines and not self.p._assigned.get(url):
-                self.held.pop(u)
-                with self.p.lock:
-                    if url in self.p.cfg["comfy"]["servers"]:
-                        self.p.cfg["comfy"]["servers"].remove(url)
-                if let_go(u):
-                    try:
-                        self.api.power_off(u)
-                        forget(u)
-                    except AutoDLError as e:
-                        self.log(f"{u}: power off failed ({e})")
-                self.log(f"{u}: out of the pool to make room for a machine that can do the job")
-                return True
+    def vet_later(self, u: str, url: str) -> None:
+        """Probe a server that just joined the pool for RTX upscaling, in the background; an old-driver machine is
+        replaced (see `replace`)."""
+        if self.needs_rtx() and u not in self.vetting:
+            threading.Thread(target=self._vet, args=(u, url), daemon=True).start()
+
+    def _vet(self, u: str, url: str) -> None:
+        self.vetting.add(u)
+        try:
+            key = self.power_keys().get(url, "")
+            ok = rtx_known(key) if key else None
+            if ok is None:
+                ok = probe_rtx(self.p, url)
+                if ok is None or not key:
+                    return
+                note_rtx(key, ok)
+                self.log(f"{u}: " + ("runs RTX upscaling" if ok else "cannot run RTX upscaling on this power-on (its GPU's driver)"))
+            if not ok:
+                self.replace(u, url)
+        except Exception as e:  # noqa: BLE001 - vetting must never break the run
+            self.log(f"{u}: vetting failed ({e})")
+        finally:
+            self.vetting.discard(u)
+
+    def capable_urls(self) -> set[str]:
+        """Pool servers proven, in their current power-on, to run RTX upscaling (one not tested yet does not count)."""
+        return {url for url, k in self.power_keys().items() if rtx_known(k) is True}
+
+    def replace(self, u: str | None = None, url: str | None = None) -> bool:
+        """Swap an old-driver machine for one that runs RTX upscaling, acquiring first: a new machine is brought in
+        and probed (one over `max_servers` for the moment), and only once it passes is the old one powered off (after
+        its job in hand), so it is not simply started again. A new machine that fails is powered off at once. Bounded
+        by `replace_window_minutes` (20) and `replace_max_new` (3) machines tried. `u`/`url` None: just make sure a
+        capable server is in the pool, retiring an idle old-driver one after. Returns True when a capable server is
+        in the pool."""
+        with self.swap_lock:
+            t0 = time.time()   # a server still being probed may be the capable one: wait for its verdict first
+            while self.vetting - {u} and not self.capable_urls() - ({url} if url else set()) and time.time() - t0 < 180:
+                time.sleep(5)
+            if self.capable_urls() - ({url} if url else set()):
+                got = True   # another swap (or the vetting of a joining server) found one meanwhile
+            else:
+                got = self._acquire_capable()
+            if not got:
+                self.log("no machine that can run RTX upscaling found in the window; keeping the old-driver servers for "
+                         "rendering")
+                return False
+            if url is None:   # retire one idle server of this run that cannot upscale, if there is one
+                keys = self.power_keys()
+                u, url = next(((x, v) for x, v in self.held.items() if v and rtx_known(keys.get(v, "")) is False), (None, None))
+            if u and url:
+                self._retire_when_idle(u, url)
+            return True
+
+    def workload_minutes(self) -> float:
+        """GPU minutes of work this run still has queued: the renders left (the render's fleet counts them) at
+        `clip_minutes` each, plus a minute per upscale or check not done yet."""
         scaler = getattr(self.p, "scaler", None)
-        for u, m in list(scaler.managed.items()) if scaler else []:
-            if m.get("url") and where.get(m["url"]) in avoid_machines and scaler._retire(u, "old driver, making room"):
-                return True
-        return False
+        renders = scaler.pending if scaler else 0
+        waiting = sum(1 for k, j in list(self.p.state.get("jobs", {}).items())
+                      if j.get("status") in ("queued", "retrying") and not k.startswith("render/"))
+        return renders * float(self.c.get("clip_minutes", 5)) + waiting
+
+    def replace_budget(self) -> tuple[float, int]:
+        """(seconds, new servers) a replacement may spend. The base (`replace_window_minutes` 20, `replace_max_new`
+        3) grows with the work queued: one more server per 30 GPU minutes, up to `replace_max_new_heavy` (10) servers
+        and `replace_window_minutes_heavy` (60): a busy run is worth more tries, a run nearly done is not."""
+        work = self.workload_minutes()
+        n = int(self.c.get("replace_max_new", 3)) + int(work // 30)
+        n = min(n, int(self.c.get("replace_max_new_heavy", 10)))
+        minutes = min(float(self.c.get("replace_window_minutes", 20)) + work / 3,
+                      float(self.c.get("replace_window_minutes_heavy", 60)))
+        return 60 * minutes, n
+
+    def _acquire_capable(self) -> bool:
+        """Acquire servers until one runs RTX upscaling. A new one that cannot stays on until a capable one is in (so
+        AutoDL cannot hand the same GPU straight back), then every such one is powered off."""
+        window, max_new = self.replace_budget()
+        if max_new > int(self.c.get("replace_max_new", 3)):
+            self.log(f"heavy work queued (~{self.workload_minutes():.0f} GPU min): up to {max_new} new servers in "
+                     f"{window / 60:.0f} min to find one that runs RTX upscaling")
+        t0, failed, found = time.time(), [], False
+        try:
+            while time.time() - t0 < window and len(failed) < max_new:
+                try:
+                    stopped = [i["uuid"] for i in self.api.instances() if ours(self.c, i) and i.get("status") == "shutdown"
+                               and i["uuid"] not in self.held]
+                except Exception as e:  # noqa: BLE001
+                    self.log(f"listing servers failed: {e}")
+                    stopped = []
+                u = grab(self.api, stopped, self.c, self.log) if stopped else None
+                if not u:
+                    u = Fleet(self.p, api=self.api)._create()
+                    if u:
+                        hold(u)
+                if not u:   # no stock: wait a minute, inside the window
+                    time.sleep(60)
+                    continue
+                self.vetting.add(u)   # probed here, not by the background vetting
+                try:
+                    self._up(u)
+                    url = self.held.get(u)
+                    if not url:
+                        continue
+                    key = self.power_keys().get(url, "")
+                    ok = probe_rtx(self.p, url)
+                    if key and ok is not None:
+                        note_rtx(key, ok)
+                    if ok:
+                        self.log(f"{u}: runs RTX upscaling; in the pool")
+                        found = True
+                        return True
+                    self.log(f"{u}: cannot run RTX upscaling either; kept on until a capable server is in")
+                    failed.append((u, url))
+                finally:
+                    self.vetting.discard(u)
+            return False
+        finally:
+            for u, url in failed:
+                self._drop(u, url, "cannot run RTX upscaling" + ("; a capable server replaced it" if found else ""))
+
+    def _retire_when_idle(self, u: str, url: str, wait_s: float = 900) -> None:
+        """Power off an old-driver server once the job it is running is done (at most `wait_s`)."""
+        t0 = time.time()
+        while self.p._assigned.get(url) and time.time() - t0 < wait_s:
+            time.sleep(20)
+        scaler = getattr(self.p, "scaler", None)
+        if scaler and u in scaler.managed:
+            scaler._retire(u, "old driver: replaced by a machine that runs RTX upscaling", force=True)
+        else:
+            self._drop(u, url, "old driver: replaced by a machine that runs RTX upscaling")
+
+    def _drop(self, u: str, url: str, why: str) -> None:
+        self.held.pop(u, None)
+        with self.p.lock:
+            if url in self.p.cfg["comfy"]["servers"]:
+                self.p.cfg["comfy"]["servers"].remove(url)
+        if let_go(u):
+            try:
+                self.api.power_off(u)
+                forget(u)
+                self.log(f"{u}: powered off ({why})")
+            except AutoDLError as e:
+                self.log(f"{u}: power off failed ({e})")
+        else:
+            self.log(f"{u}: out of this run's pool ({why}); another run still uses it")
 
     def _up(self, u: str) -> None:
         t0 = time.time()
@@ -508,6 +702,7 @@ class Session:
         with self.p.lock:
             if url not in self.p.cfg["comfy"]["servers"]:
                 self.p.cfg["comfy"]["servers"].append(url)
+        self.vet_later(u, url)
 
     def release(self) -> None:
         idle = [u for u in self.held if let_go(u)]
@@ -667,6 +862,8 @@ class Fleet:
             with self.p.lock:
                 self.p.cfg["comfy"]["servers"].append(url)
             self.log(f"{uuid}: in the pool after {self.clock() - t0:.0f}s -> {url}")
+            if getattr(self.p, "waker", None):
+                self.p.waker.vet_later(uuid, url)   # an old-driver machine is replaced, then powered off
         except Exception as e:  # noqa: BLE001
             self.log(f"scale up failed: {e}")
             self.backoff_until = self.clock() + 60 * float(self.c.get("retry_minutes", 1))
@@ -675,10 +872,8 @@ class Fleet:
 
     def _power_on_stopped(self) -> str | None:
         core = self.c.get("core") or []
-        bad = bad_machines()
         insts = sorted((i for i in self.api.instances() if ours(self.c, i) and i.get("status") == "shutdown"),
-                       key=lambda i: (i.get("machine_id") in bad, i["uuid"] not in core,
-                                      core.index(i["uuid"]) if i["uuid"] in core else 0))
+                       key=lambda i: (i["uuid"] not in core, core.index(i["uuid"]) if i["uuid"] in core else 0))
         return grab(self.api, [i["uuid"] for i in insts if i["uuid"] not in self.managed], self.c, self.log, stop=self._stop)
 
     def _create(self) -> str | None:

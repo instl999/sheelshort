@@ -304,9 +304,6 @@ def srt_time(s: float) -> str:
     return f"{int(s // 3600):02d}:{int(s % 3600 // 60):02d}:{int(s % 60):02d},{int(round(s % 1 * 1000)) % 1000:03d}"
 
 
-CAPS = REPO / ".cache" / "server_caps.json"   # what each server's (machine's) driver cannot do
-_caps_lock = threading.Lock()   # upscales run in parallel: one of them brings in a capable machine, the rest wait
-
 
 def upscaled(p: Project, ep: str, video: Path) -> Path:
     """The take upscaled on the servers to cover 1080x1920 (`edit.upscale = "rtx"`), else the take itself."""
@@ -322,43 +319,27 @@ def upscaled(p: Project, ep: str, video: Path) -> Path:
         return dest
     from . import flows
     key = f"upscale/{ep}/{video.stem}_{int(video.stat().st_mtime)}"
-    caps_path = CAPS
+    from . import fleet
     out = None
-    for _ in range(max(1, len(p.cfg["comfy"]["servers"])) + int(e.get("upscale_machine_tries", 3))):
-        with _caps_lock:
-            caps = load_json(caps_path) if caps_path.exists() else {}
-            bad_m = set(caps.get("no_rtx_vsr_machines", []))
-            where = p.waker.machines() if p.waker else {}
-            bad = {u for u, m in where.items() if m in bad_m} | ({u for u in caps.get("no_rtx_vsr", []) if u not in where})
-            if p.waker and not set(p.cfg["comfy"]["servers"]) - bad:
-                # every machine in the pool has an old driver: bring in another (some machines lack RTX VSR), and keep
-                # trying while AutoDL has none free; a plain resize is never the quiet way out
-                waited = 0.0
-                limit = 60 * float(e.get("upscale_wait_minutes", 120))
-                while not p.waker.add_capable(bad_m):
-                    if waited >= limit:
-                        break
-                    log(f"{video.stem}: no server that can run RTX upscaling yet; trying again in 1 min "
-                        f"({waited / 60:.0f}/{limit / 60:.0f} min)")
-                    time.sleep(60)
-                    waited += 60
-                else:
-                    continue
+    for _ in range(max(1, len(p.cfg["comfy"]["servers"])) + 2):
+        keys = p.waker.power_keys() if p.waker else {}
+        bad = {u for u, k in keys.items() if fleet.rtx_known(k) is False}   # judged per power-on: GPUs move
+        if p.waker and not set(p.cfg["comfy"]["servers"]) - bad:
+            # every server in the pool has an old driver: acquire one that can upscale, then the old one goes
+            log(f"{video.stem}: no server in the pool can run RTX upscaling; bringing in one that can")
+            if not p.waker.replace():
                 break
+            continue
         out = p.run_job(key, lambda cl: flows.upscale_rtx(p.put(cl, video), scale + 0.005, f"sheelshort/{ep}_{video.stem}_up"),
                         p.d("clips", ep, "up"), video.stem, ("gifs", "videos"), 1800, exclude=bad)
         job = p.state["jobs"].get(key, {})
         if out or "NvVFX" not in job.get("error", ""):
             break
-        # this machine's NVIDIA video-effects runtime cannot load RTX VSR (an old driver): remember the machine
-        with _caps_lock:
-            caps = load_json(caps_path) if caps_path.exists() else {}
-            caps["no_rtx_vsr"] = sorted(set(caps.get("no_rtx_vsr", [])) | {job["server"]})
-            m = (p.waker.machines() if p.waker else {}).get(job["server"])
-            if m:
-                caps["no_rtx_vsr_machines"] = sorted(set(caps.get("no_rtx_vsr_machines", [])) | {m})
-            save_json(caps_path, caps)
-        log(f"{video.stem}: RTX upscaling unavailable on {urlparse(job['server']).hostname} (machine {m or '?'}); "
+        # this power-on's GPU driver cannot load RTX VSR: remember it for as long as the server stays on
+        k = (p.waker.power_keys() if p.waker else {}).get(job["server"])
+        if k:
+            fleet.note_rtx(k, False)
+        log(f"{video.stem}: RTX upscaling unavailable on {urlparse(job['server']).hostname} (this power-on); "
             "moving to another server")
         p.forget(key)
     mp4 = [f for f in out or [] if f.suffix == ".mp4"]

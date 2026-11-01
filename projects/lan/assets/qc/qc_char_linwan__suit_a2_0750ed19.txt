@@ -1,0 +1,17 @@
+{
+  "people": 1,
+  "sex": "woman",
+  "apparent_age": 24,
+  "hair": "black, long, pulled back into a low ponytail",
+  "face_marks": [
+    {
+      "kind": "mole",
+      "on": "cheek",
+      "image_side": "right"
+    }
+  ],
+  "eyewear": "none",
+  "facial_hair": "none",
+  "clothing": "black tailored blazer, black satin button-down shirt, black trousers, black pointed-toe high heels, gold wristwatch",
+  "text_or_watermark": false
+}
