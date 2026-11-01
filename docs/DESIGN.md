@@ -364,6 +364,10 @@ servers were powered on and off. The owner asked for all servers to follow the d
   powers a server off once no live sheelshort process holds it and its ComfyUI queue has been empty for
   `idle_off_minutes` (10). Work queued from the ComfyUI page restarts the wait. Back-to-back commands, such as a 20 s
   test followed by `make`, find the server still warm.
+- **Released after 3 hours off, fleet servers only.** The watcher releases (deletes) a `sheelshort-bj-N` instance
+  once it has been shut down for `release_after_hours` (3), so a stopped fleet server stops costing storage. Core
+  servers are only ever powered off, never released: they are the owner's. (Until 2026-11-01 the reaper released
+  core servers too; it deleted core `pro-793332498e8c` that day, along with `sheelshort-bj-1`.)
 - **Shared between runs.** `.cache/fleet_owned.json` records which processes hold which server, under a file lock.
   Two runs never power on the same stopped server, and a run never powers off a server another live run uses. A run
   killed without cleanup counts as gone, and its servers go idle.
