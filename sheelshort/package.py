@@ -91,6 +91,17 @@ def _esc(path) -> str:
     return "'" + str(path).replace("\\", "/").replace(":", r"\:").replace("'", r"\'") + "'"
 
 
+def _place(src: Path, dest: Path) -> None:
+    """Put a finished file into the delivery: a hard link (a 110-episode series would otherwise hold every master
+    twice, ~80 GB), a copy where links are impossible."""
+    import os
+    dest.unlink(missing_ok=True)
+    try:
+        os.link(src, dest)
+    except OSError:
+        shutil.copy2(src, dest)
+
+
 def run(p: Project) -> Path:
     out = p.d("delivery")
     e = p.cfg["edit"]
@@ -102,11 +113,11 @@ def run(p: Project) -> Path:
         if not master.exists():
             log(f"package: {ep} has no master yet; skipped")
             continue
-        shutil.copy2(master, p.d("delivery", "episodes") / f"{ep}.mp4")
+        _place(master, p.d("delivery", "episodes") / f"{ep}.mp4")
         if clean.exists():
-            shutil.copy2(clean, p.d("delivery", "episodes") / f"{ep}_clean.mp4")
+            _place(clean, p.d("delivery", "episodes") / f"{ep}_clean.mp4")
         if srt.exists():
-            shutil.copy2(srt, p.d("delivery", "episodes") / f"{ep}.srt")
+            _place(srt, p.d("delivery", "episodes") / f"{ep}.srt")
         e_json = p.episode(ep)
         frame = p.d("delivery", "_work") / f"{ep}_hook.jpg"
         media._run(["ffmpeg", "-y", "-v", "error", "-ss", "1.2", "-i", str(clean if clean.exists() else master),
