@@ -589,11 +589,33 @@ class Session:
                 self._retire_when_idle(u, url)
             return True
 
+    def workload_minutes(self) -> float:
+        """GPU minutes of work this run still has queued: the renders left (the render's fleet counts them) at
+        `clip_minutes` each, plus a minute per upscale or check not done yet."""
+        scaler = getattr(self.p, "scaler", None)
+        renders = scaler.pending if scaler else 0
+        waiting = sum(1 for k, j in list(self.p.state.get("jobs", {}).items())
+                      if j.get("status") in ("queued", "retrying") and not k.startswith("render/"))
+        return renders * float(self.c.get("clip_minutes", 5)) + waiting
+
+    def replace_budget(self) -> tuple[float, int]:
+        """(seconds, new servers) a replacement may spend. The base (`replace_window_minutes` 20, `replace_max_new`
+        3) grows with the work queued: one more server per 30 GPU minutes, up to `replace_max_new_heavy` (10) servers
+        and `replace_window_minutes_heavy` (60): a busy run is worth more tries, a run nearly done is not."""
+        work = self.workload_minutes()
+        n = int(self.c.get("replace_max_new", 3)) + int(work // 30)
+        n = min(n, int(self.c.get("replace_max_new_heavy", 10)))
+        minutes = min(float(self.c.get("replace_window_minutes", 20)) + work / 3,
+                      float(self.c.get("replace_window_minutes_heavy", 60)))
+        return 60 * minutes, n
+
     def _acquire_capable(self) -> bool:
         """Acquire servers until one runs RTX upscaling. A new one that cannot stays on until a capable one is in (so
         AutoDL cannot hand the same GPU straight back), then every such one is powered off."""
-        window = 60 * float(self.c.get("replace_window_minutes", 20))
-        max_new = int(self.c.get("replace_max_new", 3))
+        window, max_new = self.replace_budget()
+        if max_new > int(self.c.get("replace_max_new", 3)):
+            self.log(f"heavy work queued (~{self.workload_minutes():.0f} GPU min): up to {max_new} new servers in "
+                     f"{window / 60:.0f} min to find one that runs RTX upscaling")
         t0, failed, found = time.time(), [], False
         try:
             while time.time() - t0 < window and len(failed) < max_new:
