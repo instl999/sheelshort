@@ -1,6 +1,6 @@
 # sheelshort project files
 
-A complete worked example is `projects/guilai/` (bible.json, episodes/E01.json).
+A complete worked example is `projects/waimai2/` (bible.json, episodes/E01.json, E02.json).
 
 ## bible.json
 ```json
@@ -31,6 +31,10 @@ A complete worked example is `projects/guilai/` (bible.json, episodes/E01.json).
   }
 }
 ```
+
+`sfx` (optional) holds the project's own sound-effect cues, written by `python -m sheelshort sfx <project> add`:
+`{"door_slam": {"file": "inputs/sfx/door_slam.mp3", "url": "...", "source": "freesound.org/s/571797", "license": "CC0",
+"what": "...", "sync": 1.01, "len": 1.67, "level": -4}}`. `sync` is the second of the file that lands on the cue time.
 
 `look_preset` (optional, default `cinematic`) sets the light, colour and acting of every prompt, the location plates
 and the finishing grade: `cinematic` is moody and directional (rural, period, thriller); `bright` is high-key and
@@ -73,6 +77,7 @@ clean (comedy, bright urban stories); `glossy` is warm and glowing with soft bok
 | `composition`, `action`, `camera`, `sound`, `end` | picture prompt text; `{charid}` and `{loc}` become H3 subject labels |
 | `props` | props visible in the cut (must exist in bible.props) |
 | `dur` | seconds (default 3); dialogue cuts are lengthened to fit the acted line |
+| `sfx` | optional sound effect(s) on the cut's first frame: a cue name (`"hit"`), a list, or `{"cue": "slap", "at": 0.8}` for a moment inside the cut |
 
 Episode (or clip) field `blocking`: `{"<location>": {"<charid>": "left" | "right"}}` fixes which side of the line of
 action each character stands on; by default the people who talk to each other most are put on opposite sides.

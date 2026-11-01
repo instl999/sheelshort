@@ -639,7 +639,8 @@ def test_reference_structure_notes_length_openings_and_endings():
         clips.append(cl)
     scene["clips"] = clips
     notes = " | ".join(h3prompt.craft_notes(scene))
-    assert "runs 115 s" in notes and "C1 (village_gate), C7 (village_tree)" in notes
+    assert "runs 115 s" in notes and "open without a wide or medium shot of the place: C7 (village_tree)." in notes
+    assert "C1 (" not in notes                                                # the episode's own opening may be a cold open
     assert "last shot is" not in notes                                        # a 2.4 s close-up is a good last shot
     scene["clips"][-1]["cuts"][-1] = {"type": "WS", "subjects": [], "composition": "", "action": "", "camera": "", "dur": 3}
     assert "last shot is WS" in " | ".join(h3prompt.craft_notes(scene))
@@ -674,6 +675,76 @@ def test_location_card_and_grade_follow_the_bible():
         assert assemble.grade(p) == assemble.GRADES["bright"] and "vignette" not in assemble.grade(p)
         p.cfg["edit"]["grade"] = "none"
         assert assemble.grade(p) == ""
+
+
+def test_place_card_waits_for_the_wide_shot_and_subtitles_never_overlap():
+    from sheelshort import assemble
+    with tempfile.TemporaryDirectory() as tmp:
+        p = _scratch_project(tmp, {"name": "A", "name_zh": "林薇", "card": "前女友"})
+        p.bible["locations"] = {"room": {"name_zh": "云顶餐厅"}}
+        p.cfg["render"]["dialogue"] = "h3"
+        clip = {"id": "K1", "location": "room", "cuts": [{"type": "CU", "subjects": ["a"], "dur": 1.7},
+                                                          {"type": "WS", "subjects": ["a"], "dur": 2.0}]}
+        (p.root / "episodes" / "E01.json").write_text(json.dumps({"id": "E01", "clips": [clip]}))
+        real = (assemble.chosen_take, assemble.edge_trims, assemble.heard_lines, media.face_box, media.shot_cuts, media.probe)
+        media.probe = lambda v: {"duration": 3.7}
+        assemble.chosen_take = lambda p, ep, c: Path(tmp) / "K1.mp4"
+        assemble.edge_trims = lambda v, s, l: (0.0, 3.7)
+        assemble.heard_lines = lambda p, ep, c, v: [{"text": "二叔。", "start": 0.2, "end": 0.5},
+                                                    {"text": "你来了", "start": 0.9, "end": 2.0}]
+        media.face_box = lambda v, t: None
+        media.shot_cuts = lambda v, threshold=0.3: [1.7]
+        try:
+            (Path(tmp) / "K1.mp4").write_bytes(b"")
+            plan = assemble.edl(p, "E01")
+        finally:
+            assemble.chosen_take, assemble.edge_trims, assemble.heard_lines, media.face_box, media.shot_cuts, media.probe = real
+        name = [c for c in plan["cards"] if c.get("kind") != "place"]
+        place = [c for c in plan["cards"] if c.get("kind") == "place"]
+        assert name and name[0]["start"] == 0.15                                  # the cold-open face keeps its name card
+        assert place and place[0]["start"] == 1.8                                 # the place card sits on the wide shot
+        a, b = plan["subtitles"]
+        assert a["end"] == 0.86 and b["start"] == 0.9                             # stretched toward 1 s, but no overlap
+
+
+def test_sound_effects_land_on_the_rendered_cut_at_a_level_set_by_the_dialogue():
+    import subprocess
+    import numpy as np
+    from sheelshort import sfx
+    clip = {"id": "K1", "location": "x", "cuts": [{"type": "MS", "dur": 3}, {"type": "CU", "dur": 3, "sfx": "boom"},
+                                                   {"type": "CU", "dur": 2, "sfx": [{"cue": "boom", "at": 0.5}, "nope"]}]}
+    scene = {"sfx": {"boom": {"file": "inputs/boom.wav", "sync": 0.1, "len": 0.5, "level": 0}}, "clips": [clip]}
+    errs = sfx.check(scene)
+    assert len(errs) == 1 and "'nope'" in errs[0]
+    clip["cuts"][2]["sfx"] = [{"cue": "boom", "at": 0.5}]
+    with tempfile.TemporaryDirectory() as tmp:
+        p = _scratch_project(tmp, {})
+        p.bible["sfx"] = scene["sfx"]
+        (p.root / "inputs").mkdir()
+        # the cue: 0.1 s of silence, then a 0.4 s tone (its sync point is the tone's onset)
+        subprocess.run(["ffmpeg", "-v", "error", "-f", "lavfi", "-i", "sine=f=880:d=0.4", "-af", "adelay=100,volume=-6dB",
+                        str(p.root / "inputs" / "boom.wav")], check=True)
+        dia = p.root / "dia.wav"
+        subprocess.run(["ffmpeg", "-v", "error", "-f", "lavfi", "-i", "sine=f=220:d=8", "-af", "volume=-30dB", str(dia)], check=True)
+        real = media.shot_cuts
+        media.shot_cuts = lambda video, threshold=0.3: [3.2, 6.1]          # H3 cut 0.2 s later than written
+        try:
+            ev = sfx.events_in(p, clip, 10.0, 0.0, 8.0, dia)
+        finally:
+            media.shot_cuts = real
+        assert ev == [{"cue": "boom", "start": 13.2, "dur": 3.0}, {"cue": "boom", "start": 16.5, "dur": 1.5}]
+        plan = {"sfx": [dict(ev[0], start=3.2)]}
+        ins, filt = ["-i", str(dia)], ["[0:a]aresample=48000,aformat=channel_layouts=stereo[dia]"]
+        out = sfx.mix(p, plan, ins, filt, "[dia]", [(dia, 8.0)])
+        assert out == "[withfx]"
+        raw = subprocess.run(["ffmpeg", "-v", "error", *ins, "-filter_complex", ";".join(filt), "-map", out, "-ac", "1",
+                              "-ar", "8000", "-f", "s16le", "-"], capture_output=True, check=True).stdout
+        a = np.frombuffer(raw, np.int16).astype(np.float32)
+        env = np.sqrt(np.convolve(a ** 2, np.ones(80) / 80, "same"))
+        onset = np.argmax(env > 1.25 * np.median(env)) / 8000
+        assert abs(onset - 3.2) < 0.03, onset                                   # the tone's onset, not the file's start
+        lift = 20 * np.log10(env[int(3.4 * 8000)] / np.median(env))
+        assert 1.5 < lift < 6, lift                                             # about as loud as the dialogue (level 0)
 
 
 if __name__ == "__main__":

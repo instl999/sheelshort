@@ -11,6 +11,7 @@ timing, assembly). Every command is resumable: re-run it after any failure.
 ## 0. Setup (once)
 - `sheelshort.toml` at the repo root lists the ComfyUI servers (copy `sheelshort.example.toml`).
 - `python -m sheelshort new <project> --script <file>` creates `projects/<project>/`.
+- `python tools/install_sound_skill.py` installs the sound skill that `sfx search` uses (once per machine).
 
 ## 1. Read the script, plan the series
 Read the whole script. Decide the episode split (**60–90 s each**, as the reference hits run; one hook, one turn, one
@@ -99,6 +100,25 @@ shot is a face**, a close-up or reaction held 2–3 s and cut hard, never a wide
 resolves it in its first beat. Show emotion
 through observable cues (eyes drop, jaw tightens, a delayed answer), not emotion labels.
 
+**Sound effects (`sfx` on a cut):** after the cuts are written, do a sound pass. The render already carries the
+diegetic sound you describe in `sound` (rain, footsteps, a door); `sfx` adds an *editorial* accent the edit lays on
+the beat: the boom as a hidden identity is revealed, a riser into it, the whoosh of a time jump, the ding of the text
+the viewer must notice, the heartbeat while someone is about to be caught. Keep them for the beats that turn the story,
+at most one every ~10 s (`check` notes more): a cue on every cut is noise and none of them lands. A cue lands on the
+cut's first frame as the render actually cut it (a `riser` ends there, a `whoosh` peaks there); `{"cue": "slap",
+"at": 0.8}` puts it at a moment inside the cut. `python -m sheelshort sfx <project>` lists the cues.
+When no library cue fits the beat (a wooden palace door, a sword drawn, a car braking hard, a sad erhu note), find one:
+- `python -m sheelshort sfx <project> search "<precise English description of the source>"`, one query at a time
+  (Freesound refuses bursts). It lists the most downloaded CC0 clips with their rating, the uploader's description,
+  and where the sound sits in each file (onset, peak, end, loudness), since you cannot listen to them.
+- Pick on evidence: most downloads and many ratings (★4.4(380) beats ★4.9(6)); a description that names the same
+  source as the beat (reject a different source however popular); a length that fits the cut (a "thud" can be a 3 s
+  rumble). `--license by` widens the search to Attribution clips (credited in the delivery's CREDITS.txt); never
+  NonCommercial.
+- `python -m sheelshort sfx <project> add door_slam fs:571797 --what "a heavy door slammed in anger"` copies it into
+  the project and the bible's `sfx` with its measured sync point (`--sync peak` or `end` when the moment that matters
+  is not the first sound, e.g. a riser; `--level` in dB against the dialogue, default -4).
+
 **Acting fields (this is what makes the voices sound acted):**
 - `line`: the clean subtitle text.
 - `say`: what the actor actually says, with the rhythm in the punctuation: `……` for a break, `——` for a cut-off,
@@ -119,7 +139,7 @@ python -m sheelshort check <project> --fit    # lengthens dialogue cuts too shor
 python -m sheelshort cast <project>           # close-ups, three-view sheets, props, plates, cast voices
 python -m sheelshort perform <project> E01    # only with render.dialogue = "acted": Drama 3 acted takes + dialogue tracks
 python -m sheelshort render <project> E01     # H3 renders each clip and voices the lines (default) from the cast voices
-python -m sheelshort assemble <project> E01   # master.mp4 (+ master_clean.mp4): RTX 1080p upscale, subtitles, name cards, music, -14 LUFS
+python -m sheelshort assemble <project> E01   # master.mp4 (+ master_clean.mp4): RTX 1080p upscale, subtitles, cards, music, sound effects, -11 LUFS
 python -m sheelshort review <project> E01     # edit/E01/review.html
 python -m sheelshort package <project>        # delivery/: episodes, clean cuts, SRTs, cover, thumbnails, metadata
 ```

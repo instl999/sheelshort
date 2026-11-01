@@ -476,6 +476,38 @@ loudness and format. Episodes 1, 5 and 12 were studied frame by frame, including
 
 ---
 
+### 0.15 Sound effects and the waimai2 test (2026-10-31)
+
+**Editorial sound effects** (`sheelshort/sfx.py`). A cut may carry `sfx`: an accent the edit lays on a story beat on
+top of dialogue, foley and music (boom on a reveal, riser into it, whoosh into a time jump, a message ding). The
+engine snaps a cue to the cut as the render actually cut it (scene detection, within 0.5 s of the written time),
+aligns the cue file's own sync point to it (a riser's end, a whoosh's peak), and sets its level against the
+dialogue's measured loudness before the master is normalised. A library of 15 CC0 Freesound clips was chosen with the
+owner's sound skill (github.com/instl999/sound: most downloads, many ratings, the uploader's description) and measured
+with ffmpeg for onset, peak, tail and loudness. Beats the library cannot serve are searched per project:
+`sfx search` runs the skill, downloads every candidate and prints where its sound sits, since the agent cannot
+listen; `sfx add` pins one into the bible with its source and licence (CC0 or Attribution, credited in the
+delivery's CREDITS.txt; never NonCommercial). `tools/install_sound_skill.py` fetches the skill at a pinned commit
+(upstream has no licence) without its paid-upgrade section. A check of the 100 reference episodes found no
+stinger-on-every-cut habit: loud transients start no more often at cuts than at random moments, so cues are kept
+sparse (`check` notes more than one every ~10 s). Verified on a copy of waimai2 E01: thunder, buzz, sting, riser and
+hit landed on their cuts at +1 to +6 dB over the moment without them.
+
+**What the fresh-agent waimai2 test exposed, and the fixes.** A new agent wrote 《雨夜外卖》 (2 episodes) from the
+skill alone. Both masters (102.7 s and 77.5 s) came out with no error exits and no clip re-takes. Faces, eyelines and
+light held, and both episodes end on a held face. `make E01,E02` took 78 min: 35 min of it was render, with no 5090
+stock for the first 18 min; 16 min was clip QC, 11 of them stalled on an SSL handshake; 16 min was upscale. Fixed:
+- A cold open's location card pushed the lead's name card out of the episode. The location card now waits for the
+  scene's first wide or medium shot, and gives way when a name card would otherwise be too short to read.
+- Subtitles overlapped by up to 0.25 s, and a two-character line stayed up 0.65 s. Subtitles now never overlap, and
+  a short line stays up toward 1 s when the next line allows it.
+- `check` flagged the episode's own cold open, which the skill allows. The note now covers later scenes only.
+- A 20 s test designed voices for the speakers of every episode's opening. It now covers only the episodes in the run.
+- schema.md pointed at an outdated example. It now points to waimai2, and SKILL.md gives the loudness as −11 LUFS.
+
+Open: costume changes (the agent made a second character for the suit), phone-call lines (`VO` reads as inner
+voice, and there is no phone filter), silent extras, the vision check rewriting a stated age, and the clip-QC stall.
+
 ## 1. Market research: does this already exist?
 
 **Short answer: partly.** Several open-source projects cover most of the pipeline. None of them matches this exact combination: agent-native, English-market/PineDrama-targeted, H3 plus ComfyUI as user-supplied backends, and fully automatic QC and assembly.
