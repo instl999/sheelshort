@@ -332,7 +332,7 @@ def test_pick_waits_for_a_free_slot():
     with tempfile.TemporaryDirectory() as tmp:
         p = _scratch_project(tmp, {})
         p.cfg["comfy"]["servers"] = ["https://a"]
-        p.client = lambda url: type("C", (), {"queue_info": lambda self: (0, 0), "base_url": url})()
+        p.client = lambda url: type("C", (), {"queue_info": lambda self, quick=False: (0, 0), "base_url": url})()
         p.pick(), p.pick()                                   # the server's 2 slots are taken
         got = []
         t = threading.Thread(target=lambda: got.append(p.pick().base_url), daemon=True)
@@ -517,8 +517,9 @@ def test_core_servers_start_on_the_first_job_and_stop_when_idle():
     assert api.calls == [("power_on", "pro-a")]                # min_servers = 1: the first core server only
     assert p.cfg["comfy"]["servers"] == ["https://pro-a.example:8443"]
     assert fleet.holders("pro-a") == [os.getpid()]
+    assert spawned == [p.root]                                 # the reaper watches from the start (a killed run too)
     ses.release()
-    assert spawned == [p.root] and fleet.holders("pro-a") == []
+    assert spawned == [p.root, p.root] and fleet.holders("pro-a") == []
     t0 = fleet.time.time()                                     # let_go stamped "idle since" with real time
     left = fleet.reap_idle(api, p.cfg["fleet"], log=lambda m: None, clock=lambda: t0 + 60)
     assert api.calls[-1] == ("power_on", "pro-a") and 500 < left <= 600     # 10 min not up yet
@@ -811,6 +812,128 @@ def test_phone_filter_thins_only_the_phone_line():
     rms = lambda t0, t1: float(np.sqrt(np.mean(a[int(t0 * 8000):int(t1 * 8000)] ** 2)))
     assert rms(1.2, 1.8) < 0.1 * rms(0.2, 0.8)                                 # 120 Hz is cut inside the window
     assert abs(rms(2.2, 2.8) - rms(0.2, 0.8)) < 0.05 * rms(0.2, 0.8)           # and untouched outside it
+
+
+def test_a_take_survives_an_engine_wording_change_but_not_a_script_change():
+    from sheelshort import render
+    with tempfile.TemporaryDirectory() as tmp:
+        p = _scratch_project(tmp, {"name": "A", "role": "man", "look": "a man"})
+        p.bible["locations"] = {"room": {"look": "a room"}}
+        clip = {"id": "K1", "location": "room", "cuts": [{"type": "CU", "subjects": ["a"], "action": "He waits."}]}
+        ref = Path(tmp) / "char_a.png"
+        ref.write_bytes(b"png")
+        files, meta = {"char_a.png": ref}, Path(tmp) / "K1_h3_t1.json"
+        meta.write_text(json.dumps({"fingerprint": render.fingerprint("old wording", files, None, 3)}))
+        assert render.current(p, meta, "E01", clip, "old wording", files, None, 3)
+        assert json.loads(meta.read_text())["inputs"]                            # recorded on the way
+        assert render.current(p, meta, "E01", clip, "new engine wording", files, None, 3)
+        p.cfg["render"]["rerender_on_engine_change"] = True
+        assert not render.current(p, meta, "E01", clip, "new engine wording", files, None, 3)
+        p.cfg["render"]["rerender_on_engine_change"] = False
+        clip["cuts"][0]["action"] = "He leaves."
+        assert not render.current(p, meta, "E01", clip, "new engine wording", files, None, 3)
+        ref.write_bytes(b"recast")
+        clip["cuts"][0]["action"] = "He waits."
+        assert not render.current(p, meta, "E01", clip, "new engine wording", files, None, 3)
+
+
+def test_a_failed_job_is_retried_on_another_server_and_never_kills_the_run():
+    from sheelshort import comfy
+    with tempfile.TemporaryDirectory() as tmp:
+        p = _scratch_project(tmp, {})
+        p.cfg["comfy"]["servers"] = ["https://a", "https://b"]
+        calls = []
+
+        class C:
+            def __init__(self, url):
+                self.base_url = url
+            def queue_info(self, quick=False):
+                if self.base_url == "https://slow":
+                    raise OSError("handshake timed out")
+                return (0, 0) if self.base_url == "https://a" else (1, 0)
+            def queue(self, api):
+                calls.append(self.base_url)
+                return "pid-" + self.base_url[-1]
+            def wait(self, pid, timeout_s=0):
+                if self.base_url == "https://a":
+                    raise ConnectionResetError("Broken pipe")        # not a ComfyError: used to kill the batch
+                return {"outputs": {}}
+            def download_outputs(self, hist, out_dir, stem, kinds):
+                f = out_dir / f"{stem}.png"
+                f.write_bytes(b"x")
+                return [f]
+        clients = {}
+        p.client = lambda url: clients.setdefault(url, C(url))
+        p.object_info = lambda c: {}
+        p.wf = lambda name: {}
+        out = p.run_job("cast/char_x", lambda c: {}, p.d("assets"), "char_x")
+        assert out and out[0].name == "char_x.png" and calls == ["https://a", "https://b"]
+        assert p.state["jobs"]["cast/char_x"]["status"] == "succeeded"
+        p.cfg["comfy"]["servers"].insert(0, "https://slow")       # a server that does not answer is skipped quickly
+        import time as _t
+        t0 = _t.time()
+        assert p.pick().base_url in ("https://a", "https://b") and _t.time() - t0 < 5
+        assert p._down_until["https://slow"] > _t.time()
+
+
+def test_a_lost_prompt_is_noticed_instead_of_waited_on_for_an_hour():
+    from sheelshort import comfy
+    c = comfy.ComfyClient("https://x")
+    c.history = lambda pid: None
+    c.in_queue = lambda pid: False
+    try:
+        c.wait("p1", poll_s=0.01, timeout_s=5, lost_check_s=0.05)
+        raise AssertionError("should have raised")
+    except comfy.ComfyError as e:
+        assert "no longer on the server" in str(e)
+    c.in_queue = lambda pid: True                                   # still queued behind others: keep waiting
+    try:
+        c.wait("p1", poll_s=0.01, timeout_s=0.3, lost_check_s=0.05)
+    except TimeoutError:
+        pass
+
+
+def test_episodes_sort_in_story_order_and_a_room_keeps_its_place_at_night():
+    from sheelshort import wardrobe
+    with tempfile.TemporaryDirectory() as tmp:
+        p = _scratch_project(tmp, {"name": "A", "role": "man"})
+        for e in ("E1", "E2", "E10", "E99", "E100", "E101", "E11"):
+            (p.root / "episodes" / f"{e}.json").write_text(json.dumps({"id": e, "clips": []}))
+        assert p.episodes() == ["E1", "E2", "E10", "E11", "E99", "E100", "E101"]
+        p.bible["locations"] = {"flat": {"name": "flat", "name_zh": "样板间", "look": "a flat", "keep": "sofa",
+                                         "light": "bright daylight through the window", "lights": {"night": "night; a warm floor lamp"}},
+                                "flat_bath": {"name": "bath", "look": "a bath", "keep": "tub", "light": "day"}}
+        ep = {"id": "E1", "clips": [{"id": "K1", "location": "flat", "time": "night", "cuts": [{"type": "MS", "subjects": ["a"]}]},
+                                    {"id": "K2", "location": "flat", "cuts": [{"type": "MS", "subjects": ["a"]}]}]}
+        (p.root / "episodes" / "E1.json").write_text(json.dumps(ep))
+        k1, k2 = p.clips("E1")
+        assert k1["location"] == "flat__night" and k2["location"] == "flat"
+        assert p.locs["flat__night"]["light"] == "night; a warm floor lamp" and p.locs["flat__night"]["base"] == "flat"
+        assert wardrobe.check(p.bible, ep) == []
+        ep["clips"][1]["time"] = "dusk"
+        assert any("no light 'dusk'" in e for e in wardrobe.check(p.bible, ep))
+        (p.root / "inputs").mkdir()
+        for n in ("loc_flat.png", "loc_flat_2.png", "loc_flat_bath.png", "loc_flat__night.png"):
+            (p.root / "inputs" / n).write_bytes(b"x")
+        assert [x.name for x in p.plates("flat")] == ["loc_flat.png", "loc_flat_2.png"]      # not the bathroom's plate
+        from sheelshort import cast
+        assert "Change only the lighting and time of day to: night; a warm floor lamp" in cast.relight_prompt(p.locs["flat__night"])
+
+
+def test_a_private_room_holds_only_its_written_people():
+    from sheelshort import clipqc
+    chars = {"a": {"name": "A", "role": "man"}, "b": {"name": "B", "role": "woman"}}
+    two = {"type": "MS", "subjects": ["a", "b"]}
+    assert clipqc.judge_panel(chars, 1, two, {"people": 3}, False, False)                   # a stranger at home
+    assert not clipqc.judge_panel(chars, 1, two, {"people": 3}, False, False, crowd=True)   # a diner in a restaurant
+    assert clipqc.judge_panel(chars, 1, two, {"people": 5}, False, False, crowd=True)       # but not a crowd in a two-shot
+    assert not clipqc.judge_panel(chars, 1, dict(two, extras="two waiters"), {"people": 4}, False, False)
+    scene = json.loads((ROOT / "projects/quancun/bible.json").read_text())
+    clip = _talk_clip()
+    scene["clips"] = [clip]
+    text = h3prompt.build(scene, clip, h3prompt.Refs(char_pictures={"dahua": ["a.png", "b.png"], "xiaokang": ["c.png", "d.png"]},
+                                                     location_pictures=["l.png"]))
+    assert "No one else is in the shot: only <Subject 1>." in text and "Background people" not in text
 
 
 if __name__ == "__main__":

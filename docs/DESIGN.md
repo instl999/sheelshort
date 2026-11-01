@@ -508,6 +508,43 @@ stock for the first 18 min; 16 min was clip QC, 11 of them stalled on an SSL han
 Open: costume changes (the agent made a second character for the suit), phone-call lines (`VO` reads as inner
 voice, and there is no phone filter), silent extras, the vision check rewriting a stated age, and the clip-QC stall.
 
+### 0.16 Ready for a 110-episode unattended run (2026-11-01)
+
+Three read-only studies (run logs and job state; 61 picked clips and 293 QC panels; 160 rendered lines, the six masters
+and the series structure) found what breaks at the scale of ~1000 clips. Fixed in the engine:
+- **One slow server froze the whole run** (waimai2 clip QC, 11.5 min): `pick()` probed servers with 6-try requests while
+  holding the run's lock. Probes now run in parallel, once, with 5 s/10 s timeouts and outside the lock; a server that
+  fails is skipped for a minute; state writes have their own lock.
+- **Any unexpected network error killed the batch** (guilai: `httpx.ReadError: Broken pipe`). `run_job` now catches
+  everything, and retries up to `job_retries` (2) times on another server; HTML answers from a restarting server are
+  errors, not crashes; a prompt the server lost (restart) is noticed within two minutes instead of waited on for an hour;
+  a job whose server left the pool is queued again; a server unreachable for 5 min fails its job. Clips whose takes all
+  failed are rendered again; a clip that cannot be prepared is skipped and its episode reported, not the whole batch.
+- **The fleet retired its servers before QC and upscale** (waimai2: 18 upscales on one server, 16 min): an added
+  server now lingers 2 min after the last render.
+- **Downloads** stream to `.part` files and are renamed only when complete (a crash left half takes); each logs its MB/s.
+  A take without its record counts only if it has sound (VHS's silent file).
+- **Batch**: per-episode isolation in `make`, `BATCH_REPORT.md`, a disk guard, `caffeinate`, the idle reaper from the
+  start of a run (a killed run's servers still power off), hard-linked delivery files (~80 GB saved over 110 episodes),
+  natural episode order (E100 sorted before E11 and broke name cards), the reference-image budget in `check`.
+- **Engine wording vs. writer changes**: a take records a fingerprint of the writer's inputs; an engine prompt change
+  no longer re-renders every finished episode (`render.rerender_on_engine_change` to force it).
+- **Strangers in 21% of non-wide panels**: every look preset invited "background people". Now only `extras` or a
+  `crowd: true` location do; other shots say who alone is in them, and clip QC fails any extra person in a private place
+  (the vision model is asked to count blurred figures). A strip answered for fewer panels than cuts is asked again in
+  threes.
+- **Time of day was fixed per location**: `lights` + clip `time`, plates relit from the base plates by image edit.
+- **Loudness**: the music bed sits 18 LU under the measured dialogue (raw beds varied 7 LU); every master is measured
+  after encoding and corrected (gain + limiter, video copied): waimai2 E01 -12.9 -> -11.3 LUFS.
+- **Cast voices**: a designed voice outside its role's sex range is designed again with the sex spelled out; voices of
+  the same sex under a semitone apart are reported.
+- Costume changes (`outfits`), phone lines (`via`), extras, sound effects: §0.15.
+
+Open, needing the owner's decisions or a test first (in the review page): episode count vs. 60-90 s length for a
+110-集 script, paywall cadence, a series music kit, identity checks in clip QC (face similarity), voice-identity
+scoring per line, prop states and injuries, a series layer (`series.json`, `continuity.json`, `check --series`), group
+scenes beyond three characters.
+
 ## 1. Market research: does this already exist?
 
 **Short answer: partly.** Several open-source projects cover most of the pipeline. None of them matches this exact combination: agent-native, English-market/PineDrama-targeted, H3 plus ComfyUI as user-supplied backends, and fully automatic QC and assembly.

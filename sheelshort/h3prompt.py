@@ -67,8 +67,7 @@ CINEMA = ("Filmed like a high-end streaming drama on a cinema camera with prime 
           "shoulders from the background, and shadows have real depth; never flat, even front light. Natural film colour "
           "with gentle contrast and soft highlight roll-off. Skin is real skin with pores and fine imperfections, never "
           "airbrushed, waxy or over-sharpened. The actors play naturally and with restraint: emotion shows in the eyes, the "
-          "breath and small movements, never in exaggerated grimaces. Characters look at each other, never into the lens. "
-          "Background people are soft and out of focus, busy with their own reactions, and never look into the lens.")
+          "breath and small movements, never in exaggerated grimaces. Characters look at each other, never into the lens.")
 # Look presets (`look_preset` in the bible), from the five reference hits studied 2026-10-31: a rural or period drama
 # is shot moody and directional (cinematic), a comedy or bright urban story high-key and clean (bright: 王妈在顾家当保姆),
 # a romance glossy, glowing and warm (glossy: 备用联系人, 反派拿捏). Each preset has its own finishing grade (assemble.GRADES).
@@ -78,14 +77,12 @@ LOOKS = {
                "flatteringly by bright daylight or bright interior light with gentle shadows, fresh natural colour with clean "
                "whites. Faces are shot on long lenses with the background softly out of focus, never with wide-angle "
                "distortion. Skin is real skin with natural texture, never waxy or airbrushed. The actors play with energy and "
-               "clear, readable expressions and timed reactions. Characters look at each other, never into the lens. "
-               "Background people are soft and out of focus, busy with their own business, and never look into the lens."),
+               "clear, readable expressions and timed reactions. Characters look at each other, never into the lens."),
     "glossy": ("Filmed like a glossy romance drama: luminous skin with a soft natural sheen, warm practical lights and creamy "
                "bokeh behind the actors, a gentle glow around highlights, rich but soft colour, flattering light with a soft "
                "key and a warm rim. Faces are shot on long lenses with very shallow depth of field, never wide-angle. Eyes are "
                "bright and expressive; the actors play intimate and restrained, with lingering looks and small touches. "
-               "Characters look at each other, never into the lens. Background people are soft and out of focus and never "
-               "look into the lens."),
+               "Characters look at each other, never into the lens."),
 }
 # What the reference hits measure (100 episodes of 5 series, 2026-10-31): 4 of 5 run a median 64-88 s per episode
 EPISODE_S = (45, 100)
@@ -661,9 +658,17 @@ def build(scene: dict, clip: dict, refs: Refs, cameras: dict[int, dict] | None =
             a, b = sorted(who[:2], key=lambda c: sides[c] != "left")
             parts.append(f"{S(a)} is on the left of frame and {S(b)} on the right, facing each other.")
         parts.append(f(cut["action"]))
+        # who else is in frame: written extras, the passers-by of a public place, or no one (an invitation to
+        # "background people" in every prompt put strangers into 21% of private-scene panels)
         if cut.get("extras"):
             parts.append(f"In the background: {f(cut['extras']).rstrip('.')}. They are extras who never speak, never "
                          "look at the camera and stay softer than the main characters; no one else is in the shot.")
+        elif loc.get("crowd"):
+            parts.append("Background people are soft and out of focus, busy with their own business, and never look into the lens.")
+        elif typ != "ECU":
+            seen = [S(c) for c in cut.get("subjects", [])] + ([S(cut["over"])] if cut.get("over") else [])
+            parts.append(f"No one else is in the shot: only {' and '.join(dict.fromkeys(seen))}." if seen
+                         else "The shot is empty of people.")
         if typ == "VO":
             parts.append("The camera starts as a close-up and slowly pushes in to an extreme close-up of the eyes, with small amplitude and at slow speed.")
         else:

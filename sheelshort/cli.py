@@ -31,6 +31,7 @@ import argparse
 import re
 import shutil
 import sys
+import time
 from pathlib import Path
 
 from . import assemble, cast, evaluate, h3prompt, perform, render, review, sfx, wardrobe
@@ -64,6 +65,10 @@ def check(p: Project, eps: list[str]) -> list[str]:
         for clip in scene["clips"]:
             if len(h3prompt.clip_characters(clip)) > 3:
                 errs.append(f"{ep} {clip['id']}: more than 3 characters; split the clip")
+            imgs = 2 * len(h3prompt.clip_characters(clip)) + len(h3prompt.clip_props(clip)) + 1
+            if imgs > render.IMAGE_BUDGET:
+                errs.append(f"{ep} {clip['id']}: {imgs} reference images (2 per character, 1 per prop, the location); "
+                            f"H3 takes {render.IMAGE_BUDGET}. Drop a prop or split the clip")
             for n, cut in enumerate(clip["cuts"], 1):
                 if cut.get("line") and cut.get("speaker") in b["characters"] and not b["characters"][cut["speaker"]].get("voice_design") \
                         and not p.supplied(f"voice_{cut['speaker']}", (".wav", ".mp3", ".flac", ".m4a")):
@@ -200,6 +205,11 @@ def main(argv: list[str] | None = None) -> None:
     if a.command in ("cast", "perform", "render", "assemble", "review", "make", "evaluate", "package"):
         p.run_info["command"] = " ".join(sys.argv[1:] if argv is None else argv)
         save_json(p.root / "progress.json", p.run_info)
+        if sys.platform == "darwin" and shutil.which("caffeinate"):   # the Mac must not sleep under a long run
+            import os
+            import subprocess
+            subprocess.Popen(["caffeinate", "-i", "-w", str(os.getpid())], stdin=subprocess.DEVNULL,
+                             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     fc = p.cfg.get("fleet", {})
     if fc.get("enabled") and fc.get("core") and not fc.get("dry_run") and a.command not in ("check", "fleet", "free"):
         from . import fleet   # every server is powered on on demand: the first GPU job wakes them, the end lets them go
@@ -278,14 +288,61 @@ def _dispatch(a, p: Project) -> None:
                                                              or p.cfg["render"].get("voice_ref") == "acted")):
             perform.run(p, ep, only)
     if eps and a.command in ("render", "make"):
+        disk_guard(p)
         render.run(p, eps, only, a.takes)   # all episodes in one queue: no idle servers between episodes
+    failed = {}
     for ep in eps:
-        if a.command in ("assemble", "make"):
-            assemble.run(p, ep)
-        if a.command in ("review", "make"):
-            review.run(p, ep)
-        if a.command == "evaluate":
-            evaluate.run(p, ep, a.takes or 1)
+        try:   # one broken episode is reported, never the end of a batch
+            if a.command in ("assemble", "make"):
+                disk_guard(p)
+                assemble.run(p, ep)
+            if a.command in ("review", "make"):
+                review.run(p, ep)
+            if a.command == "evaluate":
+                evaluate.run(p, ep, a.takes or 1)
+        except Exception as e:  # noqa: BLE001
+            failed[ep] = f"{type(e).__name__}: {str(e)[:300]}"
+            log(f"{ep}: FAILED {failed[ep]}; continuing with the next episode")
+    if a.command in ("make", "assemble") and eps:
+        batch_report(p, eps, failed)
+    if failed:
+        raise SystemExit(f"{len(failed)} episode(s) failed: {', '.join(failed)} (see BATCH_REPORT.md)")
+
+
+def disk_guard(p: Project) -> None:
+    """Stop cleanly before the disk fills (a full disk mid-write leaves broken takes and masters)."""
+    need = float(p.cfg["project"].get("min_free_gb", 15))
+    free = shutil.disk_usage(p.root).free / 1e9
+    if free < need:
+        raise SystemExit(f"only {free:.0f} GB free on the disk (need {need:.0f}); free space, then run the same command "
+                         "again: everything finished is kept")
+
+
+def batch_report(p: Project, eps: list[str], failed: dict[str, str]) -> None:
+    """BATCH_REPORT.md: every episode's state after a run, and what the automatic checks could not fix."""
+    from . import media
+    from .project import load_json
+    rows, notes = [], []
+    for ep in eps:
+        master = p.root / "edit" / ep / f"{p.master_name()}.mp4"
+        if ep in failed:
+            rows.append(f"| {ep} | failed | | {failed[ep]} |")
+            continue
+        if not master.exists():
+            rows.append(f"| {ep} | not assembled | | |")
+            continue
+        picks = load_json(p.root / "edit" / ep / "picks.json") if (p.root / "edit" / ep / "picks.json").exists() else {}
+        left = []
+        for cid, t in picks.items():
+            qcf = next(iter(sorted((p.root / "edit" / ep / "clipqc").glob(f"{cid}_*t{t}.json"))), None)
+            if qcf and load_json(qcf).get("problems"):
+                left.append(f"{cid}: {'; '.join(load_json(qcf)['problems'])}")
+        rows.append(f"| {ep} | done | {media.probe(master)['duration']:.0f} s | {len(left)} clip(s) with problems left |")
+        notes += [f"- {ep} {x}" for x in left]
+    text = (f"# Batch report ({time.strftime('%Y-%m-%d %H:%M')})\n\n| episode | state | length | notes |\n|---|---|---|---|\n"
+            + "\n".join(rows) + "\n\n## Left for a person to judge\n" + ("\n".join(notes) or "- nothing") + "\n")
+    (p.root / "BATCH_REPORT.md").write_text(text, encoding="utf-8")
+    log(f"batch report -> {p.root / 'BATCH_REPORT.md'}")
 
 
 if __name__ == "__main__":
