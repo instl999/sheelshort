@@ -1221,6 +1221,20 @@ def test_unused_takes_go_only_after_approval_and_only_when_the_disk_is_tight():
         assert left == ["K1_h3_t2.json", "K1_h3_t2.mp4", "K1_h3_t2_up.mp4", "K2_h3_t1.mp4", "K2_h3_t1_up.mp4"], left
 
 
+def test_a_name_card_never_lands_on_a_tight_close_up_face():
+    import re as _re
+    face = (0.2, 0.15, 0.8, 0.55)                                         # a tight close-up: no room beside it
+    ev = assemble.card_events({"name": "林晚", "role": "神秘买家", "start": 1, "end": 3, "face": face}, 1080, 1920, "Songti SC")
+    ys = [float(_re.search(r"\\pos\(\d+,(\d+)", e).group(1)) for e in ev]
+    assert min(ys) >= 0.55 * 1920                                         # below the chin, beside the shoulders
+    real = media.face_box
+    media.face_box = lambda v, t: {1: (0.56, 0.28, 0.67, 0.34), 2: (0.2, 0.2, 0.8, 0.6), 3: (0.22, 0.2, 0.8, 0.6)}[t]
+    try:
+        assert assemble.steady_face(Path("x.mp4"), 1, 2, 3) == (0.21, 0.2, 0.8, 0.6)   # the eye-sized box is dropped
+    finally:
+        media.face_box = real
+
+
 if __name__ == "__main__":
     for name, fn in list(globals().items()):
         if name.startswith("test_"):
