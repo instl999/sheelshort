@@ -971,6 +971,19 @@ def test_a_server_out_of_stock_is_asked_again_within_the_minute():
     assert fleet.grab(api, [], {"grab_gap_s": 5}, said.append) is None
 
 
+def test_only_one_run_works_on_a_project_at_a_time():
+    import subprocess
+    from sheelshort import cli
+    with tempfile.TemporaryDirectory() as tmp:
+        p = _scratch_project(tmp, {})
+        cli.run_lock(p)
+        r = subprocess.run([sys.executable, "-c", "import sys; from pathlib import Path; sys.path.insert(0, sys.argv[1]); "
+                            "from sheelshort import cli; from sheelshort.project import Project; cli.run_lock(Project(Path(sys.argv[2])))",
+                            str(ROOT), str(p.root)], capture_output=True, text=True)
+        assert r.returncode == 1 and "another run is already working" in r.stderr
+        cli._RUN_LOCK.close()
+
+
 if __name__ == "__main__":
     for name, fn in list(globals().items()):
         if name.startswith("test_"):
