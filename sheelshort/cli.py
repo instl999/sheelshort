@@ -128,7 +128,9 @@ def status(p: Project) -> None:
         end = ph.get("eta")
         tail = f", done ~{eta.clock(end)} (in ~{eta.span(end - now)})" if end and alive else ""
         print(f"  {phase}: {ph['done']}/{ph['total']}{tail}")
-    jobs = [(k, j) for k, j in p.state["jobs"].items() if j.get("status") == "queued"]
+    # only this run's jobs: one left "queued" by an earlier run that died is not in flight
+    jobs = [(k, j) for k, j in p.state["jobs"].items()
+            if j.get("status") == "queued" and j.get("queued_at", 0) >= info.get("started", 0) - 1]
     if alive and jobs:
         print("in flight:")
         for k, j in sorted(jobs, key=lambda kj: kj[1].get("eta") or 0):

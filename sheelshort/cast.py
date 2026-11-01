@@ -26,9 +26,13 @@ def portrait_prompt(ch: dict) -> str:
 
 def outfit_prompt(ch: dict) -> str:
     """Re-dress a character's close-up for another outfit: the image editor keeps the face, so it stays the same person."""
-    return ("Keep exactly the same person as image 1: the identical face, features, skin, marks, age, hair and expression, "
-            f"the same head-and-shoulders framing, front view, plain light-grey studio backdrop and soft even light. Change "
-            f"only the clothing to: {ch['costume']}. Photorealistic, no text, no watermark.")
+    # the editor smooths small marks away unless they are named (林晚's beauty mark vanished from her evening look)
+    marks = "; ".join(a for a in qc.anchors(ch) if re.search(r"scar|mole|beauty mark|freckle|birthmark|tattoo|dimple", a, re.I))
+    keep = f" Keep every identifying mark exactly where it is, unchanged in size: {marks}." if marks else ""
+    return ("Keep exactly the same person as image 1: the identical face, features, skin, marks, age and expression, "
+            f"the same head-and-shoulders framing, front view, plain light-grey studio backdrop and soft even light.{keep} "
+            f"Change only the clothing{' and hair' if ch.get('hair') else ''} to: {ch['costume']}"
+            f"{'; hair: ' + ch['hair'] if ch.get('hair') else ''}. Photorealistic, no text, no watermark.")
 
 
 def relight_prompt(loc: dict) -> str:

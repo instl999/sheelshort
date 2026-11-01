@@ -294,12 +294,59 @@ def grab(api, uuids: list[str], c: dict, log, claim: bool = True, stop=None) -> 
 CAPS = Path(__file__).resolve().parent.parent / ".cache" / "server_caps.json"
 
 
-def bad_machines() -> set[str]:
-    """Machines known to lack a feature the run needs (RTX upscaling): started last."""
+_caps_lock = threading.Lock()
+
+
+def _caps() -> dict:
     try:
-        return set(json.loads(CAPS.read_text()).get("no_rtx_vsr_machines", []))
+        return json.loads(CAPS.read_text())
     except (OSError, ValueError):
-        return set()
+        return {}
+
+
+def bad_machines() -> set[str]:
+    """Machines whose driver cannot run RTX upscaling: never powered on again."""
+    return set(_caps().get("no_rtx_vsr_machines", []))
+
+
+def machine_known(mid: str) -> bool | None:
+    """True: this machine runs RTX upscaling; False: it cannot (old driver); None: not tried yet."""
+    c = _caps()
+    return True if mid in c.get("rtx_vsr_ok_machines", []) else False if mid in c.get("no_rtx_vsr_machines", []) else None
+
+
+def note_machine(mid: str, ok: bool, url: str = "") -> None:
+    with _caps_lock:
+        c = _caps()
+        key, other = ("rtx_vsr_ok_machines", "no_rtx_vsr_machines") if ok else ("no_rtx_vsr_machines", "rtx_vsr_ok_machines")
+        c[key] = sorted(set(c.get(key, [])) | {mid})
+        c[other] = sorted(set(c.get(other, [])) - {mid})
+        if url and not ok:
+            c["no_rtx_vsr"] = sorted(set(c.get("no_rtx_vsr", [])) | {url})
+        CAPS.parent.mkdir(parents=True, exist_ok=True)
+        CAPS.write_text(json.dumps(c, indent=1))
+
+
+def probe_rtx(p, url: str) -> bool | None:
+    """Can the server at `url` run RTX upscaling? A one-second test clip, upscaled there: True, False (the NVIDIA
+    effects runtime does not load: an old driver), or None (the probe could not run: a network error, say)."""
+    import subprocess
+    from . import flows
+    clip = CAPS.parent / "rtx_probe.mp4"
+    if not clip.exists():
+        CAPS.parent.mkdir(parents=True, exist_ok=True)
+        subprocess.run(["ffmpeg", "-y", "-v", "error", "-f", "lavfi", "-i", "testsrc=s=270x480:d=1:r=24", "-f", "lavfi",
+                        "-i", "anullsrc", "-shortest", "-c:v", "libx264", "-pix_fmt", "yuv420p", "-c:a", "aac", str(clip)],
+                       check=True)
+    key = f"probe/rtx/{url.split('//')[-1].split('.')[0]}_{int(time.time())}"
+    others = frozenset(u for u in p.cfg["comfy"]["servers"] if u != url)
+    out = p.run_job(key, lambda cl: flows.upscale_rtx(p.put(cl, clip), 2.0, "sheelshort/rtx_probe"),
+                    CAPS.parent / "probe", "rtx_probe", ("gifs", "videos"), 300, exclude=others)
+    for f in out or []:
+        f.unlink(missing_ok=True)
+    if out:
+        return True
+    return False if "NvVFX" in p.state["jobs"].get(key, {}).get("error", "") else None
 
 
 def uuid_for(url: str) -> str | None:
@@ -366,6 +413,8 @@ class Session:
         self.spawn = spawn
         self.held: dict[str, str] = {}   # uuid -> ComfyUI address
         self.lock = threading.Lock()
+        self.swap_lock = threading.Lock()   # one machine swap at a time (never held around ensure's fast path)
+        self.vetting: set[str] = set()      # uuids being probed right now
         self.woken = False
         self.tried_at = 0.0
 
@@ -391,8 +440,9 @@ class Session:
         servers = self.p.cfg["comfy"]["servers"]
         insts = {i["uuid"]: i for i in self.api.instances() if ours(self.c, i)}
         core = [u for u in self.c.get("core") or [] if u in insts]
-        bad = bad_machines()   # a machine with an old driver only when nothing else is free
-        order = sorted(core + sorted(u for u in insts if u not in core), key=lambda u: insts[u].get("machine_id") in bad)
+        bad = bad_machines()   # a stopped instance on an old-driver machine is never started again
+        order = [u for u in core + sorted(u for u in insts if u not in core)
+                 if insts[u].get("status") == "running" or insts[u].get("machine_id") not in bad]
         with self.p.lock:   # a configured address of an on-demand server may be stale (6006/6008): resolved below
             servers[:] = [s for s in servers if not any(u.split("-", 1)[-1] in s for u in order)]
         cap = int(self.c.get("max_servers", 4))
@@ -443,50 +493,134 @@ class Session:
                 out[url] = mid[u]
         return out
 
-    def add_capable(self, avoid_machines: set[str]) -> str | None:
-        """Bring one more server into the pool on a machine not in `avoid_machines` (one whose driver cannot run a
-        feature, say RTX upscaling). At `max_servers`, an idle server on an avoided machine (this run's own, or one the
-        render's fleet added) is powered off to make room. Returns the new server's address, or None."""
-        with self.lock:
-            if len(self.p.cfg["comfy"]["servers"]) >= int(self.c.get("max_servers", 4)) and not self._make_room(avoid_machines):
-                return None
+    def needs_rtx(self) -> bool:
+        return (self.p.cfg["edit"].get("upscale", "rtx") == "rtx" and bool(self.c.get("probe_rtx", True))
+                and not self.p.dry)
+
+    def vet_later(self, u: str, url: str) -> None:
+        """Probe a server that just joined the pool for RTX upscaling, in the background; an old-driver machine is
+        replaced (see `replace`)."""
+        if self.needs_rtx() and u not in self.vetting:
+            threading.Thread(target=self._vet, args=(u, url), daemon=True).start()
+
+    def _vet(self, u: str, url: str) -> None:
+        self.vetting.add(u)
+        try:
+            mid = self._machine(u)
+            ok = machine_known(mid) if mid else None
+            if ok is None:
+                ok = probe_rtx(self.p, url)
+                if ok is None or not mid:
+                    return
+                note_machine(mid, ok, url)
+                self.log(f"{u}: machine {mid} " + ("runs RTX upscaling" if ok else "cannot run RTX upscaling (old driver)"))
+            if not ok:
+                self.replace(u, url)
+        except Exception as e:  # noqa: BLE001 - vetting must never break the run
+            self.log(f"{u}: vetting failed ({e})")
+        finally:
+            self.vetting.discard(u)
+
+    def _machine(self, u: str) -> str:
+        try:
+            return next((i.get("machine_id", "") for i in self.api.instances() if i["uuid"] == u), "")
+        except Exception:  # noqa: BLE001
+            return ""
+
+    def capable_urls(self) -> set[str]:
+        bad = bad_machines()
+        return {url for url, m in self.machines().items() if m not in bad}
+
+    def replace(self, u: str | None = None, url: str | None = None) -> bool:
+        """Swap an old-driver machine for one that runs RTX upscaling, acquiring first: a new machine is brought in
+        and probed (one over `max_servers` for the moment), and only once it passes is the old one powered off (after
+        its job in hand), so it is not simply started again. A new machine that fails is powered off at once. Bounded
+        by `replace_window_minutes` (20) and `replace_max_new` (3) machines tried. `u`/`url` None: just make sure a
+        capable server is in the pool, retiring an idle old-driver one after. Returns True when a capable server is
+        in the pool."""
+        with self.swap_lock:
+            if self.capable_urls() - ({url} if url else set()):
+                got = True   # another swap (or the vetting of a joining server) found one meanwhile
+            else:
+                got = self._acquire_capable()
+            if not got:
+                self.log("no machine that can run RTX upscaling found in the window; keeping the old-driver servers for "
+                         "rendering")
+                return False
+            if url is None:   # retire one idle old-driver server of this run, if there is one
+                where, bad = self.machines(), bad_machines()
+                u, url = next(((x, v) for x, v in self.held.items() if v and where.get(v) in bad), (None, None))
+            if u and url:
+                self._retire_when_idle(u, url)
+            return True
+
+    def _acquire_capable(self) -> bool:
+        window = 60 * float(self.c.get("replace_window_minutes", 20))
+        max_new = int(self.c.get("replace_max_new", 3))
+        t0, tried = time.time(), 0
+        while time.time() - t0 < window and tried < max_new:
+            bad = bad_machines()
             try:
-                insts = [i for i in self.api.instances() if ours(self.c, i)]
+                stopped = [i["uuid"] for i in self.api.instances() if ours(self.c, i) and i.get("status") == "shutdown"
+                           and i.get("machine_id") not in bad and i["uuid"] not in self.held]
             except Exception as e:  # noqa: BLE001
                 self.log(f"listing servers failed: {e}")
-                return None
-            stopped = [i["uuid"] for i in insts if i.get("status") == "shutdown" and i.get("machine_id") not in avoid_machines]
-            u = grab(self.api, stopped, self.c, self.log)
+                stopped = []
+            u = grab(self.api, stopped, self.c, self.log) if stopped else None
             if not u:
                 u = Fleet(self.p, api=self.api)._create()
-                if not u:
-                    return None
-                hold(u)
-            self._up(u)
-            return self.held.get(u) or None
-
-    def _make_room(self, avoid_machines: set[str]) -> bool:
-        """Power off one idle server on an avoided machine; True if one went."""
-        where = self.machines()
-        for u, url in list(self.held.items()):
-            if url and where.get(url) in avoid_machines and not self.p._assigned.get(url):
-                self.held.pop(u)
-                with self.p.lock:
-                    if url in self.p.cfg["comfy"]["servers"]:
-                        self.p.cfg["comfy"]["servers"].remove(url)
-                if let_go(u):
-                    try:
-                        self.api.power_off(u)
-                        forget(u)
-                    except AutoDLError as e:
-                        self.log(f"{u}: power off failed ({e})")
-                self.log(f"{u}: out of the pool to make room for a machine that can do the job")
-                return True
-        scaler = getattr(self.p, "scaler", None)
-        for u, m in list(scaler.managed.items()) if scaler else []:
-            if m.get("url") and where.get(m["url"]) in avoid_machines and scaler._retire(u, "old driver, making room"):
-                return True
+                if u:
+                    hold(u)
+            if not u:   # no stock: wait a minute, inside the window
+                time.sleep(60)
+                continue
+            tried += 1
+            self.vetting.add(u)   # probed here, not by the background vetting
+            try:
+                self._up(u)
+                url = self.held.get(u)
+                if not url:
+                    continue
+                mid = self._machine(u)
+                ok = machine_known(mid) if mid else None
+                if ok is None:
+                    ok = probe_rtx(self.p, url)
+                    if mid and ok is not None:
+                        note_machine(mid, ok, url)
+                if ok:
+                    self.log(f"{u}: machine {mid or '?'} runs RTX upscaling; in the pool")
+                    return True
+                self.log(f"{u}: machine {mid or '?'} cannot run RTX upscaling either; powering it off")
+                self._drop(u, url, "old driver")
+            finally:
+                self.vetting.discard(u)
         return False
+
+    def _retire_when_idle(self, u: str, url: str, wait_s: float = 900) -> None:
+        """Power off an old-driver server once the job it is running is done (at most `wait_s`)."""
+        t0 = time.time()
+        while self.p._assigned.get(url) and time.time() - t0 < wait_s:
+            time.sleep(20)
+        scaler = getattr(self.p, "scaler", None)
+        if scaler and u in scaler.managed:
+            scaler._retire(u, "old driver: replaced by a machine that runs RTX upscaling", force=True)
+        else:
+            self._drop(u, url, "old driver: replaced by a machine that runs RTX upscaling")
+
+    def _drop(self, u: str, url: str, why: str) -> None:
+        self.held.pop(u, None)
+        with self.p.lock:
+            if url in self.p.cfg["comfy"]["servers"]:
+                self.p.cfg["comfy"]["servers"].remove(url)
+        if let_go(u):
+            try:
+                self.api.power_off(u)
+                forget(u)
+                self.log(f"{u}: powered off ({why})")
+            except AutoDLError as e:
+                self.log(f"{u}: power off failed ({e})")
+        else:
+            self.log(f"{u}: out of this run's pool ({why}); another run still uses it")
 
     def _up(self, u: str) -> None:
         t0 = time.time()
@@ -508,6 +642,7 @@ class Session:
         with self.p.lock:
             if url not in self.p.cfg["comfy"]["servers"]:
                 self.p.cfg["comfy"]["servers"].append(url)
+        self.vet_later(u, url)
 
     def release(self) -> None:
         idle = [u for u in self.held if let_go(u)]
@@ -667,6 +802,8 @@ class Fleet:
             with self.p.lock:
                 self.p.cfg["comfy"]["servers"].append(url)
             self.log(f"{uuid}: in the pool after {self.clock() - t0:.0f}s -> {url}")
+            if getattr(self.p, "waker", None):
+                self.p.waker.vet_later(uuid, url)   # an old-driver machine is replaced, then powered off
         except Exception as e:  # noqa: BLE001
             self.log(f"scale up failed: {e}")
             self.backoff_until = self.clock() + 60 * float(self.c.get("retry_minutes", 1))
@@ -675,10 +812,10 @@ class Fleet:
 
     def _power_on_stopped(self) -> str | None:
         core = self.c.get("core") or []
-        bad = bad_machines()
-        insts = sorted((i for i in self.api.instances() if ours(self.c, i) and i.get("status") == "shutdown"),
-                       key=lambda i: (i.get("machine_id") in bad, i["uuid"] not in core,
-                                      core.index(i["uuid"]) if i["uuid"] in core else 0))
+        bad = bad_machines()   # never an old-driver machine again
+        insts = sorted((i for i in self.api.instances() if ours(self.c, i) and i.get("status") == "shutdown"
+                        and i.get("machine_id") not in bad),
+                       key=lambda i: (i["uuid"] not in core, core.index(i["uuid"]) if i["uuid"] in core else 0))
         return grab(self.api, [i["uuid"] for i in insts if i["uuid"] not in self.managed], self.c, self.log, stop=self._stop)
 
     def _create(self) -> str | None:
