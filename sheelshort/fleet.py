@@ -315,12 +315,18 @@ class Session:
         self.held: dict[str, str] = {}   # uuid -> ComfyUI address
         self.lock = threading.Lock()
         self.woken = False
+        self.tried_at = 0.0
 
     def ensure(self) -> None:
+        """Wake the servers on the first GPU job; while none could start (AutoDL out of stock: "暂无库存"), try again
+        every `stock_retry_s` (180) instead of giving the run up."""
         with self.lock:
-            if self.woken:
+            now = time.time()
+            if self.woken and (self.p.cfg["comfy"]["servers"] or now - self.tried_at < float(self.c.get("stock_retry_s", 180))):
                 return
-            self.woken = True
+            if self.woken:
+                self.log("no server is up yet; trying to start one again")
+            self.woken, self.tried_at = True, now
             try:
                 self._wake()
             except Exception as e:  # noqa: BLE001
