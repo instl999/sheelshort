@@ -1,0 +1,10 @@
+```json
+{
+  "figures": 3,
+  "same_person": true,
+  "views": "front, side, back",
+  "hair": "black, long, tied in a low ponytail",
+  "clothing": "beige double-breasted trench coat with black buttons, white top, light blue jeans, white sneakers, and a beige tote bag",
+  "text_or_watermark": false
+}
+```

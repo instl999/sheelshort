@@ -25,7 +25,7 @@ projects/*/*
 # local notes for the owner
 PENDING_APPROVALS.md
 
-# lan branch: the 蓝城雲境 drama keeps every asset in git: films, location pack, plates, the location renders in
+# lan example project (蓝城雲境): every asset it made is kept in git: films, location pack, plates, the location renders in
 # cache/ and, once written, its cast and episodes (state.json, logs and requests/ name the servers: they stay local)
 !projects/lan/films/
 !projects/lan/locations/
