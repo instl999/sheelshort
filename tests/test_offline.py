@@ -952,6 +952,25 @@ def test_a_run_keeps_trying_to_start_a_server_while_none_is_in_stock():
     assert len(tries) == 2                                        # and never once a server is up
 
 
+def test_a_server_out_of_stock_is_asked_again_within_the_minute():
+    from sheelshort import fleet
+
+    class Api:
+        def __init__(self):
+            self.calls = []
+        def power_on(self, u):
+            self.calls.append(u)
+            if len(self.calls) < 5:
+                raise fleet.AutoDLError("power_on: InternalError 当前算力规格暂无库存, 请修改配置或稍等再试")
+    api, said = Api(), []
+    got = fleet.grab(api, ["pro-a", "pro-b"], {"grab_rounds": 6, "grab_gap_s": 0}, said.append, claim=False)
+    assert got == "pro-a" and api.calls == ["pro-a", "pro-b", "pro-a", "pro-b", "pro-a"]   # third round wins
+    api2 = Api()
+    api2.power_on = lambda u: (_ for _ in ()).throw(fleet.AutoDLError("instance is locked"))
+    assert fleet.grab(api2, ["pro-a"], {"grab_rounds": 6, "grab_gap_s": 5}, said.append, claim=False) is None  # no wait
+    assert fleet.grab(api, [], {"grab_gap_s": 5}, said.append) is None
+
+
 if __name__ == "__main__":
     for name, fn in list(globals().items()):
         if name.startswith("test_"):
