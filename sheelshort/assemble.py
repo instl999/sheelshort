@@ -156,7 +156,10 @@ def steady_face(video: Path, *times: float) -> tuple[float, float, float, float]
     boxes = [b for b in (media.face_box(video, t) for t in times) if b and b[2] - b[0] >= 0.15]
     if not boxes:
         return None
-    return tuple(round(statistics.median(b[k] for b in boxes), 4) for k in range(4))
+    x0, y0, x1, y1 = (statistics.median(b[k] for b in boxes) for k in range(4))
+    fw = x1 - x0   # the detector boxes eyes to mouth: the head, with its hair, is wider and taller
+    return (round(max(0.0, x0 - 0.3 * fw), 4), round(max(0.0, y0 - 0.25 * fw), 4),
+            round(min(1.0, x1 + 0.3 * fw), 4), round(min(1.0, y1 + 0.1 * fw), 4))
 
 
 def _cards_in(p: Project, clip: dict, t0: float, video: Path, introduced: set[str]) -> list[dict]:
