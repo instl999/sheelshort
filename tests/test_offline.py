@@ -1255,6 +1255,24 @@ def test_a_characters_demeanor_reaches_every_face_shot_and_the_eye_roll_check():
     assert any("no `demeanor`" in n for n in notes)
 
 
+def test_check_refuses_a_cut_that_is_not_fully_written_out():
+    full = {"type": "MCU", "subjects": ["a"], "speaker": "a", "line": "就这套吧。", "delivery": "calm and offhand, a faint easy smile",
+            "composition": "Medium close-up from mid-chest up of {a} on the right of frame against the bright window, the city soft behind her.",
+            "action": "{a} stands still facing the window, shoulders relaxed, her left hand resting on the tote strap. She keeps her head level "
+                      "and her eyes on the view while she speaks, lips moving only on the words, a faint smile settling.",
+            "camera": "Static at eye level.", "end": "{a} holds the faint smile, head level, eyes calm."}
+    assert h3prompt.detail_problems({"clips": [{"id": "K1", "cuts": [full]}]}) == []
+    thin = dict(full, action="{a} answers.", end="", camera="Eye level.", composition="Close on {a}.")
+    errs = " | ".join(h3prompt.detail_problems({"clips": [{"id": "K1", "cuts": [thin]}]}))
+    for want in ("`action` has", "`end` has 0 words", "`composition` has", "names no move", "must say what the"):
+        assert want in errs, want
+    wide = {"type": "WS", "subjects": ["a", "b"], "composition": "Wide shot of the lobby with {a} and {b} under the vaulted white ceiling, marble floor gleaming.",
+            "action": "{a} and {b} wait in silence for a long moment while the fountain plays and the light changes slowly over everything around.",
+            "camera": "Static, wide and level.", "end": "Both stay where they are, waiting in silence."}
+    errs = " | ".join(h3prompt.detail_problems({"clips": [{"id": "K2", "cuts": [wide]}]}))
+    assert "body moves" in errs and "place the people" in errs and "`action` has" in errs   # 23 words needed for two people
+
+
 if __name__ == "__main__":
     for name, fn in list(globals().items()):
         if name.startswith("test_"):
