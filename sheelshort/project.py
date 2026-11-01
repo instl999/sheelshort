@@ -323,7 +323,11 @@ class Project:
             if files is not None or failed_on is None:
                 return files
             if attempt < tries - 1:   # a dropped server, a lost prompt, a network error: try again on another server
-                if len(self.cfg["comfy"]["servers"]) > len(avoid | {failed_on}):
+                others = len(self.cfg["comfy"]["servers"]) > len(avoid | {failed_on})
+                err = self.state["jobs"][key].get("error", "")
+                if not others and " failed: " in err and err.startswith("ComfyError: prompt "):
+                    break   # the workflow itself failed on the only server there is: the same again would fail too
+                if others:
                     avoid.add(failed_on)
                 log(f"{key}: trying again ({attempt + 2}/{tries})")
                 job = self.state["jobs"][key]
