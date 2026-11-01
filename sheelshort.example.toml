@@ -14,6 +14,8 @@ h3_ref = "u22_base.api.json"    # U22: H3 reference-to-video, H3 speaks the line
 h3_drive = "u24_stock.api.json" # U24's T8 chain: the picture rendered around the acted dialogue track (dialogue = "acted")
 
 [project]
+min_free_gb = 15                     # stop cleanly below this
+cleanup_below_gb = 40               # below this, approved episodes' unused takes are deleted (`approve`)
 language = "zh-CN"
 seed_offset = 0                 # change to re-roll every generation
 
@@ -69,6 +71,8 @@ fps = 30
 loudness = -11                   # LUFS integrated: the reference hits master at -10 to -15 (median -10.5); each master is
                                  # measured after encoding and its audio corrected when it misses by more than 0.5 LU
 music_under_lu = 18              # the music bed sits this far under the dialogue's measured loudness (before ducking)
+crf = 21                         # master quality (x264): 21 is ~15 Mbps at 1080p, far above what platforms re-encode
+                                 # to, and half the size of 18; a master can be re-exported from the kept takes
 grade = "auto"                   # finishing grade: "auto" follows the bible's look_preset; "film", "bright", "glossy", "none"
 location_cards = true            # a vertical title with the place's name_zh as each new scene opens
 upscale = "rtx"                  # "rtx": NVIDIA RTX Video Super Resolution on the servers to 1080x1920; "" = plain resize

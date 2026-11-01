@@ -209,7 +209,13 @@ def test_name_card_goes_beside_the_face():
     import re as _re
     x = lambda ev: float(_re.search(r"\\pos\((\d+)", ev).group(1))   # noqa: E731
     assert x(left[0]) < 540 < x(right[0])                               # face right of centre: card on the left, and back
-    assert "王\\N大\\N花" in left[0]                                  # vertical type
+    assert "王\\N大\\N花" in left[1] and "黄\\N谷" in left[0]          # vertical type; the role first...
+    for ev in (left, right):
+        role_x, name_x = x(ev[0]), x(ev[1])
+        assert role_x < name_x                                          # ...on the left, the name on the right
+        assert 1080 * 0.08 <= role_x - 1080 * 0.036 / 2 and name_x + 108 / 2 <= 1080 * 0.92   # clear of the frame edge
+    assert x(left[1]) + 108 / 2 <= 0.55 * 1080 - 1080 * 0.05 + 1       # and clear of the face
+    assert x(right[0]) - 1080 * 0.036 / 2 >= 0.45 * 1080 + 1080 * 0.05 - 1
 
 
 def test_offscreen_mention_uses_the_name():
@@ -1163,6 +1169,53 @@ def test_a_look_up_in_a_close_up_never_becomes_an_unscripted_eye_roll():
     chars = {"a": {"name": "A", "role": "woman", "look": "a woman"}}
     assert any("eye-roll" in x for x in clipqc.judge_panel(chars, 2, cu, {"people": 1, "eye_roll": True}, False, False))
     assert not clipqc.judge_panel(chars, 2, dict(cu, delivery="a scornful eye roll"), {"people": 1, "eye_roll": True}, False, False)
+
+
+def test_a_subtitle_drops_below_a_face_that_reaches_low():
+    h = 1920
+    assert assemble.sub_margin({}, h) == round(h * 0.21)                         # lower third
+    assert assemble.sub_margin({"face_bottom": 0.5}, h) == round(h * 0.21)       # a face higher up: no change
+    low = assemble.sub_margin({"face_bottom": 0.76}, h)
+    assert round(h * 0.10) <= low < round(h * 0.21)                              # below the chin, clear of the bottom
+    assert assemble.sub_margin({"face_bottom": 0.95}, h) == round(h * 0.10)      # never closer to the bottom edge
+
+
+def test_check_asks_for_explicit_actions_and_stable_identity_anchors():
+    scene = {"clips": [{"id": "K1", "cuts": [
+        {"type": "CU", "subjects": ["a"], "action": "{a} looks up, unreadable."},
+        {"type": "MCU", "subjects": ["a"], "action": "{a} tilts her head back to look up at the canopy, eyes calm and open, lips closed, hands still at her sides."},
+        {"type": "WS", "subjects": ["a"], "action": "{a} walks."}]}]}
+    notes = " | ".join(h3prompt.action_notes(scene))
+    assert "K1 cut 1: action too short" in notes and "eye-roll" in notes and "can't show" in notes
+    assert "K1 cut 2" not in notes and "K1 cut 3" not in notes          # explicit; a wide shot is not a face shot
+    bible = {"characters": {"a": {"keep": "small beauty mark under the right eye, black bob"}, "b": {"keep": "gold glasses"}}}
+    assert [n.split(":")[0] for n in h3prompt.cast_notes(bible)] == ["character a"]
+
+
+def test_unused_takes_go_only_after_approval_and_only_when_the_disk_is_tight():
+    from sheelshort import cleanup
+    with tempfile.TemporaryDirectory() as tmp:
+        p = _scratch_project(tmp, {})
+        clips, edit = p.d("clips", "E01"), p.d("edit", "E01")
+        names = ["K1_h3_t1.mp4", "K1_h3_t1_up.mp4", "K1_h3_t1.json", "K1_h3_t2.mp4", "K1_h3_t2_up.mp4", "K1_h3_t2.json",
+                 "K1_h3_t2_stale1793.mp4", "K2_h3_t1.mp4", "K2_h3_t1_up.mp4"]
+        for n in names:
+            (clips / n).write_bytes(b"x" * 1000)
+        (edit / "picks.json").write_text(json.dumps({"K1": 2, "K2": 1}))
+        assert cleanup.clean(p, "E01") == 0.0 and all((clips / n).exists() for n in names)   # not approved: nothing goes
+        try:
+            cleanup.approve(p, "E01")
+            raise AssertionError("approved without a master")
+        except SystemExit:
+            pass
+        (edit / f"{p.master_name()}.mp4").write_bytes(b"m")
+        cleanup.approve(p, "E01")
+        p.cfg["project"]["cleanup_below_gb"] = 0                                 # plenty of space: skip the cleanup
+        assert cleanup.clean_if_tight(p) == 0.0 and (clips / "K1_h3_t1.mp4").exists()
+        p.cfg["project"]["cleanup_below_gb"] = 10 ** 9                           # the disk is "tight"
+        cleanup.clean_if_tight(p)
+        left = sorted(x.name for x in clips.iterdir())
+        assert left == ["K1_h3_t2.json", "K1_h3_t2.mp4", "K1_h3_t2_up.mp4", "K2_h3_t1.mp4", "K2_h3_t1_up.mp4"], left
 
 
 if __name__ == "__main__":

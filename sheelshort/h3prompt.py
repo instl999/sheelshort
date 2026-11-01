@@ -426,6 +426,53 @@ def look_up_note(cut: dict) -> str:
             "roll upward on their own (that would read as an eye-roll).")
 
 
+SMALL_MARK = re.compile(r"\b(mole|beauty mark|freckles?|birthmark|small scar|thin scar|tiny scar|dimple)\b", re.I)
+# Actions H3 misreads (it takes words literally and fills gaps with its own acting): each with how to write it instead
+VAGUE = [
+    (re.compile(r"\b(glances?|peeks?)\b", re.I), "a glance: say at what, with the eyes only or the head too, and for how long"),
+    (re.compile(r"\breacts?\b", re.I), "\"reacts\": write the physical reaction (eyes widen, a breath held, the hand stops)"),
+    (re.compile(r"\b(smirks?|sneers?)\b", re.I), "a smirk: write it (one corner of the mouth lifts slightly, the eyes stay cold)"),
+    (re.compile(r"\bturns?( around| away)?\b(?! (to|toward|towards|her|his|their|back|left|right))", re.I),
+     "a turn: say which way and to face what (turns her head left toward the door)"),
+    (re.compile(r"\b(unreadable|mysterious|complicated|meaningful|subtle)\b", re.I),
+     "a feeling H3 can't show: describe the face (eyes level and still, lips closed, no smile)"),
+]
+MIN_ACTION_WORDS = 10   # a face shot's action shorter than this leaves H3 to invent the acting
+
+
+def cast_notes(bible: dict) -> list[str]:
+    """Advice on the cast: identity anchors H3 can hold from shot to shot."""
+    out = []
+    for c, ch in bible.get("characters", {}).items():
+        m = SMALL_MARK.search(ch.get("keep", ""))
+        if m:
+            out.append(f"character {c}: '{m.group(0)}' as an identity anchor: small facial marks drift and flicker from "
+                       "shot to shot in the video model (林晚's beauty mark moved in the showcase). Unless the story needs "
+                       "it, anchor the character on something large and stable: hairstyle, glasses, earrings, a hair clip, "
+                       "a coat's colour")
+    return out
+
+
+def action_notes(scene: dict) -> list[str]:
+    """Face-shot actions too short or too vague for H3, which acts out words literally (an unwritten eye-roll)."""
+    out = []
+    for cl in scene["clips"]:
+        for i, cut in enumerate(cl["cuts"], 1):
+            if cut["type"] not in FACE_SHOTS:
+                continue
+            act = cut.get("action", "")
+            if len(re.findall(r"[A-Za-z']+", act)) < MIN_ACTION_WORDS:
+                out.append(f"{cl['id']} cut {i}: action too short for H3 ({act!r}); spell out the eyes, head, mouth and "
+                           "hands from the first frame to the last")
+            for rx, how in VAGUE:
+                if rx.search(act):
+                    out.append(f"{cl['id']} cut {i}: {how}")
+            if UPWARD.search(act) and "head" not in act.lower():
+                out.append(f"{cl['id']} cut {i}: 'looks up' in a face shot reads as an eye-roll; write 'tilts her head "
+                           "back to look up at...'")
+    return out
+
+
 def phone_only(clip: dict) -> set[str]:
     """Characters heard only through a phone in this clip (`via: "phone"`), never seen in it."""
     seen = {c for cut in clip["cuts"] for c in cut.get("subjects", []) + [cut.get("over")] if c}
