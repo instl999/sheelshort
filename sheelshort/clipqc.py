@@ -97,7 +97,7 @@ def judge_panel(chars: dict, i: int, cut: dict, pan: dict, want_night: bool, wan
     subj = cut.get("subjects", [])
     if cut["type"] != "ECU" and subj and pan.get("people") == 0:   # an ECU may be hands or a prop
         out.append(f"cut {i}: nobody in the shot, should show {', '.join(chars[c]['name'] for c in subj)}")
-    if cut["type"] in ("CU", "ECU", "VO") and len(subj) == 1:
+    if cut["type"] in ("CU", "MCU", "ECU", "VO") and len(subj) == 1:
         sex = qc.written_sex(chars[subj[0]])
         seen = str(pan.get("main_person_sex", "")).lower()
         if sex and seen in ("woman", "man") and seen != sex:

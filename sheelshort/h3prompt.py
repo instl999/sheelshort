@@ -26,6 +26,7 @@ WORDS_PER_S = 2.6
 SHOT_PHRASE = {
     "WS": "A wide shot",
     "MS": "A medium shot",
+    "MCU": "A medium close-up from mid-chest up",
     "CU": "A close-up",
     "ECU": "An extreme close-up",
     "OTS": "An over-the-shoulder shot",
@@ -37,6 +38,7 @@ SHOT_PHRASE = {
 SHOT_LENS = {
     "WS": "on a 35mm lens",
     "MS": "on a 50mm lens",
+    "MCU": "on a 65mm lens with shallow depth of field",
     "CU": "on an 85mm lens with shallow depth of field",
     "RX": "on an 85mm lens with shallow depth of field",
     "VO": "on an 85mm lens with shallow depth of field",
@@ -56,7 +58,7 @@ ANGLE_PHRASE = {
 # wide shot shows the room again (E01 2026-10-31: 50 s of faces in a row lost the crowd and the table)
 CLOSE_RUN_S = 25.0
 # The size a cut reads as on screen: two adjacent cuts of the same subjects at the same size are a jump cut
-SIZE_CLASS = {"WS": "wide", "MS": "medium", "CU": "close", "RX": "close", "VO": "close", "ECU": "insert", "OTS": "ots"}
+SIZE_CLASS = {"WS": "wide", "MS": "medium", "MCU": "mcu", "CU": "close", "RX": "close", "VO": "close", "ECU": "insert", "OTS": "ots"}
 NO_TEXT = "No on-screen text, subtitles, captions, logos or watermarks appear at any point."
 # What the reference series' look has and ours lacked (REFERENCE_STUDY §3, owner review 2026-10-31: "lacks realism")
 CINEMA = ("Filmed like a high-end streaming drama on a cinema camera with prime lenses: faces are shot on long lenses with "
@@ -67,6 +69,26 @@ CINEMA = ("Filmed like a high-end streaming drama on a cinema camera with prime 
           "airbrushed, waxy or over-sharpened. The actors play naturally and with restraint: emotion shows in the eyes, the "
           "breath and small movements, never in exaggerated grimaces. Characters look at each other, never into the lens. "
           "Background people are soft and out of focus, busy with their own reactions, and never look into the lens.")
+# Look presets (`look_preset` in the bible), from the five reference hits studied 2026-10-31: a rural or period drama
+# is shot moody and directional (cinematic), a comedy or bright urban story high-key and clean (bright: 王妈在顾家当保姆),
+# a romance glossy, glowing and warm (glossy: 备用联系人, 反派拿捏). Each preset has its own finishing grade (assemble.GRADES).
+LOOKS = {
+    "cinematic": CINEMA,
+    "bright": ("Filmed like a bright, polished streaming comedy on a cinema camera: clean high-key light, faces lit softly and "
+               "flatteringly by bright daylight or bright interior light with gentle shadows, fresh natural colour with clean "
+               "whites. Faces are shot on long lenses with the background softly out of focus, never with wide-angle "
+               "distortion. Skin is real skin with natural texture, never waxy or airbrushed. The actors play with energy and "
+               "clear, readable expressions and timed reactions. Characters look at each other, never into the lens. "
+               "Background people are soft and out of focus, busy with their own business, and never look into the lens."),
+    "glossy": ("Filmed like a glossy romance drama: luminous skin with a soft natural sheen, warm practical lights and creamy "
+               "bokeh behind the actors, a gentle glow around highlights, rich but soft colour, flattering light with a soft "
+               "key and a warm rim. Faces are shot on long lenses with very shallow depth of field, never wide-angle. Eyes are "
+               "bright and expressive; the actors play intimate and restrained, with lingering looks and small touches. "
+               "Characters look at each other, never into the lens. Background people are soft and out of focus and never "
+               "look into the lens."),
+}
+# What the reference hits measure (100 episodes of 5 series, 2026-10-31): 4 of 5 run a median 64-88 s per episode
+EPISODE_S = (45, 100)
 FLAT_LIGHT = re.compile(r"\b(overcast|midday|noon|clear sky|even(ly)? lit|flat|soft shadows|shadowless|bright natural)\b", re.I)
 STATIC = re.compile(r"^\s*static", re.I)
 NO_MUSIC = "None. There is no background music or score at any point; only diegetic sound is heard."
@@ -96,6 +118,8 @@ def check_rules(scene: dict) -> list[str]:
     errs = []
     lang = scene.get("language", "zh-CN")
     chars, locs = scene["characters"], scene["locations"]
+    if scene.get("look_preset", "cinematic") not in LOOKS:
+        errs.append(f"look_preset {scene['look_preset']!r} not one of {sorted(LOOKS)}")
     for clip in scene["clips"]:
         cid = clip["id"]
         total = clip_len(clip)
@@ -117,8 +141,9 @@ def check_rules(scene: dict) -> list[str]:
             if cut.get("line"):
                 if not cut.get("speaker"):
                     errs.append(f"{where}: a line needs a speaker")
-                if t not in ("CU", "OTS", "VO"):
-                    errs.append(f"{where}: dialogue must be a close-up, over-the-shoulder or voice-over shot, not {t}")
+                if t not in ("CU", "MCU", "OTS", "VO"):
+                    errs.append(f"{where}: dialogue must be a close-up, medium close-up, over-the-shoulder or voice-over "
+                                f"shot, not {t}")
                 need = spoken_len(cut["line"], lang)
                 room = cut_len(cut) + sum(cut_len(c) for c in _reactions_after(clip["cuts"], i - 1))
                 if need > room - LINE_SLACK_S:
@@ -179,7 +204,7 @@ def fix_jump_cuts(scene: dict) -> list[str]:
     for clip in scene["clips"]:
         for i, cut in enumerate(clip["cuts"]):
             here = (clip["location"], _framing(cut))
-            if prev == here and here[1][1] and cut["type"] == "CU" and cut.get("line"):
+            if prev == here and here[1][1] and cut["type"] in ("CU", "MCU") and cut.get("line"):
                 who, other = cut["speaker"], partner(clip, i)
                 if other and other != who and (other in clip_characters(clip) or len(clip_characters(clip)) < 3):
                     cut.update(type="OTS", over=other, subjects=[who],
@@ -198,7 +223,7 @@ def close_runs(scene: dict) -> list[tuple[str, int, int, float]]:
     """Stretches at one location (across clips) made only of close-ups and over-the-shoulder shots, longer than
     CLOSE_RUN_S: (location, first, last, seconds) with first/last as indexes into the episode's flat cut list."""
     flat = [(cl["location"], c) for cl in scene["clips"] for c in cl["cuts"]]
-    tight = [SIZE_CLASS.get(c["type"]) in ("close", "ots") for _, c in flat]
+    tight = [SIZE_CLASS.get(c["type"]) in ("close", "mcu", "ots") for _, c in flat]
     runs, k = [], 0
     while k < len(flat):
         if not tight[k]:
@@ -272,11 +297,34 @@ def craft_notes(scene: dict) -> list[str]:
         if not any(c["type"] in ("WS", "MS", "OTS") for cl, c in cuts if cl["location"] == loc):
             notes.append(f"{loc}: no wide, medium or over-the-shoulder shot; the viewer never sees where everyone "
                          "stands. Open the scene's geography after the hook")
+    dur = sum(cut_len(c) for _, c in cuts)
+    if dur > EPISODE_S[1]:
+        notes.append(f"the episode runs {dur:.0f} s; the reference hits run a median 64-88 s an episode. Split it at the "
+                     "turn into two episodes, each with its own hook and cliffhanger")
+    elif dur < EPISODE_S[0]:
+        notes.append(f"the episode runs only {dur:.0f} s; the reference hits run a median 64-88 s an episode")
+    cold, prev = [], None
+    for cl in scene["clips"]:
+        if cl["location"] != prev and cl["cuts"] and cl["cuts"][0]["type"] not in ("WS", "MS"):
+            cold.append(f"{cl['id']} ({cl['location']})")
+        prev = cl["location"]
+    if cold:
+        notes.append("scenes that open without a wide or medium shot of the place: " + ", ".join(cold) + ". The reference "
+                     "hits open most scenes on 1.5-3 s of a wide shot that already has action in it (the location card "
+                     "sits on it), then cut in")
+    last = scene["clips"][-1]["cuts"][-1] if scene["clips"] and scene["clips"][-1]["cuts"] else None
+    if last and (SIZE_CLASS.get(last["type"]) not in ("close", "mcu", "ots") or cut_len(last) < 2.0):
+        notes.append(f"the episode's last shot is {last['type']}, {cut_len(last):g} s; every reference hit ends on a face at the "
+                     "peak (a close-up or reaction held 2-3 s), cut hard")
+    preset = scene.get("look_preset", "cinematic")
     for loc, v in scene["locations"].items():
+        if preset != "cinematic":
+            break
         if FLAT_LIGHT.search(v.get("light", "")) and loc in {cl["location"] for cl, _ in cuts}:
             notes.append(f"location {loc}: flat light ({FLAT_LIGHT.search(v['light']).group(0)!r}); describe a light with a "
                          "direction (low sun behind or beside the actors, a practical lamp as key, window light)")
-    if re.search(r"crisp|ultra.?sharp|8k|deep focus|wide.?angle|\b(14|18|21|24|28|35)\s?mm", scene.get("style", ""), re.I):
+    if re.search(r"crisp|ultra.?sharp|8k|deep focus|wide.?angle|\b(14|18|21|24|28|35)\s?mm", scene.get("style", ""), re.I) \
+            and preset != "bright":
         notes.append("style asks for sharpness or a wide lens (crisp, 35mm, deep focus...); the reference look is long "
                      "lenses, shallow focus and soft natural detail")
     return notes
@@ -540,7 +588,7 @@ def build(scene: dict, clip: dict, refs: Refs, cameras: dict[int, dict] | None =
 
     # ---- detailed_description ----
     light = f" Lighting in every shot: {loc['light'].rstrip('.')}." if loc.get("light") else ""
-    body = [f"{scene['style']} {CINEMA}{light} {NO_TEXT}"]
+    body = [f"{scene['style']} {LOOKS.get(scene.get('look_preset', 'cinematic'), CINEMA)}{light} {NO_TEXT}"]
     introduced: set[str] = set()
     t = 0.0
     for i, cut in enumerate(clip["cuts"], 1):
@@ -579,12 +627,12 @@ def build(scene: dict, clip: dict, refs: Refs, cameras: dict[int, dict] | None =
             if pr not in introduced:
                 parts.append(f"{S(pr)} keeps the exact appearance of {pics(pr) if pr in pic_no else 'the reference'}: {prop_defs[pr]['keep']}.")
                 introduced.add(pr)
-        if typ in ("CU", "ECU", "VO", "OTS", "RX"):
+        if typ in ("CU", "MCU", "ECU", "VO", "OTS", "RX"):
             faces = [cut["speaker"]] if typ == "OTS" and cut.get("speaker") else cut.get("subjects", [])
             for c in faces:
                 parts.append(f"Fine facial detail on {S(c)}: {chars[c]['face_detail']}")
         who = cut.get("subjects", [])
-        if typ in ("CU", "RX") and len(who) == 1:
+        if typ in ("CU", "MCU", "RX") and len(who) == 1:
             parts.append(gaze(who[0], partner(clip, i - 1), sides, lambda c: labels[c]))
         elif typ == "OTS" and who:
             parts.append(gaze(who[0], cut["over"], sides, lambda c: labels[c]))

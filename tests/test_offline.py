@@ -624,6 +624,58 @@ def test_clipqc_does_not_read_a_phone_screen_insert_as_a_caption():
                               {**pan, "people": 1, "main_person_sex": "man"}, False, False) == ["cut 3: on-screen text"]
 
 
+def test_reference_structure_notes_length_openings_and_endings():
+    scene = json.loads((ROOT / "projects/quancun/bible.json").read_text())
+    clips = []
+    for n in range(12):                                                   # 12 x 9.6 s = 115 s, all close shots
+        cl = _talk_clip(f"C{n + 1}", "village_gate" if n < 6 else "village_tree")
+        if n % 2:
+            for c in cl["cuts"]:
+                c["subjects"] = ["xiaokang" if c["subjects"] == ["dahua"] else "dahua"]
+                if c.get("speaker"):
+                    c["speaker"] = c["subjects"][0]
+                if c.get("over"):
+                    c["over"] = "xiaokang" if c["over"] == "dahua" else "dahua"
+        clips.append(cl)
+    scene["clips"] = clips
+    notes = " | ".join(h3prompt.craft_notes(scene))
+    assert "runs 115 s" in notes and "C1 (village_gate), C7 (village_tree)" in notes
+    assert "last shot is" not in notes                                        # a 2.4 s close-up is a good last shot
+    scene["clips"][-1]["cuts"][-1] = {"type": "WS", "subjects": [], "composition": "", "action": "", "camera": "", "dur": 3}
+    assert "last shot is WS" in " | ".join(h3prompt.craft_notes(scene))
+
+
+def test_medium_close_up_carries_a_line_and_look_presets_change_the_prompt():
+    scene = json.loads((ROOT / "projects/quancun/bible.json").read_text())
+    clip = _talk_clip()
+    clip["cuts"][0]["type"] = "MCU"
+    scene["clips"] = [clip]
+    assert h3prompt.check_rules(scene) == []
+    refs = h3prompt.Refs(char_pictures={"dahua": ["a.png", "b.png"], "xiaokang": ["c.png", "d.png"]}, location_pictures=["l.png"])
+    text = h3prompt.build(scene, clip, refs)
+    assert "medium close-up from mid-chest up of <Subject 1> on a 65mm lens" in text and "high-end streaming drama" in text
+    scene["look_preset"] = "bright"
+    assert "bright, polished streaming comedy" in h3prompt.build(scene, clip, refs)
+    scene["look_preset"] = "noir"
+    assert any("look_preset" in e for e in h3prompt.check_rules(scene))
+    from sheelshort import cast
+    assert "high-key" in cast.plate_prompt({"look": "a kitchen.", "light": "bright window light"}, "bright")
+
+
+def test_location_card_and_grade_follow_the_bible():
+    from sheelshort import assemble
+    ev = assemble.card_events({"kind": "place", "name": "秦州府衙", "start": 0.1, "end": 2.6}, 1080, 1920, "Songti SC")
+    assert len(ev) == 1 and r"\an7" in ev[0] and "秦\\N州\\N府\\N衙" in ev[0]
+    with tempfile.TemporaryDirectory() as tmp:
+        p = _scratch_project(tmp, {})
+        p.cfg["edit"]["grade"] = "auto"
+        assert "vignette=angle=PI/7" in assemble.grade(p)                  # cinematic by default
+        p.bible["look_preset"] = "bright"
+        assert assemble.grade(p) == assemble.GRADES["bright"] and "vignette" not in assemble.grade(p)
+        p.cfg["edit"]["grade"] = "none"
+        assert assemble.grade(p) == ""
+
+
 if __name__ == "__main__":
     for name, fn in list(globals().items()):
         if name.startswith("test_"):

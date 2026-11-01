@@ -35,13 +35,20 @@ def prop_prompt(pr: dict) -> str:
             "lighting, sharp focus, no hands, no text, no watermark.")
 
 
-def plate_prompt(loc: dict) -> str:
+PLATE_LOOK = {   # the look preset's light and colour (h3prompt.LOOKS), so the plate does not pull the video elsewhere
+    "cinematic": "natural film colour, gentle contrast, light with a clear direction and real shadows",
+    "bright": "fresh natural colour, clean high-key light with soft gentle shadows",
+    "glossy": "rich soft colour, warm practical lights with a gentle glow and creamy bokeh",
+}
+
+
+def plate_prompt(loc: dict, preset: str = "cinematic") -> str:
     """The location plate is a reference picture in every clip there, so its light and look carry into the video: it is
     lit as the location's `light` says and shot like a film still, not a phone snapshot (owner review 2026-10-31)."""
     light = loc.get("light") or f"realistic {loc.get('time', '')} lighting"
     return (f"Cinematic film still of {loc['look'].rstrip('.')}. The place is empty with no people. Light: {light.rstrip('.')}. "
-            "Shot on a cinema camera with a 35mm prime lens at eye level, natural film colour, gentle contrast, light with a "
-            "clear direction and real shadows, real textures and wear, vertical 9:16 composition, no text, no watermark.")
+            f"Shot on a cinema camera with a 35mm prime lens at eye level, {PLATE_LOOK.get(preset, PLATE_LOOK['cinematic'])}, "
+            "real textures and wear, vertical 9:16 composition, no text, no watermark.")
 
 
 def images(p: Project) -> None:
@@ -58,7 +65,7 @@ def images(p: Project) -> None:
         if loc in locs and not p.asset(f"loc_{loc}").exists():
             key = f"cast/loc_{loc}"
             jobs.append(lambda loc=loc, v=v, key=key: p.run_job(key, lambda cl: flows.t2i(
-                p.wf("t2i"), plate_prompt(v), *ic["plate_size"], p.seed(key), f"sheelshort/loc_{loc}"),
+                p.wf("t2i"), plate_prompt(v, b.get("look_preset", "cinematic")), *ic["plate_size"], p.seed(key), f"sheelshort/loc_{loc}"),
                 p.d("assets"), f"loc_{loc}", ("images",), 900))
     jobs += [lambda c=c: character(p, c) for c in b["characters"] if c in chars]
     _parallel(p, jobs)

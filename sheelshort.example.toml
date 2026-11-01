@@ -66,7 +66,9 @@ timeout_s = 3600
 width = 1080
 height = 1920
 fps = 30
-loudness = -14                   # LUFS integrated
+loudness = -11                   # LUFS integrated: the reference hits master at -10 to -15 (median -10.5)
+grade = "auto"                   # finishing grade: "auto" follows the bible's look_preset; "film", "bright", "glossy", "none"
+location_cards = true            # a vertical title with the place's name_zh as each new scene opens
 upscale = "rtx"                  # "rtx": NVIDIA RTX Video Super Resolution on the servers to 1080x1920; "" = plain resize
 font = "Heiti SC"            # libass family name; must have CJK glyphs
 music = "auto"                   # "auto": ACE-Step bed from the episode's `music` tags; a file path; or "" for none
