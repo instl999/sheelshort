@@ -416,6 +416,64 @@ field, real skin, and eyelines off the lens. No change without an A/B. The next 
   plus the download, measured per second of video for a render and per job otherwise. The last 30 per kind are kept
   in `.cache/job_times.json`, shared by all projects.
 
+### 0.14 Five reference hits (2026-10-31): production logic
+
+The owner picked five current hits: 王妈在顾家当保姆后全家只会搞笑了 (live-action comedy), 持械入宋 S10
+(photoreal AI, period), 备用联系人 (photoreal AI, urban romance), 和离后我带女儿横扫魔域 (3D xianxia) and
+反派拿捏 S3 (stylised AI romance). All 100 episodes (20 per series) were measured with ffmpeg: scene-change cuts,
+loudness and format. Episodes 1, 5 and 12 were studied frame by frame, including their opening and closing seconds.
+
+| Series | Episode (median) | Mean shot | Median shot | Shots > 5 s | Shots < 1 s | First 10 s | LUFS |
+|---|---|---|---|---|---|---|---|
+| 王妈在顾家当保姆 | 84 s | 2.10 s | 1.64 s | 5% | 18% | 5.5 shots | −10.5 |
+| 持械入宋 S10 | 88 s | 2.89 s | 2.84 s | 4% | 1% | 4 | −10.3 |
+| 备用联系人 | 169 s | 3.27 s | 3.02 s | 15% | 2% | 4 | −15.0 |
+| 和离后…横扫魔域 | 70 s | 2.53 s | 2.21 s | 6% | 14% | 4.5 | −9.8 |
+| 反派拿捏 S3 | 64 s | 2.51 s | 2.29 s | 4% | 5% | 4 | −13.4 |
+| 全村抢 recut (ours) | 118–176 s | 2.45–3.01 s | 2.4–2.5 s | 2–10% | 0% | – | −14.8 |
+
+**What we already match.**
+- Shot pacing: a mean of 2.1–3.3 s.
+- The share of long shots.
+- Vertical name cards with a role line.
+- Dirty singles past a foreground shoulder, which is our OTS.
+- Mid-lower white subtitles.
+
+**Where we differed, and the changes.**
+- **Episode length.** Four of the five run a median 64–88 s; ours ran 118–176 s.
+  - The skill now asks for 60–90 s episodes, splitting a long scene at its turn into two episodes with their own
+    cliffhangers.
+  - `check` notes any episode over 100 s or under 45 s.
+  - The script's content is kept, spread over more episodes.
+- **Scene openings.** Most episodes and scenes open on 1.5–3 s of a wide shot that already has action in it. 持械入宋
+  and 横扫魔域 put a vertical calligraphy location title on it ("秦州府衙后堂", "魔临城").
+  - The skill's old rule, "never an establishing shot", is replaced by this pattern, with a cold open as the
+    alternative.
+  - `check` lists scenes that open without a WS or MS.
+  - A location's `name_zh` now becomes a vertical title card, top left, as each new scene opens in an episode
+    (`edit.location_cards`). A name card that would overlap it waits until it is gone.
+- **Endings.** All five end on a face at the peak, held 2–3 s and cut hard. The last shot runs a median 2.0–3.1 s.
+  - The skill says so.
+  - `check` notes an episode that ends on a wide shot, an insert, or a shot under 2 s.
+- **Shot sizes.** 王妈 and 持械入宋 shoot nearly all dialogue chest-up, with hands and gestures in frame, and punch in
+  to a close-up for peaks. Our close-ups were face-filling throughout.
+  - New `MCU` type: mid-chest up on a 65mm lens, may carry a line, its own size class, so an MCU-to-CU punch-in is
+    a real cut.
+  - The skill now puts most dialogue in MCU, uses MS two-shots for intimacy and stand-offs, and quick ECU prop
+    inserts.
+- **Look by genre.** The comedy is high-key and clean, the romances warm, glowing and glossy, and the period drama
+  directional. Our single moody, desaturated look would be wrong for a comedy.
+  - `look_preset` in the bible: `cinematic` (the default, unchanged), `bright` or `glossy`.
+  - It sets the look paragraph in every prompt, the location plates and the finishing grade (`edit.grade = "auto"`).
+  - The flat-light note applies only to `cinematic`.
+- **Loudness.** The masters run −9.8 to −15 LUFS (median −10.5); ours were −14. The default is now −11 LUFS, with
+  true peak −1.
+
+**Not adopted.**
+- **Sub-second flash cuts.** 王妈 has 18% of shots under 1 s and 横扫魔域 14%, in comic beats and action. H3 does not
+  place a cut that precisely inside a clip. The 1.2 s minimum stays.
+- **Transition stings.** Ink wipes (持械入宋) and white flashes (王妈) appear only in single series.
+
 ---
 
 ## 1. Market research: does this already exist?

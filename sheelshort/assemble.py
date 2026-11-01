@@ -19,8 +19,16 @@ CJK_PER_LINE = 13
 # saturation, a soft vignette and fine luma grain read as film (owner review 2026-10-31: "lacks realism")
 GRADES = {
     "film": "eq=saturation=0.9:contrast=1.03,vignette=angle=PI/7,noise=c0s=5:c0f=t",
+    "bright": "eq=saturation=1.03:contrast=1.02,noise=c0s=3:c0f=t",                      # high-key comedy: clean, no vignette
+    "glossy": "eq=saturation=0.97:contrast=0.97:gamma=1.03,vignette=angle=PI/9,noise=c0s=3:c0f=t",   # soft, lifted, warm
     "none": "",
 }
+GRADE_FOR_LOOK = {"cinematic": "film", "bright": "bright", "glossy": "glossy"}   # `edit.grade = "auto"`
+
+
+def grade(p: Project) -> str:
+    g = p.cfg["edit"].get("grade", "auto")
+    return GRADES.get(GRADE_FOR_LOOK.get(p.bible.get("look_preset", "cinematic"), "film") if g == "auto" else g, "")
 
 
 def chosen_take(p: Project, ep: str, clip_id: str) -> Path:
@@ -38,6 +46,7 @@ def edl(p: Project, ep: str) -> dict:
     timing = load_json(p.root / "perform" / ep / "timing.json") if acted else None
     t, items, subs, cards = 0.0, [], [], []
     introduced = introduced_before(p, ep)
+    places, prev_loc = [], None
     for clip in p.clips(ep):
         video = chosen_take(p, ep, clip["id"])
         if acted:
@@ -54,7 +63,18 @@ def edl(p: Project, ep: str) -> dict:
         subs += [{"text": ln["text"], "start": round(t + ln["start"] - head, 3), "end": round(t + ln["end"] - head + 0.25, 3)}
                  for ln in lines]
         cards += _cards_in(p, clip, t - head, video, introduced)
+        loc = p.bible["locations"].get(clip["location"], {})
+        if clip["location"] != prev_loc and loc.get("name_zh") and p.cfg["edit"].get("location_cards", True) \
+                and clip["location"] not in {pl["loc"] for pl in places}:
+            places.append({"kind": "place", "loc": clip["location"], "name": loc["name_zh"], "start": round(t + 0.1, 3),
+                           "end": round(t + min(2.6, tail - head - 0.2), 3)})
+        prev_loc = clip["location"]
         t += tail - head
+    for pl in places:   # a name card waits until the location card is gone (both stand at the top of the frame)
+        for c in cards:
+            if c["start"] < pl["end"] and c["end"] > pl["start"]:
+                c["start"] = round(pl["end"] + 0.1, 3)
+    cards = [c for c in cards if c["end"] - c["start"] >= 0.8] + places
     out = {"episode": ep, "duration": round(t, 3), "clips": items, "subtitles": subs, "cards": cards}
     save_json(p.d("edit", ep) / "edl.json", out)
     return out
@@ -78,7 +98,7 @@ def edge_trims(video: Path, seconds: float, lines: list[dict]) -> tuple[float, f
 
 def _intro_cut(cut: dict, c: str) -> bool:
     return cut.get("intro") is True and c in cut.get("subjects", []) or (
-        cut["type"] in ("CU", "VO") and cut.get("subjects") == [c])
+        cut["type"] in ("CU", "MCU", "VO") and cut.get("subjects") == [c])
 
 
 def introduced_before(p: Project, ep: str) -> set[str]:
@@ -221,7 +241,13 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
 
 def card_events(card: dict, w: int, h: int, font: str) -> list[str]:
     """A vertical name (large, heavy serif) and a thin role column beside it, next to the head at eye level, on the side
-    of the frame with more room; no box, a soft shadow."""
+    of the frame with more room; no box, a soft shadow. A location card (`kind: place`) is one vertical column of the
+    place's name at the top left as a scene opens, the way 持械入宋 and 和离后我带女儿横扫魔域 title their scenes."""
+    vert = lambda t: r"\N".join(t)   # noqa: E731 - one character per line = vertical type
+    if card.get("kind") == "place":
+        size = round(w * 0.075)
+        tag = rf"{{\an7\pos({w * 0.07:.0f},{h * 0.075:.0f})\fn{font}\fs{size}\b1\bord0\shad3\4a&H70&\c&HFFFFFF&\fad(200,300)}}"
+        return [f"Dialogue: 1,{ass_time(card['start'])},{ass_time(card['end'])},Line,,0,0,0,,{tag}{vert(card['name'])}"]
     face = card.get("face")   # (x0, y0, x1, y1) as fractions of the frame, or None
     fx = (face[0] + face[2]) / 2 if face else 0.5
     left = fx >= 0.5   # face right of centre: card on the left
@@ -233,7 +259,6 @@ def card_events(card: dict, w: int, h: int, font: str) -> list[str]:
         x, y = (w * 0.16 if left else w * 0.84), h * 0.24
     x = min(max(x, size * 0.75), w - size * 0.75)
     rx = x + (size * 0.95 if left else -size * 0.95)
-    vert = lambda t: r"\N".join(t)   # noqa: E731 - one character per line = vertical type
     ts = f"{ass_time(card['start'])},{ass_time(card['end'])}"
     name_tag = rf"{{\an8\pos({x:.0f},{y:.0f})\fn{font}\fs{size}\b1\bord0\shad3\4a&H80&\c&HFFFFFF&\fad(150,200)}}"
     role_tag = rf"{{\an8\pos({rx:.0f},{y + size * 0.7:.0f})\fn{font}\fs{role_size}\b1\bord0\shad2\4a&H80&\c&HFFFFFF&\fad(150,200)}}"
@@ -322,8 +347,8 @@ def run(p: Project, ep: str) -> Path:
             filt.append(f"[{i}:a]{fit}[a{i}]")
     filt.append("".join(f"[v{i}][a{i}]" for i in range(n)) + f"concat=n={n}:v=1:a=1[vc][dia]")
     fonts = e.get("fonts_dir", "/System/Library/Fonts")
-    if GRADES.get(e.get("grade", "film")):
-        filt.append(f"[vc]{GRADES[e.get('grade', 'film')]}[vg]")
+    if grade(p):
+        filt.append(f"[vc]{grade(p)}[vg]")
         vc = "[vg]"
     else:
         vc = "[vc]"

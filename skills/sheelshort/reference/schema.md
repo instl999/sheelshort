@@ -8,6 +8,7 @@ A complete worked example is `projects/guilai/` (bible.json, episodes/E01.json).
   "title": "归来 (The Return)",
   "language": "zh-CN",
   "style": "The target video is a photorealistic live-action Chinese vertical short drama in 9:16 with cinematic composition, ...",
+  "look_preset": "cinematic",
   "characters": {
     "linxia": {
       "name": "Lin Xia", "role": "woman",
@@ -22,7 +23,7 @@ A complete worked example is `projects/guilai/` (bible.json, episodes/E01.json).
     }
   },
   "locations": {
-    "penthouse": {"name": "penthouse living room", "look": "...", "keep": "...", "time": "night",
+    "penthouse": {"name": "penthouse living room", "name_zh": "顶层公寓", "look": "...", "keep": "...", "time": "night",
                   "light": "night; warm brass table lamps as the key light against the cool blue night skyline"}
   },
   "props": {
@@ -30,6 +31,11 @@ A complete worked example is `projects/guilai/` (bible.json, episodes/E01.json).
   }
 }
 ```
+
+`look_preset` (optional, default `cinematic`) sets the light, colour and acting of every prompt, the location plates
+and the finishing grade: `cinematic` is moody and directional (rural, period, thriller); `bright` is high-key and
+clean (comedy, bright urban stories); `glossy` is warm and glowing with soft bokeh (romance). A location's `name_zh`
+(optional) is the vertical title shown as a scene there opens.
 
 ## episodes/E01.json
 ```json
@@ -58,7 +64,7 @@ A complete worked example is `projects/guilai/` (bible.json, episodes/E01.json).
 
 | cut field | meaning |
 |---|---|
-| `type` | `WS` wide (geography), `MS` medium, `CU` close-up, `ECU`, `OTS` over-the-shoulder, `VO` inner voice (close-up pushing in), `RX` reaction while the previous line continues |
+| `type` | `WS` wide (geography), `MS` medium, `MCU` medium close-up (mid-chest up, may carry a line), `CU` close-up, `ECU`, `OTS` over-the-shoulder, `VO` inner voice (close-up pushing in), `RX` reaction while the previous line continues |
 | `subjects` | characters (and only they) visible in the cut |
 | `to` | optional: whom the subject looks at or addresses (default: the nearest other speaker in the clip) |
 | `angle` | optional camera angle: `front` (default), `three-quarter`, `profile`, `high`, `low`. A changed angle makes a cut to the same person at the same size a real cut |
