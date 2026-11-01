@@ -1026,6 +1026,30 @@ def test_an_upscale_moves_off_a_machine_with_an_old_driver():
         p.waker.release()
 
 
+def test_an_episode_is_held_back_rather_than_cut_from_a_soft_resize():
+    import subprocess
+    with tempfile.TemporaryDirectory() as tmp:
+        p = _scratch_project(tmp, {})
+        p.cfg["comfy"]["servers"] = ["https://old"]
+        p.cfg["edit"].update(upscale="rtx", upscale_wait_minutes=0)
+        old_caps = assemble.CAPS
+        assemble.CAPS = Path(tmp) / "caps.json"
+        assemble.CAPS.write_text(json.dumps({"no_rtx_vsr_machines": ["m-old"]}))
+        asked = []
+        p.waker = type("W", (), {"machines": lambda self: {"https://old": "m-old"},
+                                 "add_capable": lambda self, bad: asked.append(bad)})()
+        take = p.d("clips", "E01") / "K1_h3_t1.mp4"
+        subprocess.run(["ffmpeg", "-v", "error", "-f", "lavfi", "-i", "color=c=gray:s=360x640:d=1", "-c:v", "libx264", str(take)], check=True)
+        try:
+            assemble.upscaled(p, "E01", take)
+            raise AssertionError("should have held the episode back")
+        except RuntimeError as e:
+            assert "held back" in str(e) and asked == [{"m-old"}]
+        p.cfg["edit"]["upscale_fallback"] = "resize"
+        assert assemble.upscaled(p, "E01", take) == take                      # only when asked for
+        assemble.CAPS = old_caps
+
+
 if __name__ == "__main__":
     for name, fn in list(globals().items()):
         if name.startswith("test_"):
