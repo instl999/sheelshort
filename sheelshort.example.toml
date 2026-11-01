@@ -101,4 +101,6 @@ clip_minutes = 5                     # GPU minutes per clip (measured median ~5 
 startup_minutes = 5                  # boot + ComfyUI + H3's first model load on a fresh server
 idle_off_minutes = 10
 retry_minutes = 5                    # after "no stock" or a failed start
+stock_retry_s = 180                  # no server could start (no GPU in stock): the run tries again this often
+stock_wait_minutes = 180             # ...and waits this long for stock before its jobs fail
 tick_s = 20

@@ -248,9 +248,10 @@ class Project:
         from concurrent.futures import ThreadPoolExecutor
         cap = int(self.cfg["comfy"].get("in_flight", 2))
         give_up = float(self.cfg["comfy"].get("unreachable_minutes", 10)) * 60
-        self.wake()
-        alone_since = None
+        stock_wait = float(self.cfg.get("fleet", {}).get("stock_wait_minutes", 180)) * 60
+        alone_since, said = None, 0.0
         while True:
+            self.wake()   # on-demand servers: also retries while AutoDL has no GPU in stock
             now = time.time()
             with self.lock:
                 urls = [u for u in self.cfg["comfy"]["servers"] if u not in exclude]
@@ -272,8 +273,13 @@ class Project:
                 alone_since = None
             else:
                 alone_since = alone_since or now
-                if now - alone_since > give_up:
-                    raise comfy.ComfyError(f"no ComfyUI server reachable for {give_up / 60:.0f} min")
+                none_yet = self.waker is not None and not urls   # no server started yet: waiting for GPU stock
+                limit = stock_wait if none_yet else give_up
+                if none_yet and now - said > 300:
+                    log(f"waiting for a GPU server (none in stock yet); up to {limit / 60:.0f} min")
+                    said = now
+                if now - alone_since > limit:
+                    raise comfy.ComfyError(f"no ComfyUI server reachable for {limit / 60:.0f} min")
             time.sleep(3)   # every server is full or down: wait for a slot (or for the fleet to add a server)
 
     def _probe(self, url: str) -> int | None:
