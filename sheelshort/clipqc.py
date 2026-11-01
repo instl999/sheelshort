@@ -20,12 +20,12 @@ from .project import Project, load_json, log, save_json
 
 STRIP_PROMPT = """This image is a strip of {n} video frames side by side, panel 1 on the left to panel {n} on the right.
 For each panel, answer in order. Answer with ONE JSON object and nothing else:
-{{"panels": [{{"panel": <number>, "people": <number of people clearly visible>, "main_person_sex": "woman" | "man" | "none",
+{{"panels": [{{"panel": <number>, "people": <number of people visible, counting blurred or partly hidden figures in the background too>, "main_person_sex": "woman" | "man" | "none",
   "text_or_subtitles": <true only if text is OVERLAID on the picture: subtitles, captions, titles, watermarks or logos; text printed on objects inside the scene (documents, contracts, business cards, signs, phone screens) does not count>,
   "light": "daylight" if the scene is lit by the sun or a bright sky (outdoors by day, or daylight coming through windows) | "night" if it is dark outside or moonlit | "lamp" if it is indoors, lit by lamps or bulbs, with no daylight visible,
   "glitch": <true if a face or body is clearly malformed, melted or duplicated>}}]}}"""
 
-RULES = 6   # bump when the rules change: cached results are re-judged (the vision answers stay cached in qc.ask)
+RULES = 7   # bump when the rules change: cached results are re-judged (the vision answers stay cached in qc.ask)
 NIGHT = re.compile(r"\bnight|moonlight|dark\b|midnight", re.I)
 DAY = re.compile(r"\bday(light)?\b|sunlight|morning|afternoon|noon", re.I)
 
@@ -58,8 +58,8 @@ def sample_times(clip: dict, dur: float, shot_cuts: list[float]) -> list[float]:
     return sorted(planned + extra)
 
 
-def strip(p: Project, ep: str, video: Path, times: list[float]) -> Path:
-    tmp = p.d("edit", ep, "clipqc", "frames", video.stem)   # per episode: E03 and E04 both have a C3_h3_t1
+def strip(p: Project, ep: str, video: Path, times: list[float], suffix: str = "") -> Path:
+    tmp = p.d("edit", ep, "clipqc", "frames", video.stem + suffix)   # per episode: E03 and E04 both have a C3_h3_t1
     frames = []
     for i, t in enumerate(times):
         f = tmp / f"p{i + 1}.jpg"
@@ -77,7 +77,7 @@ SHOWS_WRITING = re.compile(r"\b(screens?|phone|contracts?|documents?|pages?|sign
 
 
 def judge_panel(chars: dict, i: int, cut: dict, pan: dict, want_night: bool, want_day: bool,
-                props: dict | None = None) -> list[str]:
+                props: dict | None = None, crowd: bool = False) -> list[str]:
     """Problems with cut `i`, from the vision model's blind description `pan` of its middle frame. A cut that holds a
     prop with printed text (a business card, a contract, a phone screen) is not judged on text: the model reads the
     prop's text as a caption however the question is put (E03's business card, three takes)."""
@@ -98,8 +98,10 @@ def judge_panel(chars: dict, i: int, cut: dict, pan: dict, want_night: bool, wan
     if cut["type"] != "ECU" and subj and pan.get("people") == 0:   # an ECU may be hands or a prop
         out.append(f"cut {i}: nobody in the shot, should show {', '.join(chars[c]['name'] for c in subj)}")
     expected = len(subj) + (1 if cut.get("over") else 0)
-    if cut["type"] not in ("WS", "ECU") and not cut.get("extras") and isinstance(pan.get("people"), int) \
-            and pan["people"] > expected + 2:   # waimai2 E02 K6: six strangers stood behind a two-person shot
+    # strangers: in a private place (no `crowd` on the location) anyone beyond the written people (a wide shot may miss
+    # by one); in a public place only a crowd in a close or medium shot. 21% of panels had them, none was flagged.
+    slack = None if cut.get("extras") or cut["type"] == "ECU" else (2 if crowd else 0) if cut["type"] != "WS" else (None if crowd else 1)
+    if slack is not None and isinstance(pan.get("people"), int) and pan["people"] > expected + slack:
         out.append(f"cut {i}: {pan['people']} people in the shot, written for {expected} (add `extras` if they belong)")
     if cut["type"] in ("CU", "MCU", "ECU", "VO") and len(subj) == 1:
         sex = qc.written_sex(chars[subj[0]])
@@ -130,17 +132,25 @@ def check(p: Project, ep: str, clip: dict, video: Path) -> dict:
             times = sample_times(clip, media.probe(video)["duration"], media.shot_cuts(video))
             img = strip(p, ep, video, times)
             n = len(times)
-            ans = qc.ask(p, f"clipqc/{ep}_{video.stem}", img, STRIP_PROMPT.format(n=n),
-                         model=c.get("clip_vlm_model"), mmproj=c.get("clip_vlm_mmproj"), handler=c.get("clip_vlm_chat_handler"))
+            vlm = dict(model=c.get("clip_vlm_model"), mmproj=c.get("clip_vlm_mmproj"), handler=c.get("clip_vlm_chat_handler"))
+            ans = qc.ask(p, f"clipqc/{ep}_{video.stem}", img, STRIP_PROMPT.format(n=n), **vlm)
             panels = ans.get("panels") or []
+            if len(panels) != n:   # the model sometimes answers for one panel of five: ask again, three at a time
+                panels = []
+                for j in range(0, n, 3):
+                    part = strip(p, ep, video, times[j:j + 3], suffix=f"_p{j}")
+                    got = qc.ask(p, f"clipqc/{ep}_{video.stem}_p{j}", part, STRIP_PROMPT.format(n=len(times[j:j + 3])), **vlm)
+                    panels += (got.get("panels") or [])[:len(times[j:j + 3])] + [{}] * (len(times[j:j + 3]) - len(got.get("panels") or []))
+                if sum(1 for x in panels if x) < n:
+                    problems.append(f"vision check answered for {sum(1 for x in panels if x)} of {n} cuts")
             light = re.sub(r"\b(no|without|never)\s+(\w+\s+){0,2}?(daylight|day|sunlight|night|moonlight)\b", "",
-                           p.bible["locations"][clip["location"]].get("light", ""), flags=re.I)   # "no daylight anywhere"
+                           p.locs[clip["location"]].get("light", ""), flags=re.I)   # "no daylight anywhere"
             want_night = bool(NIGHT.search(light)) and not DAY.search(light)
             want_day = bool(DAY.search(light)) and not NIGHT.search(light)
             for t, pan in zip(times, panels):
                 k = cut_at(clip, t)
                 for prob in judge_panel(p.chars, k + 1, clip["cuts"][k], pan, want_night, want_day,
-                                        p.bible.get("props", {})):
+                                        p.bible.get("props", {}), bool(p.locs[clip["location"]].get("crowd"))):
                     if prob not in problems:
                         problems.append(prob)
         except Exception as e:  # noqa: BLE001 - a failed vision call must not fail the render

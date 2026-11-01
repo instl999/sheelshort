@@ -325,6 +325,9 @@ class Session:
                 self._wake()
             except Exception as e:  # noqa: BLE001
                 self.log(f"waking servers failed: {e}")
+            if self.held and not self.p.dry:
+                self.spawn(self.p.root)   # from the start: a run killed outright (power loss, kill -9) still gets its
+                                          # servers powered off once idle
 
     def _wake(self) -> None:
         servers = self.p.cfg["comfy"]["servers"]
@@ -421,6 +424,7 @@ class Fleet:
         self.api = api if api is not None else AutoDL()
         self.clock = clock
         self.pending = 0
+        self.linger_s = 0.0   # with no renders left, keep an idle server this long: QC and upscale jobs still come
         self.managed: dict[str, dict] = {}      # uuid -> {"url", "idle_since"}
         self.starting = False
         self.backoff_until = 0.0
@@ -487,7 +491,8 @@ class Fleet:
             elif m["idle_since"] is None:
                 m["idle_since"] = self.clock()
             idle_for = 0 if m["idle_since"] is None else self.clock() - m["idle_since"]
-            if not busy and (self.pending == 0 or idle_for >= 60 * float(self.c.get("idle_off_minutes", 10))):
+            done = self.pending == 0 and idle_for >= self.linger_s
+            if not busy and (done or idle_for >= 60 * float(self.c.get("idle_off_minutes", 10))):
                 if self._retire(uuid, f"idle {idle_for / 60:.0f} min" if self.pending else "no work left") and self.pending:
                     self.hold_pending = self.pending   # work is waiting but this server got none: another would sit idle too
 

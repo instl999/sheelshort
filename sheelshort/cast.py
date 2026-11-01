@@ -31,6 +31,14 @@ def outfit_prompt(ch: dict) -> str:
             f"only the clothing to: {ch['costume']}. Photorealistic, no text, no watermark.")
 
 
+def relight_prompt(loc: dict) -> str:
+    """The same place under another light (a location's `lights`): the editor keeps the room, the camera and every
+    object, so a night scene is the same room as the day scene."""
+    return ("Keep exactly the same place as image 1: the same camera position and framing, the same architecture, "
+            "furniture, objects, materials and layout, nothing added or removed, still empty of people. Change only the "
+            f"lighting and time of day to: {loc['light'].rstrip('.')}. Photorealistic cinematic film still, no text, no watermark.")
+
+
 def age_hint(problems: list[str], ch: dict) -> str:
     """A sentence that pushes the next attempt toward the written age when the last one read older or younger."""
     for pr in problems:
@@ -85,8 +93,9 @@ def images(p: Project) -> None:
             jobs.append(lambda pr=pr, v=v, key=key: p.run_job(key, lambda cl: flows.t2i(
                 p.wf("t2i"), prop_prompt(v), *ic["prop_size"], p.seed(key), f"sheelshort/prop_{pr}"),
                 p.d("assets"), f"prop_{pr}", ("images",), 900))
+    lit = {x for x in locs if p.locs.get(x, {}).get("base")}   # a location under another light: relit from its plates
     for loc, v in b["locations"].items():
-        if loc in locs and not p.asset(f"loc_{loc}").exists():
+        if (loc in locs or loc in {p.locs[x]["base"] for x in lit}) and not p.asset(f"loc_{loc}").exists():
             key = f"cast/loc_{loc}"
             jobs.append(lambda loc=loc, v=v, key=key: p.run_job(key, lambda cl: flows.t2i(
                 p.wf("t2i"), plate_prompt(v, b.get("look_preset", "cinematic")), *ic["plate_size"], p.seed(key), f"sheelshort/loc_{loc}"),
@@ -94,7 +103,18 @@ def images(p: Project) -> None:
     outfits = {c for c in chars if c in p.chars and p.base(c) != c}
     jobs += [lambda c=c: character(p, c) for c in b["characters"] if c in chars | {p.base(o) for o in outfits}]
     _parallel(p, jobs)
-    _parallel(p, [lambda c=c: character(p, c) for c in sorted(outfits)])   # re-dressed from the close-ups made above
+    later = [lambda c=c: character(p, c) for c in sorted(outfits)]   # re-dressed from the close-ups made above
+    for x in sorted(lit):
+        base = p.locs[x]["base"]
+        for src in p.plates(base):   # every angle of the room, relit: the same room and furniture, another light
+            dest = p.root / "assets" / src.name.replace(f"loc_{base}", f"loc_{x}", 1)
+            dest = dest.with_suffix(".png")
+            if not dest.exists():
+                key = f"cast/{dest.stem}"
+                later.append(lambda src=src, dest=dest, key=key, x=x: p.run_job(key, lambda cl: flows.edit(
+                    p.wf("edit"), relight_prompt(p.locs[x]), [p.put(cl, src)], ic["sheet_long_side"], p.seed(key),
+                    f"sheelshort/{dest.stem}"), p.d("assets"), dest.stem, ("images",), 900))   # plates are 9:16 already: no letterbox
+    _parallel(p, later)
 
 
 def character(p: Project, c: str) -> None:
@@ -219,15 +239,61 @@ def voices(p: Project) -> None:
         key = f"cast/voice_{c}"
         jobs.append(lambda c=c, ch=ch, key=key: _designed(p, c, ch, key))
     _parallel(p, jobs)
+    for line in voice_report(p):
+        log(f"cast: {line}")
+
+
+VOICE_HZ = {"man": (75, 165), "woman": (160, 320)}   # median speaking pitch of an adult voice of that sex
+VOICE_HINT = {"man": "。这是成年男性的声音，音调低沉，绝不是女声或童声。",
+              "woman": "。这是成年女性的声音，音色清晰自然，绝不是男声。"}
+
+
+def voice_mismatch(ch: dict, median_hz: float | None) -> str:
+    """Why a designed voice does not fit the role's sex, or "" (waimai2's 29-year-old man came out at 261 Hz)."""
+    sex = qc.written_sex(ch)
+    if not sex or not median_hz:
+        return ""
+    lo, hi = VOICE_HZ[sex]
+    return "" if lo <= median_hz <= hi else f"median pitch {median_hz:.0f} Hz is outside a {sex}'s {lo}-{hi} Hz"
 
 
 def _designed(p: Project, c: str, ch: dict, key: str) -> None:
-    files = p.run_job(key, lambda cl: flows.voice_design(p.wf("voice_design"), ch["voice_sample"], ch["voice_design"],
-                                                         "Chinese" if p.cfg["project"]["language"].startswith("zh") else "English",
-                                                         f"sheelshort/voice_{c}"),
-                      p.d("voices", "raw"), c, ("audio",), 900)
-    if files:
-        _finish_voice(p, c, files[0], ch["voice_sample"], "designed")
+    """A designed voice, checked against the role's sex; a voice that misses is designed again with the sex spelled
+    out in its description (the node has no seed: the same request would bring back the same voice)."""
+    lang = "Chinese" if p.cfg["project"]["language"].startswith("zh") else "English"
+    instruct, files = ch["voice_design"], None
+    for a in range(3):
+        k = key if a == 0 else f"{key}_a{a}"
+        files = p.run_job(k, lambda cl, instruct=instruct: flows.voice_design(p.wf("voice_design"), ch["voice_sample"], instruct,
+                                                                              lang, f"sheelshort/voice_{c}"),
+                          p.d("voices", "raw"), c if a == 0 else f"{c}_a{a}", ("audio",), 900)
+        if not files:
+            return
+        why = voice_mismatch(ch, speech.profile(files[0]).get("median_hz"))
+        if not why:
+            break
+        log(f"voice {c}: {why}; designing it again")
+        instruct = ch["voice_design"].rstrip("。") + VOICE_HINT.get(qc.written_sex(ch) or "", "")
+    _finish_voice(p, c, files[0], ch["voice_sample"], "designed")
+
+
+def voice_report(p: Project) -> list[str]:
+    """Cast voices that do not fit their role or sound too alike (same sex, under a semitone apart): for the owner."""
+    import math
+    out, prof = [], {}
+    for c in speakers(p):
+        meta = p.voice(c).with_suffix(".json")
+        if meta.exists():
+            prof[c] = load_json(meta).get("median_hz")
+            why = voice_mismatch(p.chars[c], prof[c])
+            if why:
+                out.append(f"voice {c}: {why}")
+    names = sorted(c for c in prof if prof[c])
+    for i, a in enumerate(names):
+        for b in names[i + 1:]:
+            if qc.written_sex(p.chars[a]) == qc.written_sex(p.chars[b]) and abs(12 * math.log2(prof[a] / prof[b])) < 1.0:
+                out.append(f"voices {a} and {b}: {prof[a]:.0f} and {prof[b]:.0f} Hz, under a semitone apart (may sound alike)")
+    return out
 
 
 def _finish_voice(p: Project, c: str, src, transcript: str, origin: str) -> None:
