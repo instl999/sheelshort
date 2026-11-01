@@ -170,17 +170,34 @@ def words(path: Path, lang: str = "zh", size: str = "small") -> list[tuple[float
 
 
 def locate(lines: list[str], ws: list[tuple[float, float, str]]) -> list[tuple[float, float] | None]:
-    """Split the recognised words among the script lines in order, by character count; returns each line's span."""
-    out, i = [], 0
+    """Find each script line, in order, in the recognised words: the contiguous run of words that matches the line with
+    the lowest character error rate (extra or missing words at either edge count against it, so a span does not swallow
+    the end of the previous line). A line with no run below 0.8 CER is not found (None)."""
+    toks = [(a, b, chars(t)) for a, b, t in ws]
+    out, ptr = [], 0
     for ln in lines:
-        need = len(chars(ln))
-        got, start, end = 0, None, None
-        while i < len(ws) and got < need * 0.85:
-            c = len(chars(ws[i][2]))
-            if c:
-                start = ws[i][0] if start is None else start
-                end = ws[i][1]
-                got += c
-            i += 1
-        out.append((start, end) if start is not None else None)
+        want = chars(ln)
+        if not want:
+            out.append(None)
+            continue
+        best = None   # (cer, i, j)
+        for i in range(ptr, len(toks)):
+            if not toks[i][2]:
+                continue
+            got = ""
+            for j in range(i, len(toks)):
+                got += toks[j][2]
+                if len(got) > 1.6 * len(want) + 2:
+                    break
+                e = error_rate(want, got)
+                if best is None or e < best[0] - 1e-9:
+                    best = (e, i, j)
+            if best and best[0] == 0:
+                break
+        if best is None or best[0] > 0.8:
+            out.append(None)
+            continue
+        e, i, j = best
+        out.append((toks[i][0], toks[j][1]))
+        ptr = j + 1
     return out

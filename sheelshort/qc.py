@@ -49,12 +49,23 @@ def parse(text: str) -> dict:
     return json.loads(m.group(0))
 
 
-def ask(p: Project, key: str, image, prompt: str) -> dict:
+def ask(p: Project, key: str, image, prompt: str, model: str | None = None, mmproj: str | None = None,
+        handler: str | None = None) -> dict:
+    """One blind question about one image to the servers' vision model. The model is unloaded afterwards so the GPU
+    memory goes back to the video model."""
     v = p.cfg["qc"]
     key = f"{key}_{hashlib.sha1(image.read_bytes() + prompt.encode()).hexdigest()[:8]}"   # a new image is asked afresh
-    out = p.run_job(key, lambda cl: flows.vlm_describe(p.put(cl, image), prompt, v["vlm_model"], v["vlm_mmproj"],
-                                                       v["vlm_chat_handler"], p.seed(key), max_tokens=900),
-                    p.d("assets", "qc"), key.replace("/", "_"), ("text",), 900)
+    out, tried = None, set()
+    for _attempt in range(2):   # a server that fails the call (or leaves the pool mid-call) gets one retry elsewhere
+        out = p.run_job(key, lambda cl: flows.vlm_describe(p.put(cl, image), prompt, model or v["vlm_model"],
+                                                           mmproj or v["vlm_mmproj"], handler or v["vlm_chat_handler"],
+                                                           p.seed(key), max_tokens=900, max_size=1536, offload=True),
+                        p.d("assets", "qc"), key.replace("/", "_"), ("text",), 900, exclude=frozenset(tried))
+        if out:
+            break
+        tried.add(p.state["jobs"].get(key, {}).get("server", ""))
+        if len(set(p.cfg["comfy"]["servers"]) - tried) == 0:
+            break
     if not out:
         raise RuntimeError(f"{key}: the vision check did not run")
     return parse(out[0].read_text(encoding="utf-8"))

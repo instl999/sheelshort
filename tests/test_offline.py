@@ -1,11 +1,13 @@
 """Offline tests (no GPU, no servers): python -m pytest tests/ or python tests/test_offline.py"""
 import json
+import os
 import sys
 import tempfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
+os.environ["SHEELSHORT_FLEET_OWNED"] = str(Path(tempfile.gettempdir()) / "sheelshort_test_fleet_owned.json")   # never the real one
 
 from sheelshort import assemble, h3prompt, perform, qc, speech  # noqa: E402
 from sheelshort.project import Project  # noqa: E402
@@ -17,10 +19,22 @@ def test_error_rate_ignores_punctuation_and_tags():
     assert speech.error_rate("你嫁的那个人回不来了", "你家的那个人回不来") == 0.2
 
 
+def test_locate_does_not_swallow_the_previous_line():
+    ws = [(0, .5, "我上个月"), (.5, 1, "投了五万"), (1, 2, "这才二十天"), (2, 3, "已经变成六万八了。"), (3.5, 4, "二十天"),
+          (4, 4.5, "赚一万八?"), (4.5, 5, "这是真的假的?"), (6, 7, "年化收益百分之三百,"), (7, 8, "投十万一个月就是近三万!")]
+    lines = ["我上个月投了五万……这才二十天，已经变成六万八了！", "二十天赚一万八？！这是真的假的？",
+             "年化收益……百分之三百！投十万，一个月就是近三万！"]
+    assert speech.locate(lines, ws) == [(0, 3), (3.5, 5), (6, 8)]
+    assert speech.locate(["完全不同的一句话"], ws) == [None]
+
+
 def test_wrap_two_lines_at_punctuation():
     assert assemble.wrap("我签！") == "我签！"
     w = assemble.wrap("钱是死的，股份是活的，长远看股票更划算！")
     assert w.count(r"\N") == 1 and all(len(x) <= 14 for x in w.split(r"\N")) and "，" not in w
+    assert not any(row.startswith(("！", "？")) for row in assemble.wrap("我看他就是拿了开发商的好处！黄谷村不要叛徒，滚出去！").split(r"\N"))
+    assert "我们" in assemble.wrap("高老板，您可真是我们黄谷村的大恩人啊！").replace(r"\N", "|").split("|")[0] or \
+        "我们" in assemble.wrap("高老板，您可真是我们黄谷村的大恩人啊！").replace(r"\N", "|").split("|")[1]
 
 
 def test_acted_prompt_uses_dialogue_track_and_say():
@@ -61,10 +75,11 @@ def test_layout_retimes_cuts_to_acted_lines():
 def test_test_mode_takes_opening_clips():
     p = Project(ROOT / "projects/quancun")
     p.limit_s, p.only_eps = 20, ["E01"]
-    assert [c["id"] for c in p.clips("E01")] == ["C1", "C2"]          # 9 s + 6 s; C3 would overshoot to 26 s
-    assert p.in_use()[0] == {"dahua", "xiaokang", "cunmin"} and p.master_name() == "master_20s"
+    ids = [c["id"] for c in p.clips("E01")]
+    assert ids[0] == "C1" and 15 <= sum(h3prompt.clip_len(c) for c in p.clips("E01")) <= 25
+    assert {"dahua", "xiaokang"} <= p.in_use()[0] and "gaoliang" not in p.in_use()[0] and p.master_name() == "master_20s"
     p.limit_s = None
-    assert len(p.clips("E01")) == 7
+    assert len(p.clips("E01")) == len(json.loads((ROOT / "projects/quancun/episodes/E01.json").read_text())["clips"])
 
 
 def _scratch_project(tmp, ch):
@@ -100,9 +115,36 @@ def test_qc_aligns_text_to_the_image():
     assert a["look"].startswith("a 72-year-old")
 
 
+def test_reaction_cuts():
+    scene = json.loads((ROOT / "projects/quancun/bible.json").read_text()) | json.loads((ROOT / "projects/quancun/episodes/T01.json").read_text())
+    assert h3prompt.check_rules(scene) == []                         # lines may run over the reaction cut after them
+    bad = json.loads(json.dumps(scene))
+    bad["clips"][0]["cuts"].insert(0, {"type": "RX", "subjects": ["xiaokang"], "dur": 2})
+    assert any("must follow a line" in e for e in h3prompt.check_rules(bad))
+    text = h3prompt.build(scene, scene["clips"][0], h3prompt.Refs(char_pictures={"dahua": ["a.png", "b.png"], "xiaokang": ["c.png", "d.png"]},
+                                                                  location_pictures=["loc.png"]))
+    assert "line continues off-screen over this shot" in text
+
+
+def test_name_card_goes_beside_the_face():
+    left = assemble.card_events({"name": "王大花", "role": "黄谷村村民", "start": 1, "end": 3, "face": (0.55, 0.3, 0.8, 0.45)}, 1080, 1920, "Songti SC")
+    right = assemble.card_events({"name": "王大花", "role": "黄谷村村民", "start": 1, "end": 3, "face": (0.2, 0.3, 0.45, 0.45)}, 1080, 1920, "Songti SC")
+    import re as _re
+    x = lambda ev: float(_re.search(r"\\pos\((\d+)", ev).group(1))   # noqa: E731
+    assert x(left[0]) < 540 < x(right[0])                               # face right of centre: card on the left, and back
+    assert "王\\N大\\N花" in left[0]                                  # vertical type
+
+
 def test_offscreen_mention_uses_the_name():
-    scene = json.loads((ROOT / "projects/quancun/bible.json").read_text()) | json.loads((ROOT / "projects/quancun/episodes/E03.json").read_text())
-    clip = next(c for c in scene["clips"] if c["id"] == "C7")          # mentions {gaoliang}, who is not on screen
+    scene = json.loads((ROOT / "projects/quancun/bible.json").read_text())
+    clip = {"id": "C1", "location": "restaurant_door", "soundscape": "Traffic.",
+            "summary": "{fugui} praises {gaoliang} to {xiaokang}.",            # mentions {gaoliang}, who is not on screen
+            "cuts": [{"type": "CU", "subjects": ["fugui"], "speaker": "fugui", "line": "高老板可是大恩人！", "act": "谄媚",
+                      "emotion": "joy", "delivery": "fawning", "composition": "Close-up of {fugui}.",
+                      "action": "{fugui} grins, thinking of {gaoliang}.", "camera": "Static camera.", "end": "", "dur": 3},
+                     {"type": "RX", "subjects": ["xiaokang"], "composition": "Close-up of {xiaokang}.", "action": "{xiaokang} frowns.",
+                      "camera": "Static camera.", "end": "", "dur": 2}]}
+    scene["clips"] = [clip]
     text = h3prompt.build(scene, clip, h3prompt.Refs(char_pictures={"fugui": ["a.png", "b.png"], "xiaokang": ["c.png", "d.png"]},
                                                      location_pictures=["loc.png"]))
     assert "Gao Liang" in text and "{gaoliang}" not in text
@@ -143,13 +185,15 @@ class _FakeProject:
         self.cfg["comfy"]["servers"] = ["https://a", "https://b"]
         self.cfg["fleet"].update({"dry_run": False, **fleet_cfg})
         self.lock, self._assigned = threading.Lock(), {}
-        self.busy = set()
+        self.busy, self.dead = set(), set()
 
     def client(self, url):
         p = self
 
         class C:
             def queue_info(self):
+                if url in p.dead:
+                    raise ConnectionError(url)
                 return (1, 0) if url in p.busy else (0, 0)
         return C()
 
@@ -214,6 +258,25 @@ def test_pick_waits_for_a_free_slot():
         assert got == ["https://new"]
 
 
+def test_fleet_does_not_flap_after_an_idle_power_off():
+    from sheelshort.fleet import Fleet
+    api, p, now = _FakeAutoDL(), _FakeProject(), [1000.0]
+    fl = Fleet(p, api=api, clock=lambda: now[0])
+    fl.pending = 9
+    _scaled(fl)
+    fl.pending = 8
+    fl.tick()                                     # the new server is idle from now on
+    now[0] += 11 * 60                             # still waiting, yet the new server got no work for 11 min
+    _scaled(fl)
+    assert api.calls[-1][0] == "power_off" and not fl.managed
+    now[0] += 60
+    _scaled(fl)
+    assert sum(c[0] == "create" for c in api.calls) == 1        # no new server while the backlog has not moved
+    fl.pending = 7
+    _scaled(fl)
+    assert sum(c[0] == "create" for c in api.calls) == 2        # the backlog moves: scaling may resume
+
+
 def test_fleet_dry_run_changes_nothing():
     from sheelshort.fleet import Fleet
     api = _FakeAutoDL()
@@ -222,6 +285,130 @@ def test_fleet_dry_run_changes_nothing():
     fl.pending = 20
     _scaled(fl)
     assert api.calls == [] and len(p.cfg["comfy"]["servers"]) == 2
+
+
+
+def test_fit_durations_gives_lines_room_and_never_shortens():
+    from sheelshort import h3prompt
+    scene = {"language": "zh-CN", "clips": [{"id": "C1", "cuts": [
+        {"type": "CU", "line": "这是一句需要差不多四秒钟才能说完的台词啊", "dur": 2.0},
+        {"type": "RX", "dur": 1.0},
+        {"type": "CU", "line": "好。", "dur": 2.5}]}]}
+    changes = h3prompt.fit_durations(scene)
+    cuts = scene["clips"][0]["cuts"]
+    need = h3prompt.spoken_len(cuts[0]["line"], "zh") + h3prompt.LINE_SLACK_S
+    assert len(changes) == 1 and cuts[0]["dur"] + cuts[1]["dur"] >= need and cuts[2]["dur"] == 2.5
+    assert h3prompt.fit_durations(scene) == []                   # idempotent
+    pc = h3prompt.pacing(scene)
+    assert pc["shots"] == 3 and pc["duration_s"] == round(sum(c["dur"] for c in cuts), 1)
+
+
+
+def test_voice_over_keeps_the_speaker_in_frame():
+    scene = json.loads((ROOT / "projects/quancun/bible.json").read_text())
+    clip = {"id": "C1", "location": "village_gate", "soundscape": "Wind.", "summary": "{xiaokang} reads.",
+            "cuts": [{"type": "VO", "subjects": ["xiaokang"], "speaker": "xiaokang", "line": "我发现了一个问题。", "act": "低沉",
+                      "emotion": "calm", "delivery": "tense", "composition": "Close-up of {xiaokang}.", "action": "He reads.",
+                      "end": "", "dur": 5}]}
+    scene["clips"] = [clip]
+    text = h3prompt.build(scene, clip, h3prompt.Refs(char_pictures={"xiaokang": ["c.png", "d.png"]}, location_pictures=["loc.png"]))
+    assert "off-screen" not in text and "stays in frame" in text
+
+
+def test_clipqc_flags_a_character_shot_with_nobody_in_it():
+    from sheelshort import clipqc
+    chars = {"xk": {"name": "Li Xiaokang", "role": "young man", "look": "a young man"}}
+    empty = {"people": 0, "main_person_sex": "none", "night": False}
+    assert clipqc.judge_panel(chars, 3, {"type": "VO", "subjects": ["xk"]}, empty, False, True) == \
+        ["cut 3: nobody in the shot, should show Li Xiaokang"]
+    assert clipqc.judge_panel(chars, 3, {"type": "ECU", "subjects": ["xk"]}, empty, False, True) == []   # hands or a prop
+    assert clipqc.judge_panel(chars, 1, {"type": "CU", "subjects": ["xk"]}, {"people": 1, "main_person_sex": "woman"}, False, False) == \
+        ["cut 1: shows a woman, should be Li Xiaokang"]
+
+
+
+def test_clipqc_samples_a_shot_h3_inserted():
+    from sheelshort import clipqc
+    clip = {"cuts": [{"type": "MS", "dur": 2.4}, {"type": "CU", "dur": 1.8}, {"type": "VO", "dur": 7.0}]}
+    # E02 C3 as rendered: H3 cut at 2.46, 4.17 and 7.0; 4.17-7.0 was an empty set that no planned midpoint fell in
+    times = clipqc.sample_times(clip, 11.54, [2.458, 4.167, 7.0])
+    assert len(times) == 4 and any(4.17 < t < 7.0 for t in times)
+    assert clipqc.cut_at(clip, 5.6) == 2 and clipqc.cut_at(clip, 99) == 2
+    assert len(clipqc.sample_times(clip, 11.2, [2.4, 4.2])) == 3      # cut as planned: one sample per cut
+
+
+
+def test_fleet_replaces_an_address_that_does_not_answer_as_comfyui():
+    from sheelshort.fleet import Fleet
+    api = _FakeAutoDL()
+    p = _FakeProject()
+    now = [1000.0]
+    fl = Fleet(p, api=api, clock=lambda: now[0])
+    fl.pending = 9
+    _scaled(fl)
+    wrong = fl.managed["pro-new0"]["url"]
+    p.dead.add(wrong)                            # the app's other port: answers, but not as ComfyUI
+    right = "https://pro-new0-6006.example:8443"
+    api.comfy_url = lambda uuid: right
+    fl.tick()
+    assert wrong in p.cfg["comfy"]["servers"]    # one failed probe is not enough
+    assert not any(c[0] == "power_off" for c in api.calls)                   # unreachable never counts as idle
+    now[0] += 200
+    fl.tick()
+    assert right in p.cfg["comfy"]["servers"] and wrong not in p.cfg["comfy"]["servers"]
+    assert fl.managed["pro-new0"]["url"] == right
+
+
+
+def test_tile_of_one_image():
+    import tempfile
+    from sheelshort import media
+    d = Path(tempfile.mkdtemp())
+    media._run(["ffmpeg", "-y", "-v", "error", "-f", "lavfi", "-i", "color=red:s=64x96", "-frames:v", "1", str(d / "a.jpg")])
+    out = media.tile([d / "a.jpg"], d / "t.jpg", cols=1, cell=(32, 48))
+    assert out.exists() and out.stat().st_size > 0
+
+
+
+def test_fleet_keeps_a_server_that_was_just_handed_a_job():
+    from sheelshort.fleet import Fleet
+    api = _FakeAutoDL()
+    p = _FakeProject()
+    fl = Fleet(p, api=api, clock=lambda: 1000.0)
+    fl.pending = 9
+    _scaled(fl)
+    url = fl.managed["pro-new0"]["url"]
+    fl.pending = 0
+    p._assigned[url] = 1                         # a vision check picked it after the last render finished
+    fl.tick()
+    assert url in p.cfg["comfy"]["servers"] and not any(c[0] == "power_off" for c in api.calls)
+    p._assigned[url] = 0
+    fl.tick()
+    assert url not in p.cfg["comfy"]["servers"] and ("power_off", "pro-new0") in api.calls
+    fl.stop()
+
+
+
+def test_clipqc_lamp_lit_room_is_a_night_scene():
+    from sheelshort import clipqc
+    chars = {"sd": {"name": "Li Shoudi", "role": "old man", "look": "an old man"}}
+    cu = {"type": "CU", "subjects": ["sd"]}
+    lamp = {"people": 1, "main_person_sex": "man", "light": "lamp"}
+    assert clipqc.judge_panel(chars, 1, cu, lamp, True, False) == []
+    assert clipqc.judge_panel(chars, 1, cu, {**lamp, "light": "daylight"}, True, False) == ["cut 1: daylight in a night scene"]
+    assert clipqc.judge_panel(chars, 1, cu, {**lamp, "light": "night"}, False, True) == ["cut 1: night look in a day scene"]
+
+
+
+def test_clipqc_text_on_a_prop_is_not_a_caption():
+    from sheelshort import clipqc
+    chars = {"fg": {"name": "Fugui", "role": "man", "look": "a man"}}
+    props = {"card": {"look": "a small white business card with a few lines of tiny printed characters"},
+             "cup": {"look": "a plain white cup"}}
+    pan = {"people": 1, "main_person_sex": "man", "text_or_subtitles": True}
+    assert clipqc.judge_panel(chars, 2, {"type": "CU", "subjects": ["fg"], "props": ["card"]}, pan, False, False, props) == []
+    assert clipqc.judge_panel(chars, 2, {"type": "CU", "subjects": ["fg"], "props": ["cup"]}, pan, False, False, props) == \
+        ["cut 2: on-screen text"]
 
 
 if __name__ == "__main__":

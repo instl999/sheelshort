@@ -10,7 +10,7 @@ The `sheelshort` engine then:
 
 ```
 python -m sheelshort new myshow --script script.txt   # the agent then writes bible.json + episodes/E01.json
-python -m sheelshort check myshow                     # shot grammar, line lengths, missing fields (no GPU)
+python -m sheelshort check myshow --fit               # shot grammar, line lengths, pacing, missing fields (no GPU)
 python -m sheelshort make myshow E01 --seconds 20     # fast test: only the opening ~20 s, finished
 python -m sheelshort make myshow E01                  # the whole episode -> projects/myshow/edit/E01/master.mp4
 python -m sheelshort review myshow E01                # edit/E01/review.html: masters, takes, per-cut frames

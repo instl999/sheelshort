@@ -31,6 +31,11 @@ def run(p: Project, ep: str) -> Path:
     rel = lambda f: Path(f).resolve().relative_to(p.root).as_posix() if Path(f).is_absolute() else f  # noqa: E731
     up = "../../"
     parts = [f"<h1>{html.escape(p.bible.get('title', ''))} · {ep}</h1>"]
+    if (out / "master.mp4").exists():
+        pc = media.pacing(out / "master.mp4")
+        parts.append(f"<p><b>Pacing</b>: {pc['duration_s']} s, {pc['shots']} shots, mean {pc['mean_shot_s']} s, median "
+                     f"{pc['median_shot_s']} s, {pc['over_5s']} over 5 s &nbsp;·&nbsp; reference 全村抢 001: 151 s, 73 shots, "
+                     "mean 2.07 s, median 1.84 s, 2 over 5 s</p>")
     for m in ("master.mp4", "master_acted.mp4"):
         if (out / m).exists():
             parts.append(f'<figure style="display:inline-block"><video src="{m}" controls width="300"></video><figcaption>{m}</figcaption></figure>')
@@ -42,7 +47,9 @@ def run(p: Project, ep: str) -> Path:
                  if re.fullmatch(rf"{re.escape(clip['id'])}_(h3a?_)?t\d+", f.stem)]
         for f in takes:
             sheet = contact_sheet(p, ep, clip["id"], f)
-            parts.append(f'<figure><video src="{up}{rel(f)}" controls width="240"></video><figcaption>{f.stem}</figcaption></figure>'
+            qcj = p.root / "edit" / ep / "clipqc" / f"{f.stem}.json"
+            verdict = ("QC: " + ("pass" if not load_json(qcj)["problems"] else "; ".join(load_json(qcj)["problems"]))) if qcj.exists() else ""
+            parts.append(f'<figure><video src="{up}{rel(f)}" controls width="240"></video><figcaption>{f.stem}<br><small>{html.escape(verdict)}</small></figcaption></figure>'
                          f'<img src="sheets/{sheet.name}" height="427">')
         parts.append("</div><table><tr><th>line</th><th>chosen</th><th>motion</th><th>pitch×</th><th>CER</th><th>takes</th></tr>")
         for key, c in choice.items():

@@ -13,7 +13,9 @@
       "costume": "a plain light-blue cotton shirt with sleeves rolled to the elbows, dark-grey work trousers, worn black canvas shoes",
       "voice_en": "in a clear young male voice",
       "voice_design": "二十四岁左右的年轻男性，音色清亮干净，中等音高，普通话标准带一点北方口音，语速中等。",
-      "voice_sample": "我从小在黄谷村长大，村口这条路，我闭着眼睛都能走回家。"
+      "voice_sample": "我从小在黄谷村长大，村口这条路，我闭着眼睛都能走回家。",
+      "name_zh": "李小康",
+      "card": "黄谷村大学生"
     },
     "dahua": {
       "name": "Wang Dahua",
@@ -25,7 +27,9 @@
       "costume": "a bright floral red-and-pink short-sleeved blouse, loose black trousers, black cloth shoes",
       "voice_en": "in a loud, high-pitched middle-aged female voice",
       "voice_design": "五十岁左右的农村妇女，音色尖亮、嗓门大，音调偏高，普通话带北方农村口音，语速偏快。",
-      "voice_sample": "我们家那块地种了三十年玉米，一年到头也就落下这么几个钱。"
+      "voice_sample": "我们家那块地种了三十年玉米，一年到头也就落下这么几个钱。",
+      "name_zh": "王大花",
+      "card": "黄谷村村民"
     },
     "gaoliang": {
       "name": "Gao Liang",
@@ -37,7 +41,9 @@
       "costume": "a tailored charcoal-grey two-piece suit, white shirt, dark-blue tie, polished black leather shoes, a silver wristwatch",
       "voice_en": "in a smooth, mellow middle-aged male voice",
       "voice_design": "四十岁左右的成年男性，音色圆润醇厚，中低音，普通话标准，语速不紧不慢。",
-      "voice_sample": "这个项目我们已经筹备了两年，规划图、合同、资金都已经准备好了。"
+      "voice_sample": "这个项目我们已经筹备了两年，规划图、合同、资金都已经准备好了。",
+      "name_zh": "高亮",
+      "card": "强盛集团开发商"
     },
     "shoudi": {
       "name": "Li Shoudi",
@@ -49,7 +55,9 @@
       "costume": "a faded olive-green work jacket over a white undershirt, baggy dark trousers, muddy cloth shoes",
       "voice_en": "in a hoarse, low old man's voice",
       "voice_design": "五十多岁的农村老汉，音色沙哑低沉，音调偏低，普通话带浓重北方乡音，语速偏慢。",
-      "voice_sample": "今年雨水足，地里的玉米长得比往年都好，再过一个月就能掰了。"
+      "voice_sample": "今年雨水足，地里的玉米长得比往年都好，再过一个月就能掰了。",
+      "name_zh": "李守地",
+      "card": "李小康父亲"
     },
     "cunmin": {
       "name": "the villager",
@@ -61,7 +69,8 @@
       "costume": "a grey sleeveless vest, khaki trousers rolled at the ankles, a worn straw hat",
       "voice_en": "in a rough, loud male voice",
       "voice_design": "四十多岁的农村汉子，音色粗犷，中低音，嗓门大，普通话带北方乡音。",
-      "voice_sample": "今天早上我去镇上卖了两筐鸡蛋，回来的时候顺路买了包烟。"
+      "voice_sample": "今天早上我去镇上卖了两筐鸡蛋，回来的时候顺路买了包烟。",
+      "name_zh": "村民"
     },
     "erdaye": {
       "name": "Second Grand-uncle",
@@ -73,7 +82,9 @@
       "costume": "a faded dark-blue Mao-style cotton jacket buttoned to the neck, black cloth trousers, black cloth shoes, a worn wooden walking cane",
       "voice_en": "in a slow, frail old man's voice",
       "voice_design": "七十多岁的农村老人，音色苍老、略带沙哑，音调偏低，北方乡音浓重，语速很慢。",
-      "voice_sample": "我在这村里活了七十多年，什么样的年景都见过，地里的事我心里有数。"
+      "voice_sample": "我在这村里活了七十多年，什么样的年景都见过，地里的事我心里有数。",
+      "name_zh": "二大爷",
+      "card": "村里长辈"
     },
     "fugui": {
       "name": "Village Chief Fugui",
@@ -85,7 +96,36 @@
       "costume": "a plain brown zip-up jacket over a grey shirt, dark trousers, black leather shoes",
       "voice_en": "in a slightly nasal middle-aged male voice",
       "voice_design": "五十岁左右的农村干部，音色略带鼻音，中音，普通话带北方口音，语速中等。",
-      "voice_sample": "乡亲们都放心，咱们村的事情，我这个当村长的肯定一碗水端平。"
+      "voice_sample": "乡亲们都放心，咱们村的事情，我这个当村长的肯定一碗水端平。",
+      "name_zh": "富贵",
+      "card": "黄谷村村长"
+    },
+    "cunfu": {
+      "name": "the village woman",
+      "name_zh": "村妇",
+      "role": "middle-aged village woman",
+      "look": "a 35-year-old Chinese village woman with a long thin face, high cheekbones, sharp eyes, a mole at the outer corner of her right eye, black hair pulled back in a low bun with a few loose strands, wearing a faded blue checked blouse with rolled sleeves and grey trousers.",
+      "keep": "mole at the outer corner of the right eye, black hair in a low bun, faded blue checked blouse",
+      "face_detail": "a long thin face, high cheekbones, a mole at the outer corner of her right eye and sun-weathered skin.",
+      "hair": "black hair pulled back in a low bun with a few loose strands",
+      "costume": "a faded blue checked blouse with rolled sleeves, grey trousers, black cloth shoes",
+      "voice_en": "in a sharp, quick middle-aged female voice",
+      "voice_design": "四十多岁的农村妇女，音色尖细、语速偏快，中高音，普通话带北方乡音。",
+      "voice_sample": "今年我家的玉米收得不错，卖了钱准备把屋顶的瓦全换一遍。"
+    },
+    "suicong": {
+      "name": "Gao Liang's aide",
+      "name_zh": "随从",
+      "card": "高亮的助理",
+      "role": "young man in a suit",
+      "look": "a 30-year-old Chinese man with a lean angular face, a short crew cut, thin rimless glasses and a thin moustache, wearing a slim black suit with a white shirt and no tie, a black earpiece cord over his left ear.",
+      "keep": "short crew cut, thin rimless glasses, thin moustache, slim black suit with white shirt and no tie",
+      "face_detail": "a lean angular face, thin rimless glasses and a thin moustache.",
+      "hair": "a short black crew cut",
+      "costume": "a slim black suit, white shirt with no tie, black leather shoes",
+      "voice_en": "in a smooth, oily young male voice",
+      "voice_design": "三十岁左右的男性助理，声音圆滑，语调客气又带点油腔滑调，中音，普通话标准，语速中等偏快。",
+      "voice_sample": "老板的意思您明白，事情办好了，好处自然少不了您的。"
     }
   },
   "locations": {
@@ -116,6 +156,13 @@
       "keep": "the huge gnarled locust tree with the stone ring at its base, the packed-dirt square, the brick houses and cornfields beyond",
       "time": "day",
       "light": "bright late-morning sunlight dappled through the tree's leaves, soft shadows"
+    },
+    "shop_street": {
+      "name": "busy city shopping street",
+      "time": "day",
+      "look": "a busy pedestrian shopping street in a Chinese city, rows of small shopfronts with glass doors, one empty vacant shop unit with bare walls and a plain red paper notice taped to its glass door, passers-by and shopping bags, plane trees along the pavement.",
+      "keep": "the empty shop unit with bare walls and the red paper notice on its glass door, the row of shopfronts, the plane trees",
+      "light": "bright clear midday daylight in the city"
     }
   },
   "props": {
@@ -133,6 +180,11 @@
       "name": "smartphone with a finance app",
       "look": "a large black smartphone held up screen-forward, showing a glossy finance app with a big green rising line chart and a gold coin icon, no legible text.",
       "keep": "the large black smartphone with the green rising chart on screen"
+    },
+    "card": {
+      "name": "business card",
+      "look": "a small white business card with a thin gold border and a few lines of tiny printed characters, too small to read.",
+      "keep": "the small white card with a thin gold border"
     }
   }
 }

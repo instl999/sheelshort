@@ -13,7 +13,9 @@
       "voice_design": "二十八岁左右的成年女性，音色温暖、略偏低沉，普通话标准，语速中等偏慢，压抑着愤怒与委屈，尾音带一点颤抖。",
       "voice_sample": "我等了你整整三年，每天晚上都站在这扇窗前，看着这座城市的灯一盏一盏地熄灭。",
       "hair": "long wavy dark-brown hair falling past the shoulders with a side part on her right, worn loose",
-      "costume": "a deep-red satin slip evening gown with thin straps, ankle length, black pointed-toe high heels, small pearl stud earrings, no other jewellery"
+      "costume": "a deep-red satin slip evening gown with thin straps, ankle length, black pointed-toe high heels, small pearl stud earrings, no other jewellery",
+      "name_zh": "林夏",
+      "card": "失踪丈夫的妻子"
     },
     "luchen": {
       "name": "Lu Chen",
@@ -25,7 +27,9 @@
       "voice_design": "三十二岁左右的成年男性，音色低沉、沉稳，普通话标准，语速偏慢，克制冷静，几乎没有情绪起伏，句尾干脆利落。",
       "voice_sample": "有些事情你不需要知道，你只需要相信我。今晚跟着我走，别回头，也别出声。",
       "hair": "short black hair neatly swept back, light stubble",
-      "costume": "a black two-piece slim suit, white shirt with an open collar and no tie, black leather oxford shoes, no jewellery"
+      "costume": "a black two-piece slim suit, white shirt with an open collar and no tie, black leather oxford shoes, no jewellery",
+      "name_zh": "陆沉",
+      "card": "三年前“死去”的丈夫"
     }
   },
   "locations": {

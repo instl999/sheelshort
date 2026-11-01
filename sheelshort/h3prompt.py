@@ -15,6 +15,7 @@ House rules (from the user, apply to every generation):
 """
 from __future__ import annotations
 
+import math
 import unicodedata
 from dataclasses import dataclass, field
 
@@ -27,10 +28,13 @@ SHOT_PHRASE = {
     "ECU": "An extreme close-up",
     "OTS": "An over-the-shoulder shot",
     "VO": "A close-up",
+    "RX": "A close-up",   # reaction: the listener, while the previous cut's line continues off-screen
 }
 NO_TEXT = "No on-screen text, subtitles, captions, logos or watermarks appear at any point."
 NO_MUSIC = "None. There is no background music or score at any point; only diegetic sound is heard."
 LANG_TAG = {"zh": "Chinese", "en": "English", "ja": "Japanese", "ko": "Korean"}
+REFERENCE_MEAN_SHOT_S = 2.07   # 全村抢 001 as released: 151 s, 73 shots
+LINE_SLACK_S = 0.3             # breathing room a line needs beyond its spoken length
 
 
 def cut_len(cut: dict) -> float:
@@ -78,13 +82,24 @@ def check_rules(scene: dict) -> list[str]:
                 if t not in ("CU", "OTS", "VO"):
                     errs.append(f"{where}: dialogue must be a close-up, over-the-shoulder or voice-over shot, not {t}")
                 need = spoken_len(cut["line"], lang)
-                if need > cut_len(cut) - 0.3:
-                    errs.append(f"{where}: line needs ~{need:.1f}s but the cut is {cut_len(cut)}s; split it or lengthen the cut")
+                room = cut_len(cut) + sum(cut_len(c) for c in _reactions_after(clip["cuts"], i - 1))
+                if need > room - LINE_SLACK_S:
+                    errs.append(f"{where}: line needs ~{need:.1f}s but the cut (and its reaction shots) last {room:.1f}s; "
+                                "split it, add a reaction cut, or lengthen the cut")
             if t == "OTS":
                 if not cut.get("over"):
                     errs.append(f"{where}: over-the-shoulder shot needs 'over' (whose shoulder)")
                 elif cut.get("speaker") == cut["over"]:
                     errs.append(f"{where}: the speaker should face camera, not be the shoulder in the foreground")
+            if t == "RX":
+                if cut.get("line"):
+                    errs.append(f"{where}: a reaction cut is silent; give the line its own close-up")
+                if len(cut.get("subjects", [])) != 1:
+                    errs.append(f"{where}: a reaction cut shows exactly one listener")
+                if i == 1 or not (clip["cuts"][i - 2].get("line") or clip["cuts"][i - 2]["type"] == "RX"):
+                    errs.append(f"{where}: a reaction cut must follow a line (the line continues over it)")
+            if cut_len(cut) < 1.2:
+                errs.append(f"{where}: cuts shorter than 1.2 s read as a glitch")
             if t == "VO" and not cut.get("line"):
                 errs.append(f"{where}: voice-over shot without a line")
             if t == "MS" and cut.get("line"):
@@ -113,6 +128,41 @@ class Refs:
 
     def videos(self) -> list[str]:
         return [self.animatic] if self.animatic else []
+
+
+def _reactions_after(cuts: list[dict], idx: int) -> list[dict]:
+    """The reaction cuts that directly follow cut `idx` (0-based)."""
+    out = []
+    for c in cuts[idx + 1:]:
+        if c["type"] != "RX":
+            break
+        out.append(c)
+    return out
+
+
+def fit_durations(scene: dict) -> list[str]:
+    """Lengthen each dialogue cut whose line (with its reaction cuts) has too little room. Edits the clips in place and
+    returns what changed; never shortens a cut."""
+    lang, changes = scene.get("language", "zh-CN"), []
+    for clip in scene["clips"]:
+        for i, cut in enumerate(clip["cuts"]):
+            if not cut.get("line"):
+                continue
+            need = spoken_len(cut["line"], lang) + LINE_SLACK_S
+            room = cut_len(cut) + sum(cut_len(c) for c in _reactions_after(clip["cuts"], i))
+            if need > room:
+                old = cut_len(cut)
+                cut["dur"] = round(old + math.ceil((need - room) * 10) / 10 + 0.1, 1)
+                changes.append(f"{clip['id']} cut {i + 1}: {old:g}s -> {cut['dur']:g}s")
+    return changes
+
+
+def pacing(scene: dict) -> dict:
+    """Planned shot statistics of an episode, comparable with media.pacing() on a finished master."""
+    lens = [cut_len(c) for clip in scene["clips"] for c in clip["cuts"]]
+    total = sum(lens)
+    return {"clips": len(scene["clips"]), "shots": len(lens), "duration_s": round(total, 1),
+            "mean_shot_s": round(total / max(len(lens), 1), 2), "over_5s": sum(x > 5 for x in lens)}
 
 
 def clip_characters(clip: dict) -> list[str]:
@@ -288,7 +338,7 @@ def build(scene: dict, clip: dict, refs: Refs, cameras: dict[int, dict] | None =
             if pr not in introduced:
                 parts.append(f"{S(pr)} keeps the exact appearance of {pics(pr) if pr in pic_no else 'the reference'}: {prop_defs[pr]['keep']}.")
                 introduced.add(pr)
-        if typ in ("CU", "ECU", "VO", "OTS"):
+        if typ in ("CU", "ECU", "VO", "OTS", "RX"):
             faces = [cut["speaker"]] if typ == "OTS" and cut.get("speaker") else cut.get("subjects", [])
             for c in faces:
                 parts.append(f"Fine facial detail on {S(c)}: {chars[c]['face_detail']}")
@@ -306,10 +356,21 @@ def build(scene: dict, clip: dict, refs: Refs, cameras: dict[int, dict] | None =
             else:
                 voice = f" with the voice timbre of <Audio {aud[c]}>" if c in aud else f", {chars[c]['voice_en']}"
             said = cut.get("say") or cut["line"]   # the acted form keeps its punctuation (…… —— ！) verbatim
-            if typ == "VO":
-                parts.append(f"{S(c)} (S{sid[c]}) off-screen, as inner voice-over{voice}, {cut['delivery']}, <d>[{lang}] {said}</d> {S(c)}'s lips stay closed throughout the line.")
+            if typ == "VO" and c not in cut.get("subjects", []):   # the speaker's thoughts over someone else's shot
+                others = " and ".join(S(x) for x in cut.get("subjects", []))
+                parts.append(f"Over this shot {S(c)}'s (S{sid[c]}) inner voice-over is heard{voice}, {cut['delivery']}, "
+                             f"<d>[{lang}] {said}</d> {others} does not speak.")
+            elif typ == "VO":
+                # never "off-screen" here: H3 then leaves the speaker out of the picture (E02 C3 rendered an empty set)
+                parts.append(f"{S(c)} stays in frame, silent, lips closed, while {S(c)}'s (S{sid[c]}) inner voice-over is heard"
+                             f"{voice}, {cut['delivery']}, <d>[{lang}] {said}</d> {S(c)}'s lips stay closed throughout the line.")
             else:
                 parts.append(f"{S(c)} (S{sid[c]}){voice}, {cut['delivery']}, <d>[{lang}] {said}</d>")
+        if typ == "RX":
+            prev = next((c for c in reversed(clip["cuts"][:i - 1]) if c.get("line")), None)
+            if prev:
+                parts.append(f"{S(prev['speaker'])}'s line continues off-screen over this shot without a break; "
+                             f"{' and '.join(S(c) for c in cut['subjects'])} listens and reacts silently, lips closed.")
         if cut.get("end"):
             parts.append(f(cut["end"]))
         body.append(" ".join(p.strip() for p in parts if p))
