@@ -1154,6 +1154,17 @@ def test_an_outfit_close_up_is_a_head_crop_of_the_approved_close_up():
         assert (info["width"], info["height"]) == (768, 1024)
 
 
+def test_a_look_up_in_a_close_up_never_becomes_an_unscripted_eye_roll():
+    from sheelshort import clipqc
+    cu = {"type": "CU", "subjects": ["a"], "action": "{a} looks up at the canopy, calm and unreadable."}
+    assert "whole head tilts back" in h3prompt.look_up_note(cu)
+    assert h3prompt.look_up_note(dict(cu, type="WS")) == ""                         # a wide shot shows the whole body
+    assert h3prompt.look_up_note(dict(cu, act="翻了个白眼")) == ""                   # an eye-roll the script wants
+    chars = {"a": {"name": "A", "role": "woman", "look": "a woman"}}
+    assert any("eye-roll" in x for x in clipqc.judge_panel(chars, 2, cu, {"people": 1, "eye_roll": True}, False, False))
+    assert not clipqc.judge_panel(chars, 2, dict(cu, delivery="a scornful eye roll"), {"people": 1, "eye_roll": True}, False, False)
+
+
 if __name__ == "__main__":
     for name, fn in list(globals().items()):
         if name.startswith("test_"):

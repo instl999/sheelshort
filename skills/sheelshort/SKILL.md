@@ -98,7 +98,9 @@ open mid-confrontation (a slap, an accusation, a face mid-reaction) also works. 
 Something changes every 8–10 s. The episode ends on a new complication at peak emotion (cliffhanger), and **its last
 shot is a face**, a close-up or reaction held 2–3 s and cut hard, never a wide shot or a fade. The next episode
 resolves it in its first beat. Show emotion
-through observable cues (eyes drop, jaw tightens, a delayed answer), not emotion labels.
+through observable cues (eyes drop, jaw tightens, a delayed answer), not emotion labels. In a close-up never write
+"looks up at": the model moves the eyes alone and it reads as an eye-roll (contempt). Write "tilts her head back to
+look up at..." (the engine adds this too, and clip QC re-takes an eye-roll the script does not ask for).
 
 **Time of day, crowds.** Write one location per place and give it `lights` for its other times of day; a clip picks
 one with `"time": "night"` (never a second location for the same room by night). Mark public places `crowd: true`;
