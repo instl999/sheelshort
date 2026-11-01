@@ -9,7 +9,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 os.environ["SHEELSHORT_FLEET_OWNED"] = str(Path(tempfile.gettempdir()) / "sheelshort_test_fleet_owned.json")   # never the real one
 
-from sheelshort import assemble, h3prompt, perform, qc, speech  # noqa: E402
+from sheelshort import assemble, h3prompt, media, perform, qc, speech  # noqa: E402
 from sheelshort.project import Project  # noqa: E402
 
 
@@ -109,14 +109,31 @@ def test_qc_aligns_text_to_the_image():
             "looks about 72, written as 56", "glasses missing"],
             {"face_marks": [{"kind": "scar", "on": "nose bridge", "image_side": "center"}]})
         a = json.loads((p.root / "bible.json").read_text())["characters"]["a"]
-    assert left == ["glasses missing"]                                  # text cannot fix a missing object
+    assert left == ["looks about 72, written as 56", "glasses missing"]  # text cannot fix an object; the age is the script's
     assert "mole on his left cheekbone" in a["look"] and "left cheekbone" in a["keep"]
     assert "scar on the nose bridge" in a["keep"] and "eyebrow" not in a["face_detail"]
-    assert a["look"].startswith("a 72-year-old")
+    assert a["look"].startswith("a 56-year-old")
+    from sheelshort import cast
+    assert "exactly 56 years old" in cast.age_hint(left, a) and "no deep wrinkles" in cast.age_hint(left, a)
+
+
+def _talk_clip(cid="C1", loc="village_gate"):
+    def cut(t, who, line=None, **kw):
+        c = {"type": t, "subjects": [who], "composition": "", "action": "", "camera": "Static camera.", "dur": 2.4, **kw}
+        if line:
+            c |= {"speaker": who, "line": line, "act": "冷笑", "emotion": "cold", "delivery": "cold"}
+        return c
+    return {"id": cid, "location": loc, "soundscape": "Wind.", "summary": "{dahua} and {xiaokang} argue.", "cuts": [
+        cut("CU", "dahua", "你是不是脑子有病！"),
+        cut("RX", "xiaokang"),
+        cut("OTS", "xiaokang", "这合同有问题。", over="dahua"),
+        cut("CU", "dahua", "就你懂？"),
+    ]}
 
 
 def test_reaction_cuts():
-    scene = json.loads((ROOT / "projects/quancun/bible.json").read_text()) | json.loads((ROOT / "projects/quancun/episodes/T01.json").read_text())
+    scene = json.loads((ROOT / "projects/quancun/bible.json").read_text())
+    scene["clips"] = [_talk_clip()]
     assert h3prompt.check_rules(scene) == []                         # lines may run over the reaction cut after them
     bad = json.loads(json.dumps(scene))
     bad["clips"][0]["cuts"].insert(0, {"type": "RX", "subjects": ["xiaokang"], "dur": 2})
@@ -124,6 +141,66 @@ def test_reaction_cuts():
     text = h3prompt.build(scene, scene["clips"][0], h3prompt.Refs(char_pictures={"dahua": ["a.png", "b.png"], "xiaokang": ["c.png", "d.png"]},
                                                                   location_pictures=["loc.png"]))
     assert "line continues off-screen over this shot" in text
+
+
+def test_jump_cuts_are_refused():
+    scene = json.loads((ROOT / "projects/quancun/bible.json").read_text())
+    clip = _talk_clip()
+    clip["cuts"][2] = {**clip["cuts"][2], "type": "CU"}                # RX on Xiaokang, then his close-up: a jump
+    del clip["cuts"][2]["over"]
+    scene["clips"] = [clip]
+    assert any("C1 cut 3: jump cut" in e for e in h3prompt.check_rules(scene))
+    a, b = _talk_clip("C1"), _talk_clip("C2")                         # C1 ends and C2 opens on Dahua's close-up
+    scene["clips"] = [a, b]
+    assert any("C2 cut 1: jump cut" in e for e in h3prompt.check_rules(scene))
+    b["location"] = "lijia_home"                                      # a new scene: not a jump
+    assert not any("jump" in e for e in h3prompt.check_rules(scene))
+    scene["clips"] = [clip]                                           # --fit turns the repeated close-up into the reverse angle
+    assert h3prompt.fix_jump_cuts(scene) == ["C1 cut 3: close-up -> over-the-shoulder past dahua"]
+    assert clip["cuts"][2]["type"] == "OTS" and clip["cuts"][2]["over"] == "dahua"
+    assert not any("jump" in e for e in h3prompt.check_rules(scene))
+
+
+def test_singles_keep_screen_direction_and_look_off_axis():
+    scene = json.loads((ROOT / "projects/quancun/bible.json").read_text())
+    clip = _talk_clip()
+    scene["clips"] = [clip]
+    sides = h3prompt.blocking(scene, clip)
+    assert {sides["dahua"], sides["xiaokang"]} == {"left", "right"}
+    text = h3prompt.build(scene, clip, h3prompt.Refs(char_pictures={"dahua": ["a.png", "b.png"], "xiaokang": ["c.png", "d.png"]},
+                                                     location_pictures=["loc.png"]))
+    shots = text.split("detailed_description:")[1].split("[Shot ")[1:]
+    look = {"left": "right", "right": "left"}
+    assert f"toward the {look[sides['dahua']]} of frame" in shots[0] and "never looks into the lens" in shots[0]
+    assert f"toward the {look[sides['xiaokang']]} of frame" in shots[1]     # the reaction looks back across the line
+    assert f"at the {sides['dahua']} edge of frame" in shots[2]           # the shoulder sits on its own side
+    assert "85mm" in shots[0] and h3prompt.CINEMA in text
+    scene["blocking"] = {"village_gate": {"dahua": "right", "xiaokang": "left"}}
+    assert h3prompt.blocking(scene, clip) == {"dahua": "right", "xiaokang": "left"}
+
+
+def test_craft_notes_flag_flat_light_and_a_static_camera():
+    scene = json.loads((ROOT / "projects/quancun/bible.json").read_text())
+    scene["clips"] = [_talk_clip()]
+    scene["locations"]["village_gate"]["light"] = "bright natural midday sunlight, soft shadows"
+    notes = " | ".join(h3prompt.craft_notes(scene))
+    assert "flat light" in notes and "static camera" in notes and "close-ups" in notes
+    scene["locations"]["village_gate"]["light"] = "low golden sun behind the crowd, warm rim light, long shadows"
+    for c in scene["clips"][0]["cuts"]:
+        c["camera"] = "Slow push in."
+    assert not any("flat light" in n or "static" in n for n in h3prompt.craft_notes(scene))
+
+
+def test_edge_trims_drop_flash_shots_but_never_a_line():
+    real = media.shot_cuts
+    try:
+        media.shot_cuts = lambda v: [0.3, 4.0, 11.8]
+        assert assemble.edge_trims(Path("x.mp4"), 12.2, [{"start": 0.5, "end": 11.0}]) == (0.3, 11.8)
+        assert assemble.edge_trims(Path("x.mp4"), 12.2, [{"start": 0.1, "end": 12.0}]) == (0.0, 12.2)
+        media.shot_cuts = lambda v: [4.0]
+        assert assemble.edge_trims(Path("x.mp4"), 12.2, []) == (0.0, 12.2)
+    finally:
+        media.shot_cuts = real
 
 
 def test_name_card_goes_beside_the_face():
@@ -164,11 +241,18 @@ class _FakeAutoDL:
         self.list.append({"uuid": uuid, "name": name, "status": "running", "region_name": "北京B区"})
         return uuid
 
+    def _set(self, uuid, status):
+        for i in self.list:
+            if i["uuid"] == uuid:
+                i["status"] = status
+
     def power_on(self, uuid):
         self.calls.append(("power_on", uuid))
+        self._set(uuid, "running")
 
     def power_off(self, uuid):
         self.calls.append(("power_off", uuid))
+        self._set(uuid, "shutdown")
 
     def wait_status(self, uuid, want, timeout_s=0):
         return 0.0
@@ -186,6 +270,7 @@ class _FakeProject:
         self.cfg["fleet"].update({"dry_run": False, **fleet_cfg})
         self.lock, self._assigned = threading.Lock(), {}
         self.busy, self.dead = set(), set()
+        self.root, self.dry = Path("/nonexistent"), False
 
     def client(self, url):
         p = self
@@ -247,7 +332,7 @@ def test_pick_waits_for_a_free_slot():
     with tempfile.TemporaryDirectory() as tmp:
         p = _scratch_project(tmp, {})
         p.cfg["comfy"]["servers"] = ["https://a"]
-        p.client = lambda url: type("C", (), {"queue_info": lambda self: (0, 0), "base_url": url})()
+        p.client = lambda url: type("C", (), {"queue_info": lambda self, quick=False: (0, 0), "base_url": url})()
         p.pick(), p.pick()                                   # the server's 2 slots are taken
         got = []
         t = threading.Thread(target=lambda: got.append(p.pick().base_url), daemon=True)
@@ -274,7 +359,7 @@ def test_fleet_does_not_flap_after_an_idle_power_off():
     assert sum(c[0] == "create" for c in api.calls) == 1        # no new server while the backlog has not moved
     fl.pending = 7
     _scaled(fl)
-    assert sum(c[0] == "create" for c in api.calls) == 2        # the backlog moves: scaling may resume
+    assert api.calls[-1] == ("power_on", "pro-new0")            # the backlog moves: scaling resumes, reusing the stopped one
 
 
 def test_fleet_dry_run_changes_nothing():
@@ -409,6 +494,462 @@ def test_clipqc_text_on_a_prop_is_not_a_caption():
     assert clipqc.judge_panel(chars, 2, {"type": "CU", "subjects": ["fg"], "props": ["card"]}, pan, False, False, props) == []
     assert clipqc.judge_panel(chars, 2, {"type": "CU", "subjects": ["fg"], "props": ["cup"]}, pan, False, False, props) == \
         ["cut 2: on-screen text"]
+
+
+def _core_fleet():
+    from sheelshort import fleet
+    fleet.OWNED.unlink(missing_ok=True)
+    api = _FakeAutoDL([{"uuid": "pro-a", "name": "", "status": "shutdown", "region_name": "北京B区"},
+                       {"uuid": "pro-b", "name": "", "status": "shutdown", "region_name": "北京B区"},
+                       {"uuid": "pro-x", "name": "sheelshort-bj-1", "status": "shutdown", "region_name": "北京B区"},
+                       {"uuid": "pro-mine", "name": "other", "status": "running", "region_name": "北京B区"}])
+    p = _FakeProject(core=["pro-a", "pro-b"])
+    p.cfg["comfy"]["servers"] = []
+    return fleet, api, p
+
+
+def test_core_servers_start_on_the_first_job_and_stop_when_idle():
+    fleet, api, p = _core_fleet()
+    spawned = []
+    ses = fleet.Session(p, api=api, spawn=spawned.append)
+    assert api.calls == []                                     # nothing starts before a job needs a GPU
+    ses.ensure(); ses.ensure()
+    assert api.calls == [("power_on", "pro-a")]                # min_servers = 1: the first core server only
+    assert p.cfg["comfy"]["servers"] == ["https://pro-a.example:8443"]
+    assert fleet.holders("pro-a") == [os.getpid()]
+    assert spawned == [p.root]                                 # the reaper watches from the start (a killed run too)
+    ses.release()
+    assert spawned == [p.root, p.root] and fleet.holders("pro-a") == []
+    t0 = fleet.time.time()                                     # let_go stamped "idle since" with real time
+    left = fleet.reap_idle(api, p.cfg["fleet"], log=lambda m: None, clock=lambda: t0 + 60)
+    assert api.calls[-1] == ("power_on", "pro-a") and 500 < left <= 600     # 10 min not up yet
+    fleet.reap_idle(api, p.cfg["fleet"], log=lambda m: None, clock=lambda: t0 + 601)
+    assert api.calls[-1] == ("power_off", "pro-a")
+    assert not any(c[1] == "pro-mine" for c in api.calls)   # never an instance that is not ours
+    assert fleet.reap_idle(api, p.cfg["fleet"], log=lambda m: None) is None    # nothing left to watch
+
+
+def test_a_running_core_server_is_used_and_kept_while_another_run_holds_it():
+    fleet, api, p = _core_fleet()
+    api._set("pro-b", "running")
+    ses = fleet.Session(p, api=api, spawn=lambda root: None)
+    ses.ensure()
+    assert api.calls == [] and p.cfg["comfy"]["servers"] == ["https://pro-b.example:8443"]   # warm: no power-on
+    with fleet._registry() as d:
+        d["pro-b"]["pids"].append(os.getppid())                 # another live sheelshort run uses it too
+    ses.release()
+    fleet.reap_idle(api, p.cfg["fleet"], log=lambda m: None, clock=lambda: fleet.time.time() + 3600)
+    assert api.calls == []
+    with fleet._registry() as d:
+        d["pro-b"]["pids"] = []
+        d["pro-b"]["since"] = 0.0
+    fleet.reap_idle(api, p.cfg["fleet"], log=lambda m: None, idle=lambda url: False)   # its queue has work
+    assert api.calls == []
+    fleet.reap_idle(api, p.cfg["fleet"], log=lambda m: None, clock=lambda: fleet.time.time() + 601)
+    assert api.calls == [("power_off", "pro-b")]
+
+
+def test_fleet_powers_on_core_servers_before_fleet_ones():
+    from sheelshort.fleet import Fleet
+    fleet, api, p = _core_fleet()
+    fleet.Session(p, api=api, spawn=lambda root: None).ensure()   # pro-a, as the command's first server
+    fl = Fleet(p, api=api, clock=lambda: 1000.0)
+    fl.pending = 30
+    _scaled(fl)
+    assert api.calls == [("power_on", "pro-a"), ("power_on", "pro-b")]
+    fl.stop()
+    assert api.calls[-1] == ("power_off", "pro-b") and p.cfg["comfy"]["servers"] == ["https://pro-a.example:8443"]
+
+
+def test_eta_learns_job_times_and_chains_jobs_on_a_server():
+    import time
+    from sheelshort import eta
+    with tempfile.TemporaryDirectory() as tmp:
+        t = eta.Timing(Path(tmp) / "times.json")
+        assert t.expected("render/E01/C1_h3_t1", 10) == 300          # default: 30 s per second of video
+        t.record("render/E01/C1_h3_t1", 200, 10)                     # measured: 20 s per second
+        assert eta.Timing(Path(tmp) / "times.json").expected("render/E02/C4_h3_t1", 12) == 240   # remembered
+        p = _scratch_project(tmp, {})
+        p.timing = t
+        now = time.time()
+        p.state["jobs"]["upscale/E01/a"] = {"status": "queued", "server": "https://s1", "eta": now + 100}
+        p._touched.add("upscale/E01/a")
+        assert abs(p._eta("upscale/E01/b", "https://s1", 1) - (now + 125)) < 2      # waits for the job ahead on s1
+        assert abs(p._eta("upscale/E01/c", "https://s2", 1) - (now + 25)) < 2       # s2 is free
+        p.cfg["comfy"]["servers"] = ["https://s1", "https://s2"]
+        pr = eta.Progress(p, "upscale", [("upscale/E01/a", 1), ("upscale/E01/x", 1), ("upscale/E01/y", 1)])
+        assert abs(pr.eta() - (now + 125)) < 2                       # a ends at +100, then x and y share 2 servers
+        pr.finish("upscale/E01/a")
+        info = json.loads((p.root / "progress.json").read_text())
+        assert info["phases"]["upscale"]["done"] == 1 and info["phases"]["upscale"]["total"] == 3
+    assert eta.exec_seconds({"status": {"messages": [["execution_start", {"timestamp": 1000}],
+                                                     ["execution_success", {"timestamp": 13500}]]}}) == 12.5
+    assert eta.span(40) == "40 s" and eta.span(600) == "10 min"
+
+
+def test_a_lone_speaker_jump_cut_moves_the_camera_around_them():
+    scene = json.loads((ROOT / "projects/quancun/bible.json").read_text())
+    phone = _talk_clip()
+    phone["cuts"] = [phone["cuts"][0], json.loads(json.dumps(phone["cuts"][0]))]   # dahua alone on the phone, twice
+    phone["cuts"][1]["line"] = "你听我说。"
+    scene["clips"] = [phone]
+    assert any("jump cut" in e for e in h3prompt.check_rules(scene))
+    assert h3prompt.fix_jump_cuts(scene) == ["C1 cut 2: same framing again -> profile angle"]
+    assert not any("jump cut" in e for e in h3prompt.check_rules(scene))
+    text = h3prompt.build(scene, phone, h3prompt.Refs(char_pictures={"dahua": ["a.png", "b.png"]}, location_pictures=["loc.png"]))
+    assert "in profile from the side" in text
+
+
+def test_a_long_run_of_faces_gets_a_medium_shot():
+    scene = json.loads((ROOT / "projects/quancun/bible.json").read_text())
+    scene["clips"] = [_talk_clip(f"C{n}") for n in range(1, 5)]       # 4 x 9.6 s of close-ups at one place
+    for n, cl in enumerate(scene["clips"]):                            # alternate who opens, so no jump cuts
+        if n % 2:
+            cl["cuts"][0]["subjects"] = ["xiaokang"]; cl["cuts"][0]["speaker"] = "xiaokang"
+            cl["cuts"][1]["subjects"] = ["dahua"]
+            cl["cuts"][3]["subjects"] = ["xiaokang"]; cl["cuts"][3]["speaker"] = "xiaokang"
+    for cl in scene["clips"]:
+        cl["cuts"][0]["line"] = "好。"                                   # short enough not to need its reaction cut
+    assert h3prompt.close_runs(scene)[0][1:] == (0, 15, 38.4)
+    assert any("38 s of close-ups" in n for n in h3prompt.craft_notes(scene))
+    changes = h3prompt.fix_close_runs(scene)
+    assert changes and all("medium shot" in c for c in changes)
+    assert h3prompt.close_runs(scene) == [] and h3prompt.check_rules(scene) == []
+
+
+def test_clipqc_does_not_read_a_phone_screen_insert_as_a_caption():
+    from sheelshort import clipqc
+    chars = {"xk": {"name": "Li Xiaokang", "role": "man", "look": "a man"}}
+    pan = {"people": 0, "main_person_sex": "none", "text_or_subtitles": True}
+    ecu = {"type": "ECU", "subjects": ["xk"], "composition": "Extreme close-up of the phone screen in {xk}'s hand."}
+    assert clipqc.judge_panel(chars, 3, ecu, pan, False, False) == []
+    assert clipqc.judge_panel(chars, 3, {**ecu, "type": "CU", "composition": "Close-up of {xk} on the phone."},
+                              {**pan, "people": 1, "main_person_sex": "man"}, False, False) == ["cut 3: on-screen text"]
+
+
+def test_reference_structure_notes_length_openings_and_endings():
+    scene = json.loads((ROOT / "projects/quancun/bible.json").read_text())
+    clips = []
+    for n in range(12):                                                   # 12 x 9.6 s = 115 s, all close shots
+        cl = _talk_clip(f"C{n + 1}", "village_gate" if n < 6 else "village_tree")
+        if n % 2:
+            for c in cl["cuts"]:
+                c["subjects"] = ["xiaokang" if c["subjects"] == ["dahua"] else "dahua"]
+                if c.get("speaker"):
+                    c["speaker"] = c["subjects"][0]
+                if c.get("over"):
+                    c["over"] = "xiaokang" if c["over"] == "dahua" else "dahua"
+        clips.append(cl)
+    scene["clips"] = clips
+    notes = " | ".join(h3prompt.craft_notes(scene))
+    assert "runs 115 s" in notes and "open without a wide or medium shot of the place: C7 (village_tree)." in notes
+    assert "C1 (" not in notes                                                # the episode's own opening may be a cold open
+    assert "last shot is" not in notes                                        # a 2.4 s close-up is a good last shot
+    scene["clips"][-1]["cuts"][-1] = {"type": "WS", "subjects": [], "composition": "", "action": "", "camera": "", "dur": 3}
+    assert "last shot is WS" in " | ".join(h3prompt.craft_notes(scene))
+
+
+def test_medium_close_up_carries_a_line_and_look_presets_change_the_prompt():
+    scene = json.loads((ROOT / "projects/quancun/bible.json").read_text())
+    clip = _talk_clip()
+    clip["cuts"][0]["type"] = "MCU"
+    scene["clips"] = [clip]
+    assert h3prompt.check_rules(scene) == []
+    refs = h3prompt.Refs(char_pictures={"dahua": ["a.png", "b.png"], "xiaokang": ["c.png", "d.png"]}, location_pictures=["l.png"])
+    text = h3prompt.build(scene, clip, refs)
+    assert "medium close-up from mid-chest up of <Subject 1> on a 65mm lens" in text and "high-end streaming drama" in text
+    scene["look_preset"] = "bright"
+    assert "bright, polished streaming comedy" in h3prompt.build(scene, clip, refs)
+    scene["look_preset"] = "noir"
+    assert any("look_preset" in e for e in h3prompt.check_rules(scene))
+    from sheelshort import cast
+    assert "high-key" in cast.plate_prompt({"look": "a kitchen.", "light": "bright window light"}, "bright")
+
+
+def test_location_card_and_grade_follow_the_bible():
+    from sheelshort import assemble
+    ev = assemble.card_events({"kind": "place", "name": "秦州府衙", "start": 0.1, "end": 2.6}, 1080, 1920, "Songti SC")
+    assert len(ev) == 1 and r"\an7" in ev[0] and "秦\\N州\\N府\\N衙" in ev[0]
+    with tempfile.TemporaryDirectory() as tmp:
+        p = _scratch_project(tmp, {})
+        p.cfg["edit"]["grade"] = "auto"
+        assert "vignette=angle=PI/7" in assemble.grade(p)                  # cinematic by default
+        p.bible["look_preset"] = "bright"
+        assert assemble.grade(p) == assemble.GRADES["bright"] and "vignette" not in assemble.grade(p)
+        p.cfg["edit"]["grade"] = "none"
+        assert assemble.grade(p) == ""
+
+
+def test_place_card_waits_for_the_wide_shot_and_subtitles_never_overlap():
+    from sheelshort import assemble
+    with tempfile.TemporaryDirectory() as tmp:
+        p = _scratch_project(tmp, {"name": "A", "name_zh": "林薇", "card": "前女友"})
+        p.bible["locations"] = {"room": {"name_zh": "云顶餐厅"}}
+        p.cfg["render"]["dialogue"] = "h3"
+        clip = {"id": "K1", "location": "room", "cuts": [{"type": "CU", "subjects": ["a"], "dur": 1.7},
+                                                          {"type": "WS", "subjects": ["a"], "dur": 2.0}]}
+        (p.root / "episodes" / "E01.json").write_text(json.dumps({"id": "E01", "clips": [clip]}))
+        real = (assemble.chosen_take, assemble.edge_trims, assemble.heard_lines, media.face_box, media.shot_cuts, media.probe)
+        media.probe = lambda v: {"duration": 3.7}
+        assemble.chosen_take = lambda p, ep, c: Path(tmp) / "K1.mp4"
+        assemble.edge_trims = lambda v, s, l: (0.0, 3.7)
+        assemble.heard_lines = lambda p, ep, c, v: [{"text": "二叔。", "start": 0.2, "end": 0.5},
+                                                    {"text": "你来了", "start": 0.9, "end": 2.0}]
+        media.face_box = lambda v, t: None
+        media.shot_cuts = lambda v, threshold=0.3: [1.7]
+        try:
+            (Path(tmp) / "K1.mp4").write_bytes(b"")
+            plan = assemble.edl(p, "E01")
+        finally:
+            assemble.chosen_take, assemble.edge_trims, assemble.heard_lines, media.face_box, media.shot_cuts, media.probe = real
+        name = [c for c in plan["cards"] if c.get("kind") != "place"]
+        place = [c for c in plan["cards"] if c.get("kind") == "place"]
+        assert name and name[0]["start"] == 0.15                                  # the cold-open face keeps its name card
+        assert place and place[0]["start"] == 1.8                                 # the place card sits on the wide shot
+        a, b = plan["subtitles"]
+        assert a["end"] == 0.86 and b["start"] == 0.9                             # stretched toward 1 s, but no overlap
+
+
+def test_sound_effects_land_on_the_rendered_cut_at_a_level_set_by_the_dialogue():
+    import subprocess
+    import numpy as np
+    from sheelshort import sfx
+    clip = {"id": "K1", "location": "x", "cuts": [{"type": "MS", "dur": 3}, {"type": "CU", "dur": 3, "sfx": "boom"},
+                                                   {"type": "CU", "dur": 2, "sfx": [{"cue": "boom", "at": 0.5}, "nope"]}]}
+    scene = {"sfx": {"boom": {"file": "inputs/boom.wav", "sync": 0.1, "len": 0.5, "level": 0}}, "clips": [clip]}
+    errs = sfx.check(scene)
+    assert len(errs) == 1 and "'nope'" in errs[0]
+    clip["cuts"][2]["sfx"] = [{"cue": "boom", "at": 0.5}]
+    with tempfile.TemporaryDirectory() as tmp:
+        p = _scratch_project(tmp, {})
+        p.bible["sfx"] = scene["sfx"]
+        (p.root / "inputs").mkdir()
+        # the cue: 0.1 s of silence, then a 0.4 s tone (its sync point is the tone's onset)
+        subprocess.run(["ffmpeg", "-v", "error", "-f", "lavfi", "-i", "sine=f=880:d=0.4", "-af", "adelay=100,volume=-6dB",
+                        str(p.root / "inputs" / "boom.wav")], check=True)
+        dia = p.root / "dia.wav"
+        subprocess.run(["ffmpeg", "-v", "error", "-f", "lavfi", "-i", "sine=f=220:d=8", "-af", "volume=-30dB", str(dia)], check=True)
+        real = media.shot_cuts
+        media.shot_cuts = lambda video, threshold=0.3: [3.2, 6.1]          # H3 cut 0.2 s later than written
+        try:
+            ev = sfx.events_in(p, clip, 10.0, 0.0, 8.0, dia)
+        finally:
+            media.shot_cuts = real
+        assert ev == [{"cue": "boom", "start": 13.2, "dur": 3.0}, {"cue": "boom", "start": 16.5, "dur": 1.5}]
+        plan = {"sfx": [dict(ev[0], start=3.2)]}
+        ins, filt = ["-i", str(dia)], ["[0:a]aresample=48000,aformat=channel_layouts=stereo[dia]"]
+        out = sfx.mix(p, plan, ins, filt, "[dia]", [(dia, 8.0)])
+        assert out == "[withfx]"
+        raw = subprocess.run(["ffmpeg", "-v", "error", *ins, "-filter_complex", ";".join(filt), "-map", out, "-ac", "1",
+                              "-ar", "8000", "-f", "s16le", "-"], capture_output=True, check=True).stdout
+        a = np.frombuffer(raw, np.int16).astype(np.float32)
+        env = np.sqrt(np.convolve(a ** 2, np.ones(80) / 80, "same"))
+        onset = np.argmax(env > 1.25 * np.median(env)) / 8000
+        assert abs(onset - 3.2) < 0.03, onset                                   # the tone's onset, not the file's start
+        lift = 20 * np.log10(env[int(3.4 * 8000)] / np.median(env))
+        assert 1.5 < lift < 6, lift                                             # about as loud as the dialogue (level 0)
+
+
+def test_an_outfit_is_the_same_person_in_other_clothes():
+    from sheelshort import wardrobe
+    ch = {"name": "Chen Mo", "name_zh": "陈默", "role": "man", "look": "a 28-year-old man in a blue raincoat", "keep": "scar, blue raincoat",
+          "costume": "blue raincoat", "card": "外卖员",
+          "outfits": {"suit": {"look": "a 28-year-old man in a charcoal suit", "keep": "scar, charcoal suit", "costume": "charcoal suit"}}}
+    with tempfile.TemporaryDirectory() as tmp:
+        p = _scratch_project(tmp, ch)
+        p.bible["characters"]["b"] = {"name": "B", "role": "woman"}
+        ep = {"id": "E02", "outfits": {"a": "suit"}, "blocking": {"room": {"a": "left", "b": "right"}}, "clips": [
+            {"id": "K1", "location": "room", "summary": "{a} enters.", "cuts": [
+                {"type": "MCU", "subjects": ["a"], "speaker": "a", "to": "b", "line": "我回来了。", "action": "{a} smiles at {b}."}]},
+            {"id": "K2", "location": "room", "outfits": {"a": "default"}, "cuts": [{"type": "CU", "subjects": ["a"]}]}]}
+        (p.root / "episodes" / "E02.json").write_text(json.dumps(ep, ensure_ascii=False))
+        k1, k2 = p.clips("E02")
+        cut = k1["cuts"][0]
+        assert cut["subjects"] == ["a__suit"] and cut["speaker"] == "a__suit" and cut["to"] == "b"
+        assert cut["action"] == "{a__suit} smiles at {b}." and k1["summary"] == "{a__suit} enters."
+        assert k1["blocking"] == {"a__suit": "left", "b": "right"} and k2["cuts"][0]["subjects"] == ["a"]
+        suit = p.chars["a__suit"]
+        assert suit["costume"] == "charcoal suit" and suit["name_zh"] == "陈默" and "outfits" not in suit
+        assert p.voice("a__suit") == p.voice("a") and p.base("a__suit") == "a"
+        assert p.episode("E02")["clips"][0]["cuts"][0]["subjects"] == ["a"]       # the file keeps the writer's ids
+        assert p.scene("E02")["clips"][0]["cuts"][0]["subjects"] == ["a__suit"]
+        assert wardrobe.check(p.bible, ep) == []
+        ep["clips"][1]["outfits"] = {"a": "tux"}
+        assert any("no outfit 'tux'" in e for e in wardrobe.check(p.bible, ep))
+        from sheelshort import cast
+        assert "Change only the clothing to: charcoal suit" in cast.outfit_prompt(suit)
+
+
+def test_a_phone_line_is_heard_through_the_phone_and_extras_are_written_in():
+    scene = json.loads((ROOT / "projects/quancun/bible.json").read_text())
+    clip = _talk_clip()
+    clip["cuts"] = [{"type": "MCU", "subjects": ["xiaokang"], "speaker": "dahua", "via": "phone", "line": "你爹出事了。",
+                     "act": "急促", "emotion": "fear", "delivery": "breathless", "composition": "", "action": "", "camera": "Static camera.", "dur": 3},
+                    {"type": "MS", "subjects": ["xiaokang"], "extras": "two villagers mending a net", "composition": "",
+                     "action": "", "camera": "Static camera.", "dur": 2}]
+    scene["clips"] = [clip]
+    assert h3prompt.check_rules(scene) == []
+    text = h3prompt.build(scene, clip, h3prompt.Refs(char_pictures={"xiaokang": ["a.png", "b.png"], "dahua": ["c.png", "d.png"]},
+                                                     location_pictures=["l.png"]))
+    assert "never appears in the picture of this clip" in text and "voice comes through the phone held by" in text
+    assert "inner voice" not in text and "In the background: two villagers mending a net" in text
+    clip["cuts"][0]["subjects"] = ["dahua"]
+    assert any("heard from the other end" in e for e in h3prompt.check_rules(scene))
+    from sheelshort import clipqc
+    chars = scene["characters"]
+    crowd = {"people": 6, "main_person_sex": "man"}
+    assert any("6 people" in x for x in clipqc.judge_panel(chars, 1, {"type": "MS", "subjects": ["xiaokang"]}, crowd, False, False))
+    assert not any("people in" in x for x in clipqc.judge_panel(chars, 1, clip["cuts"][1], crowd, False, False))
+
+
+def test_phone_filter_thins_only_the_phone_line():
+    import subprocess
+    import numpy as np
+    filt = ["[0:a]anull[p0]"] + assemble.phone_filter("[p0]", "[a0]", [(1.0, 2.0)], "ph0")
+    raw = subprocess.run(["ffmpeg", "-v", "error", "-f", "lavfi", "-i", "sine=f=120:d=3", "-filter_complex", ";".join(filt),
+                          "-map", "[a0]", "-ac", "1", "-ar", "8000", "-f", "s16le", "-"], capture_output=True, check=True).stdout
+    a = np.frombuffer(raw, np.int16).astype(np.float32)
+    rms = lambda t0, t1: float(np.sqrt(np.mean(a[int(t0 * 8000):int(t1 * 8000)] ** 2)))
+    assert rms(1.2, 1.8) < 0.1 * rms(0.2, 0.8)                                 # 120 Hz is cut inside the window
+    assert abs(rms(2.2, 2.8) - rms(0.2, 0.8)) < 0.05 * rms(0.2, 0.8)           # and untouched outside it
+
+
+def test_a_take_survives_an_engine_wording_change_but_not_a_script_change():
+    from sheelshort import render
+    with tempfile.TemporaryDirectory() as tmp:
+        p = _scratch_project(tmp, {"name": "A", "role": "man", "look": "a man"})
+        p.bible["locations"] = {"room": {"look": "a room"}}
+        clip = {"id": "K1", "location": "room", "cuts": [{"type": "CU", "subjects": ["a"], "action": "He waits."}]}
+        ref = Path(tmp) / "char_a.png"
+        ref.write_bytes(b"png")
+        files, meta = {"char_a.png": ref}, Path(tmp) / "K1_h3_t1.json"
+        meta.write_text(json.dumps({"fingerprint": render.fingerprint("old wording", files, None, 3)}))
+        assert render.current(p, meta, "E01", clip, "old wording", files, None, 3)
+        assert json.loads(meta.read_text())["inputs"]                            # recorded on the way
+        assert render.current(p, meta, "E01", clip, "new engine wording", files, None, 3)
+        p.cfg["render"]["rerender_on_engine_change"] = True
+        assert not render.current(p, meta, "E01", clip, "new engine wording", files, None, 3)
+        p.cfg["render"]["rerender_on_engine_change"] = False
+        clip["cuts"][0]["action"] = "He leaves."
+        assert not render.current(p, meta, "E01", clip, "new engine wording", files, None, 3)
+        ref.write_bytes(b"recast")
+        clip["cuts"][0]["action"] = "He waits."
+        assert not render.current(p, meta, "E01", clip, "new engine wording", files, None, 3)
+
+
+def test_a_failed_job_is_retried_on_another_server_and_never_kills_the_run():
+    from sheelshort import comfy
+    with tempfile.TemporaryDirectory() as tmp:
+        p = _scratch_project(tmp, {})
+        p.cfg["comfy"]["servers"] = ["https://a", "https://b"]
+        calls = []
+
+        class C:
+            def __init__(self, url):
+                self.base_url = url
+            def queue_info(self, quick=False):
+                if self.base_url == "https://slow":
+                    raise OSError("handshake timed out")
+                return (0, 0) if self.base_url == "https://a" else (1, 0)
+            def queue(self, api):
+                calls.append(self.base_url)
+                return "pid-" + self.base_url[-1]
+            def wait(self, pid, timeout_s=0):
+                if self.base_url == "https://a":
+                    raise ConnectionResetError("Broken pipe")        # not a ComfyError: used to kill the batch
+                return {"outputs": {}}
+            def download_outputs(self, hist, out_dir, stem, kinds):
+                f = out_dir / f"{stem}.png"
+                f.write_bytes(b"x")
+                return [f]
+        clients = {}
+        p.client = lambda url: clients.setdefault(url, C(url))
+        p.object_info = lambda c: {}
+        p.wf = lambda name: {}
+        out = p.run_job("cast/char_x", lambda c: {}, p.d("assets"), "char_x")
+        assert out and out[0].name == "char_x.png" and calls == ["https://a", "https://b"]
+        assert p.state["jobs"]["cast/char_x"]["status"] == "succeeded"
+        p.cfg["comfy"]["servers"].insert(0, "https://slow")       # a server that does not answer is skipped quickly
+        import time as _t
+        t0 = _t.time()
+        assert p.pick().base_url in ("https://a", "https://b") and _t.time() - t0 < 5
+        assert p._down_until["https://slow"] > _t.time()
+
+
+def test_a_lost_prompt_is_noticed_instead_of_waited_on_for_an_hour():
+    from sheelshort import comfy
+    c = comfy.ComfyClient("https://x")
+    c.history = lambda pid: None
+    c.in_queue = lambda pid: False
+    try:
+        c.wait("p1", poll_s=0.01, timeout_s=5, lost_check_s=0.05)
+        raise AssertionError("should have raised")
+    except comfy.ComfyError as e:
+        assert "no longer on the server" in str(e)
+    c.in_queue = lambda pid: True                                   # still queued behind others: keep waiting
+    try:
+        c.wait("p1", poll_s=0.01, timeout_s=0.3, lost_check_s=0.05)
+    except TimeoutError:
+        pass
+
+
+def test_episodes_sort_in_story_order_and_a_room_keeps_its_place_at_night():
+    from sheelshort import wardrobe
+    with tempfile.TemporaryDirectory() as tmp:
+        p = _scratch_project(tmp, {"name": "A", "role": "man"})
+        for e in ("E1", "E2", "E10", "E99", "E100", "E101", "E11"):
+            (p.root / "episodes" / f"{e}.json").write_text(json.dumps({"id": e, "clips": []}))
+        assert p.episodes() == ["E1", "E2", "E10", "E11", "E99", "E100", "E101"]
+        p.bible["locations"] = {"flat": {"name": "flat", "name_zh": "样板间", "look": "a flat", "keep": "sofa",
+                                         "light": "bright daylight through the window", "lights": {"night": "night; a warm floor lamp"}},
+                                "flat_bath": {"name": "bath", "look": "a bath", "keep": "tub", "light": "day"}}
+        ep = {"id": "E1", "clips": [{"id": "K1", "location": "flat", "time": "night", "cuts": [{"type": "MS", "subjects": ["a"]}]},
+                                    {"id": "K2", "location": "flat", "cuts": [{"type": "MS", "subjects": ["a"]}]}]}
+        (p.root / "episodes" / "E1.json").write_text(json.dumps(ep))
+        k1, k2 = p.clips("E1")
+        assert k1["location"] == "flat__night" and k2["location"] == "flat"
+        assert p.locs["flat__night"]["light"] == "night; a warm floor lamp" and p.locs["flat__night"]["base"] == "flat"
+        assert wardrobe.check(p.bible, ep) == []
+        ep["clips"][1]["time"] = "dusk"
+        assert any("no light 'dusk'" in e for e in wardrobe.check(p.bible, ep))
+        (p.root / "inputs").mkdir()
+        for n in ("loc_flat.png", "loc_flat_2.png", "loc_flat_bath.png", "loc_flat__night.png"):
+            (p.root / "inputs" / n).write_bytes(b"x")
+        assert [x.name for x in p.plates("flat")] == ["loc_flat.png", "loc_flat_2.png"]      # not the bathroom's plate
+        from sheelshort import cast
+        assert "Change only the lighting and time of day to: night; a warm floor lamp" in cast.relight_prompt(p.locs["flat__night"])
+
+
+def test_a_private_room_holds_only_its_written_people():
+    from sheelshort import clipqc
+    chars = {"a": {"name": "A", "role": "man"}, "b": {"name": "B", "role": "woman"}}
+    two = {"type": "MS", "subjects": ["a", "b"]}
+    assert clipqc.judge_panel(chars, 1, two, {"people": 3}, False, False)                   # a stranger at home
+    assert not clipqc.judge_panel(chars, 1, two, {"people": 3}, False, False, crowd=True)   # a diner in a restaurant
+    assert clipqc.judge_panel(chars, 1, two, {"people": 5}, False, False, crowd=True)       # but not a crowd in a two-shot
+    assert not clipqc.judge_panel(chars, 1, dict(two, extras="two waiters"), {"people": 4}, False, False)
+    scene = json.loads((ROOT / "projects/quancun/bible.json").read_text())
+    clip = _talk_clip()
+    scene["clips"] = [clip]
+    text = h3prompt.build(scene, clip, h3prompt.Refs(char_pictures={"dahua": ["a.png", "b.png"], "xiaokang": ["c.png", "d.png"]},
+                                                     location_pictures=["l.png"]))
+    assert "No one else is in the shot: only <Subject 1>." in text and "Background people" not in text
+
+
+def test_a_run_keeps_trying_to_start_a_server_while_none_is_in_stock():
+    fleet, api, p = _core_fleet()
+    ses = fleet.Session(p, api=api, spawn=lambda root: None)
+    tries = []
+    ses._wake = lambda: tries.append(1)                           # AutoDL: no stock, nothing starts
+    ses.ensure(); ses.ensure()
+    assert len(tries) == 1                                        # not on every job
+    ses.tried_at -= 200
+    ses.ensure()
+    assert len(tries) == 2                                        # but again after stock_retry_s
+    p.cfg["comfy"]["servers"].append("https://up")
+    ses.tried_at -= 200
+    ses.ensure()
+    assert len(tries) == 2                                        # and never once a server is up
 
 
 if __name__ == "__main__":

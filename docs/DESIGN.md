@@ -294,7 +294,256 @@ villager (村妇), Gao Liang's aide, and a city street:
 **Result:** every take of all four episodes judged again: 51 of 57 checks pass. E02 C3's empty insert was caught and
 re-taken; take 2 is clean. The other flags were the false positives above.
 
+### 0.11 Cinema pass (2026-10-31): realism and editing
+**The owner's review of the delivered episodes:** the picture lacks realism, and the edit has little cinematic language,
+with cuts that feel jarring and nonsensical. One frame per shot of E02 showed why.
+
+**Editing.**
+- **Jump cuts in every episode (8–9 each).** The house pattern *A speaks → reaction close-up of B → B answers in
+  close-up* cuts B to B at the same size. E02 C10 also had two close-ups of Erdaye in a row.
+- **No geography.** E02 had 47 shots: 44 single close-ups, 1 over-the-shoulder shot and no wide shot. The viewer never
+  sees who stands where.
+- **No screen direction.** Nothing said where anyone looks, so singles stared into the lens.
+- **No camera language.** 93% of cuts were "static camera".
+
+**Look.**
+- The style asked for a 35mm lens and "crisp detail". The village light was "bright late-morning sunlight from a
+  clear sky, soft shadows": flat light and a wide lens, the phone look.
+- The location plate (a reference picture in every clip there) was generated **without the location's light at all**. It
+  was a flat phone snapshot with a hazy sky and a gate that read as a Japanese torii, and H3 copied it.
+
+**Engine changes.**
+- `check` refuses **jump cuts**: adjacent cuts with the same people at the same size, also across a clip boundary in
+  the same location. `check --fit` repairs the common case: a repeated close-up that carries a line becomes the reverse
+  angle, an over-the-shoulder shot past the person addressed.
+- **Screen direction.** Each character gets a side of the line of action per location: the people who talk to each
+  other most go on opposite sides (greedy max-cut), or the episode fixes it with `blocking`. Every single is framed on
+  its side and looks across the line at the person addressed (`to`, or the nearest other speaker), never into the
+  lens. Over-the-shoulder shots put the shoulder on its own side, and two-shots place both people.
+- **`WS`**, a wide shot for geography (no dialogue).
+- **Lens per shot size** (85mm with shallow focus for faces, 50mm medium, 35mm wide) and a cinema paragraph in every
+  prompt: directional key and rim light, real shadows, film colour, real skin, restrained acting, background extras who
+  never look into the lens.
+- **Plates** are lit by the location's `light` and shot as film stills.
+- **Craft notes** in `check` (advice, not errors): over 70% single close-ups, over 60% static camera, a location without
+  a wide, medium or over-the-shoulder shot, flat light words in a location, and wide-lens or "crisp" words in the style.
+- **Edit.**
+  - A flash shot under 0.6 s at either end of a take is trimmed (E02 had a 0.3 s one at a clip boundary), never
+    cutting into a line.
+  - A finishing grade (`edit.grade = "film"`): slightly lower saturation, a soft vignette and fine luma grain.
+
+**E02 rewritten under these rules.** It keeps the same lines, and its coverage is:
+- 7 over-the-shoulder shots, 2 wide shots, 2 medium shots and 3 inserts;
+- a motivated move on most cuts;
+- low golden backlight on a relit plate.
+
+The fresh render's 10 clips all passed clip QC on the first take. It runs 122.5 s with 50 detected shots, a mean of
+2.45 s. Detection over-counts slightly: a contract waved across the lens reads as a cut. The before/after sheet is
+`projects/quancun/edit/E02/compare_before_after.jpg`. The look and the coverage are a clear step up.
+
+**The fresh-agent test** on a new script (《雨夜外卖》, written only from the old skill) produced the same defects:
+12 jump cuts and around 80% static camera. So they came from the workflow, not from one adaptation. `--fit` repairs 7
+of the 12; the other 5 are one-person phone-call sequences, which need a rewrite.
+
+### 0.12 Every server on demand (2026-10-31)
+
+Before this, the two servers in `[comfy] servers` ran around the clock, pay-as-you-go, and only the fleet's extra
+servers were powered on and off. The owner asked for all servers to follow the dynamic rule. Now:
+
+- **Core servers.** The owner's two instances are listed by uuid in `[fleet] core`, and `[comfy] servers` is empty.
+  Their address is looked up from the AutoDL API on every wake, because ComfyUI moves between ports 6006 and 6008.
+- **Wake on the first GPU job.** A command starts nothing until a job needs a GPU (`Project.pick`, or the pools in
+  `cast`, `perform` and `render`), so `check`, or an `assemble` whose upscales are cached, never powers anything on.
+  On the first job, every instance of ours that is already running joins the pool (warm, and billed anyway). If that
+  is fewer than `min_servers` (1), stopped core servers are powered on first, then stopped `sheelshort-bj-N` ones, and
+  only then is a new instance created.
+- **Scaling while rendering.** The scaling rule in §0.8 is unchanged and still adds servers while clips wait. It
+  counts toward `max_servers` = 4 in all, the same 2 + 2 as before, and powers on a stopped core server before a fleet
+  one. A server the fleet started is powered off when it is idle and when the render ends.
+- **Off when idle.** When a command ends, it lets go of its servers. A background watcher, `fleet <project> idle`,
+  powers a server off once no live sheelshort process holds it and its ComfyUI queue has been empty for
+  `idle_off_minutes` (10). Work queued from the ComfyUI page restarts the wait. Back-to-back commands, such as a 20 s
+  test followed by `make`, find the server still warm.
+- **Shared between runs.** `.cache/fleet_owned.json` records which processes hold which server, under a file lock.
+  Two runs never power on the same stopped server, and a run never powers off a server another live run uses. A run
+  killed without cleanup counts as gone, and its servers go idle.
+
+Cost: a cold command now waits for a boot, which took 67–68 s to reach the pool on this app plus H3's first model
+load. In exchange, the two servers stop billing about 10 minutes after the last run ends.
+
+### 0.13 Review pass (2026-10-31): speed, shot design, estimated times
+
+A review of the E01/E03/E04 recut run (39 clips, 4 servers) and the E01 master.
+
+**Speed.**
+- **Upscales now start during re-takes.** E03 C10 was re-taken after the check phase, and for 11 minutes every server
+  but one sat idle: the extra servers powered off, and no clip could be upscaled until all picks were final. `render`
+  now upscales the chosen take of every settled clip (one with a clean take, or out of takes) right after the check
+  phase, on all servers, while the re-takes render. The re-taken clips are upscaled when their pick is made.
+  `assemble` finds the upscales done.
+- **The network is often the bottleneck, not the GPU.** An RTX upscale runs 13–22 s on the server. While the Mac's
+  route to seetacloud.com went through the VPN at 0.2 Mbit/s, each upscale took 400–670 s. A direct route measured
+  38.5 Mbit/s and 27–43 s per clip. The per-job log now prints the server's run time next to the wall time
+  (`done in 324s (ran 15s on the server)`), so a slow network is visible at once.
+
+**Shot design.**
+- **One person alone could not be repaired.** In the first new-script test, 5 of the 12 jump cuts were one person on
+  the phone. A cut now has an `angle` (front, three-quarter, profile, high, low), and the jump rule treats a
+  different angle as a real cut, which is the 30-degree rule. `fix_jump_cuts` moves the camera to profile, or to
+  three-quarter if the shot was already in profile. On that test project, all 12 jump cuts are repaired.
+- **Long runs of faces.** E01's master holds about 50 s of close-ups and over-the-shoulder shots in a row at the gate
+  (planned: 69 s), and the crowd and the table drop out of view. `check` now notes any run longer than 25 s at one
+  location. `--fit` turns the silent reaction close-up nearest the middle of the run into a medium shot of the
+  listener among the others, but only when the clip still passes every rule. Runs made only of dialogue cuts are left
+  as a note: the writer adds a WS or MS beat.
+
+**Clip QC.** E03 C10 was re-taken for "on-screen text", and the second take was flagged the same way. The shot was
+an ECU insert of a phone screen, and the vision model reads the screen's UI as a caption. ECU inserts whose
+composition shows something that carries writing (a screen, a contract, a sign, a card) are no longer judged on
+text. Close-ups and wider shots still are.
+
+**Image quality.** The cinema-pass look holds across E01: directional golden light, rim light, shallow depth of
+field, real skin, and eyelines off the lens. No change without an A/B. The next candidate is `h3_megapixels`
+0.7 → 0.85, about 25% more GPU time per clip.
+
+**Estimated times (`sheelshort/eta.py`).**
+- **Per job.** Every GPU job logs when it should be back, counting the job ahead of it on the same server.
+- **Per phase.** Render, check, re-take and upscale each log `done/total` with an end time: the jobs still running
+  finish at their own estimate, and the rest share the servers.
+- **Status from another terminal.** `python -m sheelshort status <project>` reads `progress.json` and `state.json`
+  and lists each phase and each job in flight with its end time, marking a job that is running late.
+- **Learning.** The model learns from every finished job: the server's own execution time from the ComfyUI history,
+  plus the download, measured per second of video for a render and per job otherwise. The last 30 per kind are kept
+  in `.cache/job_times.json`, shared by all projects.
+
+### 0.14 Five reference hits (2026-10-31): production logic
+
+The owner picked five current hits: 王妈在顾家当保姆后全家只会搞笑了 (live-action comedy), 持械入宋 S10
+(photoreal AI, period), 备用联系人 (photoreal AI, urban romance), 和离后我带女儿横扫魔域 (3D xianxia) and
+反派拿捏 S3 (stylised AI romance). All 100 episodes (20 per series) were measured with ffmpeg: scene-change cuts,
+loudness and format. Episodes 1, 5 and 12 were studied frame by frame, including their opening and closing seconds.
+
+| Series | Episode (median) | Mean shot | Median shot | Shots > 5 s | Shots < 1 s | First 10 s | LUFS |
+|---|---|---|---|---|---|---|---|
+| 王妈在顾家当保姆 | 84 s | 2.10 s | 1.64 s | 5% | 18% | 5.5 shots | −10.5 |
+| 持械入宋 S10 | 88 s | 2.89 s | 2.84 s | 4% | 1% | 4 | −10.3 |
+| 备用联系人 | 169 s | 3.27 s | 3.02 s | 15% | 2% | 4 | −15.0 |
+| 和离后…横扫魔域 | 70 s | 2.53 s | 2.21 s | 6% | 14% | 4.5 | −9.8 |
+| 反派拿捏 S3 | 64 s | 2.51 s | 2.29 s | 4% | 5% | 4 | −13.4 |
+| 全村抢 recut (ours) | 118–176 s | 2.45–3.01 s | 2.4–2.5 s | 2–10% | 0% | – | −14.8 |
+
+**What we already match.**
+- Shot pacing: a mean of 2.1–3.3 s.
+- The share of long shots.
+- Vertical name cards with a role line.
+- Dirty singles past a foreground shoulder, which is our OTS.
+- Mid-lower white subtitles.
+
+**Where we differed, and the changes.**
+- **Episode length.** Four of the five run a median 64–88 s; ours ran 118–176 s.
+  - The skill now asks for 60–90 s episodes, splitting a long scene at its turn into two episodes with their own
+    cliffhangers.
+  - `check` notes any episode over 100 s or under 45 s.
+  - The script's content is kept, spread over more episodes.
+- **Scene openings.** Most episodes and scenes open on 1.5–3 s of a wide shot that already has action in it. 持械入宋
+  and 横扫魔域 put a vertical calligraphy location title on it ("秦州府衙后堂", "魔临城").
+  - The skill's old rule, "never an establishing shot", is replaced by this pattern, with a cold open as the
+    alternative.
+  - `check` lists scenes that open without a WS or MS.
+  - A location's `name_zh` now becomes a vertical title card, top left, as each new scene opens in an episode
+    (`edit.location_cards`). A name card that would overlap it waits until it is gone.
+- **Endings.** All five end on a face at the peak, held 2–3 s and cut hard. The last shot runs a median 2.0–3.1 s.
+  - The skill says so.
+  - `check` notes an episode that ends on a wide shot, an insert, or a shot under 2 s.
+- **Shot sizes.** 王妈 and 持械入宋 shoot nearly all dialogue chest-up, with hands and gestures in frame, and punch in
+  to a close-up for peaks. Our close-ups were face-filling throughout.
+  - New `MCU` type: mid-chest up on a 65mm lens, may carry a line, its own size class, so an MCU-to-CU punch-in is
+    a real cut.
+  - The skill now puts most dialogue in MCU, uses MS two-shots for intimacy and stand-offs, and quick ECU prop
+    inserts.
+- **Look by genre.** The comedy is high-key and clean, the romances warm, glowing and glossy, and the period drama
+  directional. Our single moody, desaturated look would be wrong for a comedy.
+  - `look_preset` in the bible: `cinematic` (the default, unchanged), `bright` or `glossy`.
+  - It sets the look paragraph in every prompt, the location plates and the finishing grade (`edit.grade = "auto"`).
+  - The flat-light note applies only to `cinematic`.
+- **Loudness.** The masters run −9.8 to −15 LUFS (median −10.5); ours were −14. The default is now −11 LUFS, with
+  true peak −1.
+
+**Not adopted.**
+- **Sub-second flash cuts.** 王妈 has 18% of shots under 1 s and 横扫魔域 14%, in comic beats and action. H3 does not
+  place a cut that precisely inside a clip. The 1.2 s minimum stays.
+- **Transition stings.** Ink wipes (持械入宋) and white flashes (王妈) appear only in single series.
+
 ---
+
+### 0.15 Sound effects and the waimai2 test (2026-10-31)
+
+**Editorial sound effects** (`sheelshort/sfx.py`). A cut may carry `sfx`: an accent the edit lays on a story beat on
+top of dialogue, foley and music (boom on a reveal, riser into it, whoosh into a time jump, a message ding). The
+engine snaps a cue to the cut as the render actually cut it (scene detection, within 0.5 s of the written time),
+aligns the cue file's own sync point to it (a riser's end, a whoosh's peak), and sets its level against the
+dialogue's measured loudness before the master is normalised. A library of 15 CC0 Freesound clips was chosen with the
+owner's sound skill (github.com/instl999/sound: most downloads, many ratings, the uploader's description) and measured
+with ffmpeg for onset, peak, tail and loudness. Beats the library cannot serve are searched per project:
+`sfx search` runs the skill, downloads every candidate and prints where its sound sits, since the agent cannot
+listen; `sfx add` pins one into the bible with its source and licence (CC0 or Attribution, credited in the
+delivery's CREDITS.txt; never NonCommercial). `tools/install_sound_skill.py` fetches the skill at a pinned commit
+(upstream has no licence) without its paid-upgrade section. A check of the 100 reference episodes found no
+stinger-on-every-cut habit: loud transients start no more often at cuts than at random moments, so cues are kept
+sparse (`check` notes more than one every ~10 s). Verified on a copy of waimai2 E01: thunder, buzz, sting, riser and
+hit landed on their cuts at +1 to +6 dB over the moment without them.
+
+**What the fresh-agent waimai2 test exposed, and the fixes.** A new agent wrote 《雨夜外卖》 (2 episodes) from the
+skill alone. Both masters (102.7 s and 77.5 s) came out with no error exits and no clip re-takes. Faces, eyelines and
+light held, and both episodes end on a held face. `make E01,E02` took 78 min: 35 min of it was render, with no 5090
+stock for the first 18 min; 16 min was clip QC, 11 of them stalled on an SSL handshake; 16 min was upscale. Fixed:
+- A cold open's location card pushed the lead's name card out of the episode. The location card now waits for the
+  scene's first wide or medium shot, and gives way when a name card would otherwise be too short to read.
+- Subtitles overlapped by up to 0.25 s, and a two-character line stayed up 0.65 s. Subtitles now never overlap, and
+  a short line stays up toward 1 s when the next line allows it.
+- `check` flagged the episode's own cold open, which the skill allows. The note now covers later scenes only.
+- A 20 s test designed voices for the speakers of every episode's opening. It now covers only the episodes in the run.
+- schema.md pointed at an outdated example. It now points to waimai2, and SKILL.md gives the loudness as −11 LUFS.
+
+Open: costume changes (the agent made a second character for the suit), phone-call lines (`VO` reads as inner
+voice, and there is no phone filter), silent extras, the vision check rewriting a stated age, and the clip-QC stall.
+
+### 0.16 Ready for a 110-episode unattended run (2026-11-01)
+
+Three read-only studies (run logs and job state; 61 picked clips and 293 QC panels; 160 rendered lines, the six masters
+and the series structure) found what breaks at the scale of ~1000 clips. Fixed in the engine:
+- **One slow server froze the whole run** (waimai2 clip QC, 11.5 min): `pick()` probed servers with 6-try requests while
+  holding the run's lock. Probes now run in parallel, once, with 5 s/10 s timeouts and outside the lock; a server that
+  fails is skipped for a minute; state writes have their own lock.
+- **Any unexpected network error killed the batch** (guilai: `httpx.ReadError: Broken pipe`). `run_job` now catches
+  everything, and retries up to `job_retries` (2) times on another server; HTML answers from a restarting server are
+  errors, not crashes; a prompt the server lost (restart) is noticed within two minutes instead of waited on for an hour;
+  a job whose server left the pool is queued again; a server unreachable for 5 min fails its job. Clips whose takes all
+  failed are rendered again; a clip that cannot be prepared is skipped and its episode reported, not the whole batch.
+- **The fleet retired its servers before QC and upscale** (waimai2: 18 upscales on one server, 16 min): an added
+  server now lingers 2 min after the last render.
+- **Downloads** stream to `.part` files and are renamed only when complete (a crash left half takes); each logs its MB/s.
+  A take without its record counts only if it has sound (VHS's silent file).
+- **Batch**: per-episode isolation in `make`, `BATCH_REPORT.md`, a disk guard, `caffeinate`, the idle reaper from the
+  start of a run (a killed run's servers still power off), hard-linked delivery files (~80 GB saved over 110 episodes),
+  natural episode order (E100 sorted before E11 and broke name cards), the reference-image budget in `check`.
+- **Engine wording vs. writer changes**: a take records a fingerprint of the writer's inputs; an engine prompt change
+  no longer re-renders every finished episode (`render.rerender_on_engine_change` to force it).
+- **Strangers in 21% of non-wide panels**: every look preset invited "background people". Now only `extras` or a
+  `crowd: true` location do; other shots say who alone is in them, and clip QC fails any extra person in a private place
+  (the vision model is asked to count blurred figures). A strip answered for fewer panels than cuts is asked again in
+  threes.
+- **Time of day was fixed per location**: `lights` + clip `time`, plates relit from the base plates by image edit.
+- **Loudness**: the music bed sits 18 LU under the measured dialogue (raw beds varied 7 LU); every master is measured
+  after encoding and corrected (gain + limiter, video copied): waimai2 E01 -12.9 -> -11.3 LUFS.
+- **Cast voices**: a designed voice outside its role's sex range is designed again with the sex spelled out; voices of
+  the same sex under a semitone apart are reported.
+- Costume changes (`outfits`), phone lines (`via`), extras, sound effects: §0.15.
+
+Open, needing the owner's decisions or a test first (in the review page): episode count vs. 60-90 s length for a
+110-集 script, paywall cadence, a series music kit, identity checks in clip QC (face similarity), voice-identity
+scoring per line, prop states and injuries, a series layer (`series.json`, `continuity.json`, `check --series`), group
+scenes beyond three characters.
 
 ## 1. Market research: does this already exist?
 

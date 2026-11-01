@@ -11,10 +11,24 @@ import re
 import subprocess
 from pathlib import Path
 
-from . import h3prompt, media
+from . import h3prompt, media, sfx
 from .project import REPO, Project, load_json, log, save_json
 
 CJK_PER_LINE = 13
+# Finishing grade over the whole cut (`edit.grade`): generated video is over-saturated and clean as glass; a touch less
+# saturation, a soft vignette and fine luma grain read as film (owner review 2026-10-31: "lacks realism")
+GRADES = {
+    "film": "eq=saturation=0.9:contrast=1.03,vignette=angle=PI/7,noise=c0s=5:c0f=t",
+    "bright": "eq=saturation=1.03:contrast=1.02,noise=c0s=3:c0f=t",                      # high-key comedy: clean, no vignette
+    "glossy": "eq=saturation=0.97:contrast=0.97:gamma=1.03,vignette=angle=PI/9,noise=c0s=3:c0f=t",   # soft, lifted, warm
+    "none": "",
+}
+GRADE_FOR_LOOK = {"cinematic": "film", "bright": "bright", "glossy": "glossy"}   # `edit.grade = "auto"`
+
+
+def grade(p: Project) -> str:
+    g = p.cfg["edit"].get("grade", "auto")
+    return GRADES.get(GRADE_FOR_LOOK.get(p.bible.get("look_preset", "cinematic"), "film") if g == "auto" else g, "")
 
 
 def chosen_take(p: Project, ep: str, clip_id: str) -> Path:
@@ -30,8 +44,9 @@ def chosen_take(p: Project, ep: str, clip_id: str) -> Path:
 def edl(p: Project, ep: str) -> dict:
     acted = p.cfg["render"]["dialogue"] == "acted"
     timing = load_json(p.root / "perform" / ep / "timing.json") if acted else None
-    t, items, subs, cards = 0.0, [], [], []
+    t, items, subs, cards, fx = 0.0, [], [], [], []
     introduced = introduced_before(p, ep)
+    places, prev_loc = [], None
     for clip in p.clips(ep):
         video = chosen_take(p, ep, clip["id"])
         if acted:
@@ -41,27 +56,87 @@ def edl(p: Project, ep: str) -> dict:
         else:
             seconds = media.probe(video)["duration"]
             lines, audio = heard_lines(p, ep, clip, video), None
+        head, tail = edge_trims(video, seconds, lines) if p.cfg["edit"].get("trim_flashes", True) else (0.0, seconds)
         fol = sorted(video.parent.glob(video.stem + "_foley.*"))
+        vias = [c.get("via") for c in clip["cuts"] if c.get("line")]
+        phone = [(round(max(0.0, ln["start"] - head - 0.1), 3), round(ln["end"] - head + 0.1, 3))
+                 for ln, v in zip(lines, vias) if v == "phone"] if len(vias) == len(lines) else []
         items.append({"clip": clip["id"], "video": str(video), "audio": audio, "foley": str(fol[0]) if fol and audio else None,
-                      "start": round(t, 3), "seconds": seconds})
-        subs += [{"text": ln["text"], "start": round(t + ln["start"], 3), "end": round(t + ln["end"] + 0.25, 3)} for ln in lines]
-        cards += _cards_in(p, clip, t, video, introduced)
-        t += seconds
-    out = {"episode": ep, "duration": round(t, 3), "clips": items, "subtitles": subs, "cards": cards}
+                      "start": round(t, 3), "in": head, "seconds": round(tail - head, 3), "phone": phone})
+        subs += [{"text": ln["text"], "start": round(t + ln["start"] - head, 3), "end": round(t + ln["end"] - head + 0.25, 3)}
+                 for ln in lines]
+        cards += _cards_in(p, clip, t - head, video, introduced)
+        fx += sfx.events_in(p, clip, t - head, head, tail, video)
+        loc = p.locs.get(clip["location"], {})
+        place = loc.get("base", clip["location"])   # the same room by night is the same place: one card
+        if place != prev_loc and loc.get("name_zh") and p.cfg["edit"].get("location_cards", True) \
+                and place not in {pl["loc"] for pl in places}:
+            # the card sits on the scene's first wide or medium shot (a cold open on a face gets it when the room shows)
+            at, x0, x1 = 0.0, head, tail
+            for cut in clip["cuts"]:
+                if cut["type"] in ("WS", "MS") and head <= at < tail - 0.8:
+                    x0, x1 = at, min(tail, at + h3prompt.cut_len(cut))
+                    break
+                at += h3prompt.cut_len(cut)
+            places.append({"kind": "place", "loc": place, "name": loc["name_zh"], "start": round(t - head + x0 + 0.1, 3),
+                           "end": round(t - head + min(x0 + 2.6, x1 - 0.1), 3)})
+        prev_loc = place
+        t += tail - head
+    for pl in list(places):   # both stand at the top of the frame: a name card waits until the location card is gone,
+        for c in cards:         # or, when that would leave it too short to read, the location card gives way
+            if c["start"] < pl["end"] and c["end"] > pl["start"]:
+                if c["end"] - (pl["end"] + 0.1) >= 0.8:
+                    c["start"] = round(pl["end"] + 0.1, 3)
+                elif pl in places:
+                    places.remove(pl)
+    cards = cards + places
+    subs.sort(key=lambda s: s["start"])
+    for a, b in zip(subs, subs[1:] + [None]):   # never two subtitles at once; a short line stays up long enough to read
+        nxt = b["start"] - 0.04 if b else t
+        a["end"] = round(min(max(a["end"], a["start"] + MIN_SUB_S), nxt), 3)
+    out = {"episode": ep, "duration": round(t, 3), "clips": items, "subtitles": subs, "cards": cards, "sfx": fx}
     save_json(p.d("edit", ep) / "edl.json", out)
     return out
 
 
+def phone_filter(src: str, dst: str, windows: list[tuple[float, float]], tag: str) -> list[str]:
+    """A line heard through a phone (`via: "phone"`): telephone band (350-3400 Hz), squeezed, only inside its windows."""
+    on = "+".join(f"between(t,{a:.3f},{b:.3f})" for a, b in windows)
+    return [f"{src}asplit=2[{tag}c][{tag}p]",
+            f"[{tag}c]volume=0:enable='{on}'[{tag}cm]",
+            f"[{tag}p]highpass=f=350,highpass=f=350,lowpass=f=3400,lowpass=f=3400,"
+            f"acompressor=threshold=0.05:ratio=6:attack=5:release=80,volume=3dB,volume=0:enable='not({on})'[{tag}pm]",
+            f"[{tag}cm][{tag}pm]amix=inputs=2:normalize=0{dst}"]
+
+
+MIN_SUB_S = 1.0   # seconds a subtitle stays up at least, when the next line allows it
+FLASH_S = 0.6   # a shot this short at a clip's head or tail is H3 starting the next shot early or ending late
+
+
+def edge_trims(video: Path, seconds: float, lines: list[dict]) -> tuple[float, float]:
+    """In and out points that drop a flash shot at either end of a take (E02 had a 0.3 s shot at a clip boundary), never
+    cutting into a line."""
+    cuts = media.shot_cuts(video)
+    head = max((c for c in cuts if c < FLASH_S), default=0.0)
+    tail = min((c for c in cuts if c > seconds - FLASH_S), default=seconds)
+    if any(ln["start"] < head for ln in lines):
+        head = 0.0
+    if any(ln["end"] > tail + 0.05 for ln in lines):
+        tail = seconds
+    return round(head, 3), round(tail, 3)
+
+
 def _intro_cut(cut: dict, c: str) -> bool:
     return cut.get("intro") is True and c in cut.get("subjects", []) or (
-        cut["type"] in ("CU", "VO") and cut.get("subjects") == [c])
+        cut["type"] in ("CU", "MCU", "VO") and cut.get("subjects") == [c])
 
 
 def introduced_before(p: Project, ep: str) -> set[str]:
     """Characters whose name card was already shown in an earlier episode (their first solo close-up)."""
     seen: set[str] = set()
+    from .project import episode_key
     for e in p.episodes():
-        if e >= ep:
+        if episode_key(e) >= episode_key(ep):
             break
         for clip in p.episode(e)["clips"]:
             for cut in clip["cuts"]:
@@ -77,16 +152,16 @@ def _cards_in(p: Project, clip: dict, t0: float, video: Path, introduced: set[st
     out, at = [], 0.0
     for cut in clip["cuts"]:
         dur = h3prompt.cut_len(cut)
-        cands = [c for c in cut.get("subjects", []) if p.chars.get(c, {}).get("card") and c not in introduced]
+        cands = [c for c in cut.get("subjects", []) if p.chars.get(c, {}).get("card") and p.base(c) not in introduced]
         if cut.get("intro") is True:
-            cands = [c for c in cut.get("subjects", []) if c not in introduced and p.chars.get(c, {}).get("card")][:1]
+            cands = cands[:1]
         for c in cands:
             if _intro_cut(cut, c):
                 ch = p.chars[c]
                 face = media.face_box(video, at + dur / 2)
                 out.append({"name": ch.get("name_zh") or ch["name"], "role": ch["card"], "start": round(t0 + at + 0.15, 3),
                             "end": round(t0 + at + min(dur - 0.1, 2.6), 3), "face": face})
-                introduced.add(c)
+                introduced.add(p.base(c))   # once per character, whatever they wear
                 break
         at += dur
     return out
@@ -197,7 +272,13 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
 
 def card_events(card: dict, w: int, h: int, font: str) -> list[str]:
     """A vertical name (large, heavy serif) and a thin role column beside it, next to the head at eye level, on the side
-    of the frame with more room; no box, a soft shadow."""
+    of the frame with more room; no box, a soft shadow. A location card (`kind: place`) is one vertical column of the
+    place's name at the top left as a scene opens, the way 持械入宋 and 和离后我带女儿横扫魔域 title their scenes."""
+    vert = lambda t: r"\N".join(t)   # noqa: E731 - one character per line = vertical type
+    if card.get("kind") == "place":
+        size = round(w * 0.075)
+        tag = rf"{{\an7\pos({w * 0.07:.0f},{h * 0.075:.0f})\fn{font}\fs{size}\b1\bord0\shad3\4a&H70&\c&HFFFFFF&\fad(200,300)}}"
+        return [f"Dialogue: 1,{ass_time(card['start'])},{ass_time(card['end'])},Line,,0,0,0,,{tag}{vert(card['name'])}"]
     face = card.get("face")   # (x0, y0, x1, y1) as fractions of the frame, or None
     fx = (face[0] + face[2]) / 2 if face else 0.5
     left = fx >= 0.5   # face right of centre: card on the left
@@ -209,7 +290,6 @@ def card_events(card: dict, w: int, h: int, font: str) -> list[str]:
         x, y = (w * 0.16 if left else w * 0.84), h * 0.24
     x = min(max(x, size * 0.75), w - size * 0.75)
     rx = x + (size * 0.95 if left else -size * 0.95)
-    vert = lambda t: r"\N".join(t)   # noqa: E731 - one character per line = vertical type
     ts = f"{ass_time(card['start'])},{ass_time(card['end'])}"
     name_tag = rf"{{\an8\pos({x:.0f},{y:.0f})\fn{font}\fs{size}\b1\bord0\shad3\4a&H80&\c&HFFFFFF&\fad(150,200)}}"
     role_tag = rf"{{\an8\pos({rx:.0f},{y + size * 0.7:.0f})\fn{font}\fs{role_size}\b1\bord0\shad2\4a&H80&\c&HFFFFFF&\fad(150,200)}}"
@@ -237,7 +317,7 @@ def upscaled(p: Project, ep: str, video: Path) -> Path:
     key = f"upscale/{ep}/{video.stem}_{int(video.stat().st_mtime)}"
     caps_path = REPO / ".cache" / "server_caps.json"
     out = None
-    for _ in range(len(p.cfg["comfy"]["servers"])):
+    for _ in range(max(1, len(p.cfg["comfy"]["servers"]))):
         caps = load_json(caps_path) if caps_path.exists() else {}
         bad = set(caps.get("no_rtx_vsr", []))
         out = p.run_job(key, lambda cl: flows.upscale_rtx(p.put(cl, video), scale + 0.005, f"sheelshort/{ep}_{video.stem}_up"),
@@ -265,7 +345,7 @@ def run(p: Project, ep: str) -> Path:
     e = p.cfg["edit"]
     plan = edl(p, ep)
     from concurrent.futures import ThreadPoolExecutor
-    with ThreadPoolExecutor(max(1, 2 * len(p.cfg["comfy"]["servers"]))) as ex:   # upscale the chosen takes in parallel
+    with ThreadPoolExecutor(max(2, 2 * len(p.cfg["comfy"]["servers"]))) as ex:   # upscale the chosen takes in parallel
         ups = list(ex.map(lambda it: str(upscaled(p, ep, Path(it["video"]))), plan["clips"]))
     for it, up in zip(plan["clips"], ups):
         it["video"] = up
@@ -275,11 +355,12 @@ def run(p: Project, ep: str) -> Path:
     ins, filt, n = [], [], len(plan["clips"])
     for i, it in enumerate(plan["clips"]):
         ins += ["-i", it["video"]]
-        filt.append(f"[{i}:v]trim=0:{it['seconds']},setpts=PTS-STARTPTS,scale={w}:{h}:force_original_aspect_ratio=increase:"
+        filt.append(f"[{i}:v]trim={it.get('in', 0)}:{it.get('in', 0) + it['seconds']},setpts=PTS-STARTPTS,scale={w}:{h}:force_original_aspect_ratio=increase:"
                     f"flags=lanczos,crop={w}:{h},fps={fps},setsar=1[v{i}]")
     k = n
     for i, it in enumerate(plan["clips"]):
-        fit = f"aresample=48000,aformat=channel_layouts=stereo,atrim=0:{it['seconds']},asetpts=PTS-STARTPTS,apad=whole_dur={it['seconds']}"
+        fit = f"aresample=48000,aformat=channel_layouts=stereo,atrim={it.get('in', 0)}:{it.get('in', 0) + it['seconds']},asetpts=PTS-STARTPTS,apad=whole_dur={it['seconds']}"
+        out = f"[p{i}]" if it.get("phone") else f"[a{i}]"
         if it["audio"]:
             ins += ["-i", it["audio"]]
             filt.append(f"[{k}:a]{fit}[d{i}]")
@@ -290,29 +371,43 @@ def run(p: Project, ep: str) -> Path:
                 filt.append(f"[{k}:a]{fit},loudnorm=I=-38:TP=-9[f{i}]")
                 filt.append(f"[d{i}]asplit=2[dd{i}][key{i}]")
                 filt.append(f"[f{i}][key{i}]sidechaincompress=threshold=0.02:ratio=3:attack=30:release=500[fd{i}]")
-                filt.append(f"[dd{i}][fd{i}]amix=inputs=2:normalize=0[a{i}]")
+                filt.append(f"[dd{i}][fd{i}]amix=inputs=2:normalize=0{out}")
                 k += 1
             else:
-                filt.append(f"[d{i}]anull[a{i}]")
+                filt.append(f"[d{i}]anull{out}")
         else:
-            filt.append(f"[{i}:a]{fit}[a{i}]")
+            filt.append(f"[{i}:a]{fit}{out}")
+        if it.get("phone"):
+            filt += phone_filter(f"[p{i}]", f"[a{i}]", it["phone"], f"ph{i}")
     filt.append("".join(f"[v{i}][a{i}]" for i in range(n)) + f"concat=n={n}:v=1:a=1[vc][dia]")
     fonts = e.get("fonts_dir", "/System/Library/Fonts")
-    filt.append(f"[vc]split=2[vsub][vclean];[vsub]subtitles={_esc(ass)}:fontsdir={_esc(fonts)}[vout]")
+    if grade(p):
+        filt.append(f"[vc]{grade(p)}[vg]")
+        vc = "[vg]"
+    else:
+        vc = "[vc]"
+    filt.append(f"{vc}split=2[vsub][vclean];[vsub]subtitles={_esc(ass)}:fontsdir={_esc(fonts)}[vout]")
     music = e.get("music")
     if music == "auto":
         music = score(p, ep)
+    sources = [(Path(it["audio"] or it["video"]), it["seconds"]) for it in plan["clips"]]
     if music:
         mi = ins.count("-i")
         ins += ["-stream_loop", "-1", "-i", str(Path(music).expanduser())]
+        # the bed sits a fixed distance under the dialogue's measured loudness: raw beds differ by up to 7 LU, and a
+        # fixed -16 dB made the music-to-dialogue balance swing from episode to episode
+        bed_lufs = sfx.loudness(Path(music).expanduser())
+        gain = (sfx.program_loudness(sources) - float(e.get("music_under_lu", 18)) - bed_lufs) if bed_lufs is not None else -16.0
         filt.append("[dia]asplit=2[dia1][key]")
-        filt.append(f"[{mi}:a]aresample=48000,aformat=channel_layouts=stereo,volume=-16dB,atrim=0:{plan['duration']},"
+        filt.append(f"[{mi}:a]aresample=48000,aformat=channel_layouts=stereo,volume={gain:.1f}dB,atrim=0:{plan['duration']},"
                     f"afade=t=out:st={max(0, plan['duration'] - 1.5)}:d=1.5[bed]")
         filt.append("[bed][key]sidechaincompress=threshold=0.03:ratio=8:attack=20:release=400[duck]")
         filt.append("[dia1][duck]amix=inputs=2:normalize=0[mix]")
         last = "[mix]"
     else:
         last = "[dia]"
+    if plan["sfx"]:   # cues sit at a level set against the dialogue's own loudness, before the master is normalised
+        last = sfx.mix(p, plan, ins, filt, last, sources)
     filt.append(f"{last}loudnorm=I={e['loudness']}:TP=-1.0:LRA=11,aresample=48000,asplit=2[aout][aclean]")
     master = out_dir / f"{p.master_name()}.mp4"
     clean = out_dir / f"{p.master_name()}_clean.mp4"   # the same cut without burned-in subtitles (dubbing, re-subtitling)
@@ -321,8 +416,44 @@ def run(p: Project, ep: str) -> Path:
     cmd = ["ffmpeg", "-y", "-v", "error", *ins, "-filter_complex", ";".join(filt),
            "-map", "[vout]", "-map", "[aout]", *enc, str(master), "-map", "[vclean]", "-map", "[aclean]", *enc, str(clean)]
     subprocess.run(cmd, check=True)
+    for f in (master, clean):
+        settle_loudness(f, float(e["loudness"]))
     log(f"{ep}: master {plan['duration']:.1f}s -> {master}")
     return master
+
+
+def loudness_stats(f: Path) -> tuple[float, float]:
+    """Integrated loudness (LUFS) and true peak (dBTP) of a file's audio."""
+    r = subprocess.run(["ffmpeg", "-hide_banner", "-nostats", "-i", str(f), "-vn", "-af", "ebur128=peak=true", "-f", "null", "-"],
+                       capture_output=True, text=True).stderr
+    summary = r[r.rfind("Summary:"):]
+    i = re.search(r"I:\s+(-?[0-9.]+) LUFS", summary)
+    tp = re.search(r"Peak:\s+(-?[0-9.]+) dBFS", summary)
+    return (float(i.group(1)) if i else -70.0), (float(tp.group(1)) if tp else -70.0)
+
+
+def settle_loudness(f: Path, target: float, tol: float = 0.5, ceiling: float = -1.0) -> None:
+    """Measure the encoded master and, when it misses the target (single-pass loudnorm landed 1-4 LU low on every
+    master so far) or peaks above the ceiling, correct its audio with a plain gain and a limiter (the video is copied)."""
+    i, tp = loudness_stats(f)
+    if abs(i - target) <= tol and tp <= ceiling:
+        return
+    tmp = f.with_name(f.stem + "_level" + f.suffix)
+    gain, best = target - i, None
+    for _ in range(3):   # the limiter takes back some of the gain: add the shortfall and go again from the original
+        subprocess.run(["ffmpeg", "-y", "-v", "error", "-i", str(f), "-map", "0", "-c:v", "copy",
+                        "-af", f"volume={gain:.2f}dB,alimiter=limit={10 ** ((ceiling - 0.5) / 20):.3f}:level=false:attack=1:release=50",
+                        "-c:a", "aac", "-b:a", "192k", "-movflags", "+faststart", str(tmp)], check=True)
+        i2, tp2 = loudness_stats(tmp)
+        if best is None or abs(i2 - target) < abs(best[0] - target):
+            best = (i2, tp2)
+            tmp.replace(tmp.with_name(tmp.stem + "_best" + tmp.suffix))
+        if abs(i2 - target) <= tol:
+            break
+        gain += target - i2
+    tmp.unlink(missing_ok=True)
+    tmp.with_name(tmp.stem + "_best" + tmp.suffix).replace(f)
+    log(f"{f.name}: loudness {i:.1f} LUFS / {tp:.1f} dBTP -> {best[0]:.1f} LUFS / {best[1]:.1f} dBTP (target {target:g})")
 
 
 DEFAULT_MUSIC = ("cinematic tense underscore, Chinese short drama, instrumental, slow, low strings, soft piano, deep drone, "

@@ -66,16 +66,23 @@ timeout_s = 3600
 width = 1080
 height = 1920
 fps = 30
-loudness = -14                   # LUFS integrated
+loudness = -11                   # LUFS integrated: the reference hits master at -10 to -15 (median -10.5); each master is
+                                 # measured after encoding and its audio corrected when it misses by more than 0.5 LU
+music_under_lu = 18              # the music bed sits this far under the dialogue's measured loudness (before ducking)
+grade = "auto"                   # finishing grade: "auto" follows the bible's look_preset; "film", "bright", "glossy", "none"
+location_cards = true            # a vertical title with the place's name_zh as each new scene opens
 upscale = "rtx"                  # "rtx": NVIDIA RTX Video Super Resolution on the servers to 1080x1920; "" = plain resize
 font = "Heiti SC"            # libass family name; must have CJK glyphs
 music = "auto"                   # "auto": ACE-Step bed from the episode's `music` tags; a file path; or "" for none
 
 [fleet]
-# Autoscaling with AutoDL.Art app instances (sheelshort/fleet.py). While a render runs, extra servers of the same app
-# are powered on or created when clips are waiting, and powered off when idle and at the end of the run. Only
-# instances named `name_prefix`-N in `region_names` are ever touched. Token: $AUTODL_TOKEN or
-# ~/.config/sheelshort/autodl_token. Start with dry_run = true (decisions are only logged).
+# AutoDL.Art app instances as on-demand ComfyUI servers (sheelshort/fleet.py). Instances listed in `core` are powered
+# on when a command first needs a GPU and powered off once no sheelshort run uses them and their queue has been empty
+# for `idle_off_minutes` (a background watcher does it after the command ends, so back-to-back commands find them
+# warm). While a render runs, more servers are powered on (core first, then `name_prefix`-N ones) or created when
+# clips are waiting, and powered off when idle and at the end of the run. Only core instances and ones named
+# `name_prefix`-N in `region_names` are ever touched; an address of a core server need not be in [comfy] servers.
+# Token: $AUTODL_TOKEN or ~/.config/sheelshort/autodl_token. Start with dry_run = true (decisions are only logged).
 enabled = false
 dry_run = true
 application_uuid = "spcwDDc6XW"      # MINIMAX-H3提速500高画质
@@ -84,7 +91,9 @@ gpu_specs = ["5090-p"]               # tried in order when creating (e.g. add "p
 data_centers = ["beijingDC2"]        # Beijing B only (the Northwest region is not reachable from this network)
 region_names = ["北京"]
 name_prefix = "sheelshort-bj"
-max_extra = 2                        # at most this many extra servers
+core = []   # your own instances (uuid), powered on and off on demand; [] = [comfy] servers stay on
+min_servers = 1                      # servers a command wakes before its first GPU job
+max_servers = 4                      # at most this many servers in all
 # Scale up when one more server saves at least `min_gain_minutes`: with n servers, W = clips left x clip_minutes and
 # startup S, the saving is (W - n*S) / (n*(n+1)). S is updated from each real scale-up.
 min_gain_minutes = 3
@@ -92,4 +101,6 @@ clip_minutes = 5                     # GPU minutes per clip (measured median ~5 
 startup_minutes = 5                  # boot + ComfyUI + H3's first model load on a fresh server
 idle_off_minutes = 10
 retry_minutes = 5                    # after "no stock" or a failed start
+stock_retry_s = 180                  # no server could start (no GPU in stock): the run tries again this often
+stock_wait_minutes = 180             # ...and waits this long for stock before its jobs fail
 tick_s = 20

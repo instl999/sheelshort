@@ -1,6 +1,7 @@
 """ffmpeg/ffprobe helpers."""
 from __future__ import annotations
 
+import functools
 import json
 import subprocess
 from pathlib import Path
@@ -170,8 +171,9 @@ def face_box(video: Path, t: float) -> tuple[float, float, float, float] | None:
     return (x / w, y / h, (x + fw) / w, (y + fh) / h)
 
 
+@functools.lru_cache(maxsize=256)
 def shot_cuts(video: Path, threshold: float = 0.3) -> list[float]:
-    """Times of the hard cuts in a video (ffmpeg scene-change score above `threshold`)."""
+    """Times of the hard cuts in a video (ffmpeg scene-change score above `threshold`); remembered per file for the run."""
     p = subprocess.run(["ffmpeg", "-hide_banner", "-i", str(video), "-vf", f"select='gt(scene,{threshold})',showinfo",
                         "-an", "-f", "null", "-"], capture_output=True, text=True)
     import re

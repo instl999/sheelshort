@@ -10,6 +10,7 @@ from __future__ import annotations
 import os
 import threading
 import time
+from contextlib import contextmanager
 from pathlib import Path
 
 import httpx
@@ -117,20 +118,23 @@ def wait_comfy(url: str, timeout_s: float = 1800, poll_s: float = 5) -> float:
 OWNED = Path(os.environ.get("SHEELSHORT_FLEET_OWNED") or Path(__file__).resolve().parent.parent / ".cache" / "fleet_owned.json")
 
 
-def _owned() -> dict:
-    import json
-    return json.loads(OWNED.read_text()) if OWNED.exists() else {}
+# ---------- holders: which sheelshort processes use which instance ----------
+# OWNED maps an instance to the live processes using it ("pids") and, once none is left, when it went idle ("since").
+# Several sheelshort commands can run at once (two projects, say) and share servers: a server is powered off only when
+# no live process holds it.
 
-
-def _own(uuid: str, pid: int | None) -> None:
+@contextmanager
+def _registry():
+    import fcntl
     import json
-    d = _owned()
-    if pid is None:
-        d.pop(uuid, None)
-    else:
-        d[uuid] = pid
     OWNED.parent.mkdir(parents=True, exist_ok=True)
-    OWNED.write_text(json.dumps(d))
+    with open(OWNED.with_name(OWNED.name + ".lock"), "w") as lk:
+        fcntl.flock(lk, fcntl.LOCK_EX)
+        raw = OWNED.read_text() if OWNED.exists() else ""
+        d = json.loads(raw) if raw.strip() else {}
+        d = {u: e if isinstance(e, dict) else {"pids": [e]} for u, e in d.items()}   # the old format: uuid -> pid
+        yield d
+        OWNED.write_text(json.dumps(d))
 
 
 def _alive(pid: int) -> bool:
@@ -141,33 +145,284 @@ def _alive(pid: int) -> bool:
         return False
 
 
-def reap_orphans(api: "AutoDL", log=print) -> list[str]:
-    """Power off servers a dead sheelshort process had started (killed before it could clean up)."""
-    done = []
-    for uuid, pid in _owned().items():
-        if pid == os.getpid() or _alive(pid):
-            continue
+def _live(pids) -> list[int]:
+    return [q for q in pids if q == os.getpid() or _alive(q)]
+
+
+def hold(uuid: str, url: str = "", claim: bool = False) -> bool:
+    """This process uses the instance. With `claim`, only if no live process holds it yet (for powering one on:
+    two runs must not both start the same stopped server). False when the claim failed."""
+    with _registry() as d:
+        e = d.setdefault(uuid, {"pids": []})
+        e["pids"] = _live(e.get("pids", []))
+        if claim and e["pids"]:
+            return False
+        e["pids"] = sorted({*e["pids"], os.getpid()})
+        e.pop("since", None)
+        if url:
+            e["url"] = url
+        return True
+
+
+def let_go(uuid: str) -> bool:
+    """This process no longer uses the instance. True when no other live process does: it is idle from now."""
+    with _registry() as d:
+        e = d.get(uuid)
+        if e is None:
+            return True
+        e["pids"] = [q for q in _live(e.get("pids", [])) if q != os.getpid()]
+        if e["pids"]:
+            return False
+        e["since"] = time.time()
+        return True
+
+
+def forget(uuid: str) -> None:
+    with _registry() as d:
+        d.pop(uuid, None)
+
+
+def holders(uuid: str) -> list[int]:
+    with _registry() as d:
+        return _live(d.get(uuid, {}).get("pids", []))
+
+
+def ours(c: dict, inst: dict) -> bool:
+    """An instance this engine may power on and off: a core server, or one it created (`name_prefix`-N), in the
+    allowed regions."""
+    return (inst.get("uuid") in (c.get("core") or []) or (inst.get("name") or "").startswith(c["name_prefix"])) and \
+        any(r in (inst.get("region_name") or "") for r in c.get("region_names", ["北京"]))
+
+
+def queue_idle(url: str) -> bool:
+    try:
+        r = httpx.get(f"{url}/queue", timeout=15)
+        q = r.json()
+        return not q.get("queue_running") and not q.get("queue_pending")
+    except (httpx.HTTPError, ValueError, AttributeError):
+        return True   # ComfyUI not answering: nothing is running there
+
+
+def reap_idle(api: "AutoDL", c: dict, log=print, clock=time.time, idle=queue_idle) -> float | None:
+    """Power off every instance of ours that no live sheelshort process holds and whose ComfyUI queue has been empty
+    for `idle_off_minutes` (a queue with work, from the ComfyUI page say, restarts the wait). A running core server
+    with no record is idle from now; a process that died without cleaning up counts as gone. Returns the seconds until
+    the next check is due, None when nothing is left to watch."""
+    idle_s = 60 * float(c.get("idle_off_minutes", 10))
+    insts = {i["uuid"]: i for i in api.instances() if ours(c, i)}
+    nxt = None
+
+    def due_in(s):
+        nonlocal nxt
+        nxt = s if nxt is None else min(nxt, s)
+
+    with _registry() as d:
+        for u in c.get("core") or []:
+            if u not in d and insts.get(u, {}).get("status") == "running":
+                d[u] = {"pids": [], "since": clock()}
+        for u, e in list(d.items()):
+            e["pids"] = _live(e.get("pids", []))
+            status = insts.get(u, {}).get("status")
+            if e["pids"]:
+                due_in(120)   # in use: keep watching, the run may die without letting go
+                continue
+            if status in (None, "shutdown"):
+                d.pop(u)
+                continue
+            if status != "running":   # starting or stopping: look again soon
+                due_in(60)
+                continue
+            e.setdefault("since", clock())
+            left = e["since"] + idle_s - clock()
+            if left > 0:
+                due_in(left)
+                continue
+            url = e.get("url") or api.comfy_url(u)
+            if url and not idle(url):
+                e["since"] = clock()
+                due_in(idle_s)
+                log(f"fleet: {u} has work queued outside sheelshort; left on")
+                continue
+            try:   # under the lock: a run that wants this server waits, then finds it stopped and powers it on again
+                api.power_off(u)
+                d.pop(u)
+                log(f"fleet: {u}: powered off (idle {(clock() - e['since']) / 60:.0f} min, no run uses it)")
+            except AutoDLError as err:
+                log(f"fleet: {u}: power off failed ({err}); trying again later")
+                due_in(120)
+    return nxt
+
+
+REAPER_PID = OWNED.with_name("fleet_reaper.pid")
+
+
+def spawn_reaper(project_root) -> None:
+    """Start the background watcher that powers idle servers off (`fleet <project> idle`), unless one is running."""
+    import subprocess
+    import sys
+    try:
+        if _alive(int(REAPER_PID.read_text())):
+            return
+    except (OSError, ValueError):
+        pass
+    repo = Path(__file__).resolve().parent.parent
+    out = open(OWNED.with_name("fleet_reaper.log"), "a")   # noqa: SIM115 - handed to the child
+    proc = subprocess.Popen([sys.executable, "-m", "sheelshort", "fleet", str(project_root), "idle"], cwd=repo,
+                            stdin=subprocess.DEVNULL, stdout=out, stderr=subprocess.STDOUT, start_new_session=True)
+    REAPER_PID.write_text(str(proc.pid))
+
+
+def watch_idle(api: "AutoDL", c: dict, log=print) -> None:
+    """The reaper: check until every idle server is powered off (or taken by a new run), then exit."""
+    REAPER_PID.parent.mkdir(parents=True, exist_ok=True)
+    REAPER_PID.write_text(str(os.getpid()))
+    while True:
         try:
-            if api.status(uuid) not in ("shutdown",):
-                api.power_off(uuid)
-                log(f"fleet: powered off orphan {uuid} (its run, pid {pid}, ended without cleaning up)")
-            done.append(uuid)
-            _own(uuid, None)
-        except AutoDLError as e:
-            if "NotFound" in str(e) or "未查询到" in str(e):   # released meanwhile: nothing left to do
-                _own(uuid, None)
-            else:
-                log(f"fleet: could not power off orphan {uuid}: {e}")
-    return done
+            nxt = reap_idle(api, c, log)
+        except Exception as e:  # noqa: BLE001 - a network hiccup must not leave servers running unwatched
+            log(f"fleet: idle check failed ({e}); retrying")
+            nxt = 60
+        if nxt is None:
+            return
+        time.sleep(max(15.0, min(nxt + 1, 120.0)))
+
+
+def bring_up(api: "AutoDL", uuid: str, stop: threading.Event | None = None, clock=time.time) -> str:
+    """Wait for a powered-on instance to run and its ComfyUI to answer; its address ("" if it never did)."""
+    t0 = clock()
+    api.wait_status(uuid, "running", timeout_s=900)
+    url = ""
+    while not url and clock() - t0 < 1200 and not (stop and stop.is_set()):
+        url = api.comfy_url(uuid)
+        if not url:
+            time.sleep(10)
+    return url
+
+
+class Session:
+    """The servers one sheelshort command runs on, when every server is powered on on demand (`[fleet] core`).
+
+    Nothing is started until a job needs a GPU (`ensure`, called by `Project.pick`): then every instance of ours that
+    is already running is used as it is (warm, and billed anyway), and if that makes fewer than `min_servers`, stopped
+    core servers are powered on, then stopped fleet servers, then a new one is created. While a render runs the Fleet
+    adds more. When the command ends (`release`) its servers are let go; a server no process holds is powered off by
+    the reaper once its queue has been empty for `idle_off_minutes`, so back-to-back commands find it still warm."""
+
+    def __init__(self, p, api: AutoDL | None = None, spawn=spawn_reaper):
+        self.p, self.c = p, p.cfg["fleet"]
+        self.api = api if api is not None else AutoDL()
+        self.spawn = spawn
+        self.held: dict[str, str] = {}   # uuid -> ComfyUI address
+        self.lock = threading.Lock()
+        self.woken = False
+        self.tried_at = 0.0
+
+    def ensure(self) -> None:
+        """Wake the servers on the first GPU job; while none could start (AutoDL out of stock: "暂无库存"), try again
+        every `stock_retry_s` (180) instead of giving the run up."""
+        with self.lock:
+            now = time.time()
+            if self.woken and (self.p.cfg["comfy"]["servers"] or now - self.tried_at < float(self.c.get("stock_retry_s", 180))):
+                return
+            if self.woken:
+                self.log("no server is up yet; trying to start one again")
+            self.woken, self.tried_at = True, now
+            try:
+                self._wake()
+            except Exception as e:  # noqa: BLE001
+                self.log(f"waking servers failed: {e}")
+            if self.held and not self.p.dry:
+                self.spawn(self.p.root)   # from the start: a run killed outright (power loss, kill -9) still gets its
+                                          # servers powered off once idle
+
+    def _wake(self) -> None:
+        servers = self.p.cfg["comfy"]["servers"]
+        insts = {i["uuid"]: i for i in self.api.instances() if ours(self.c, i)}
+        core = [u for u in self.c.get("core") or [] if u in insts]
+        order = core + sorted(u for u in insts if u not in core)
+        with self.p.lock:   # a configured address of an on-demand server may be stale (6006/6008): resolved below
+            servers[:] = [s for s in servers if not any(u.split("-", 1)[-1] in s for u in order)]
+        cap = int(self.c.get("max_servers", 4))
+        for u in order:
+            if insts[u].get("status") == "running" and len(servers) < cap:
+                hold(u)
+                url = self.api.comfy_url(u)
+                if url:
+                    self._add(u, url)
+                    self.log(f"{u}: already running -> in the pool")
+                else:
+                    let_go(u)
+        need = min(int(self.c.get("min_servers", 1)), cap) - len(servers)
+        if need <= 0 or self.p.dry:
+            return
+        started = []
+        for u in order:
+            if len(started) == need:
+                break
+            if insts[u].get("status") == "shutdown" and hold(u, claim=True):
+                try:
+                    self.api.power_on(u)
+                    self.log(f"{u}: powered on")
+                    started.append(u)
+                except AutoDLError as e:
+                    let_go(u)
+                    self.log(f"{u}: power on failed ({e})")
+        while len(started) < need:   # nothing stopped could start: create one (the Fleet's rule, same app and region)
+            u = Fleet(self.p, api=self.api)._create()
+            if not u:
+                break
+            hold(u)
+            started.append(u)
+        threads = [threading.Thread(target=self._up, args=(u,)) for u in started]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+        if not servers:
+            self.log("no server could be started")
+
+    def _up(self, u: str) -> None:
+        t0 = time.time()
+        try:
+            url = bring_up(self.api, u)
+        except Exception as e:  # noqa: BLE001
+            url = ""
+            self.log(f"{u}: {e}")
+        if url:
+            self._add(u, url)
+            self.log(f"{u}: in the pool after {time.time() - t0:.0f}s -> {url}")
+        else:
+            self.log(f"{u}: ComfyUI never answered; letting it go")
+            self.held[u] = ""
+
+    def _add(self, u: str, url: str) -> None:
+        hold(u, url)
+        self.held[u] = url
+        with self.p.lock:
+            if url not in self.p.cfg["comfy"]["servers"]:
+                self.p.cfg["comfy"]["servers"].append(url)
+
+    def release(self) -> None:
+        idle = [u for u in self.held if let_go(u)]
+        if idle and not self.p.dry:
+            self.log(f"{len(idle)} server(s) idle; powered off after {self.c.get('idle_off_minutes', 10)} min unless a new run takes them")
+            self.spawn(self.p.root)
+        self.held.clear()
+
+    def log(self, msg: str) -> None:
+        from .project import log
+        log(f"fleet: {msg}")
 
 
 class Fleet:
-    """Grows and shrinks the render pool with extra AutoDL.Art instances of the same app while a render runs.
+    """Grows and shrinks the render pool with more AutoDL.Art instances of the same app while a render runs, up to
+    `max_servers` in all.
 
-    Only instances this engine named (`name_prefix`-…) in the allowed regions are ever touched; the user's own servers
-    in `[comfy] servers` stay as they are. Every managed instance is powered off when the run ends (`stop`), and an
-    idle one is drained and powered off earlier (`idle_off_minutes`). With `dry_run` the decisions are only logged.
-    """
+    Only core servers (`core`) and instances this engine named (`name_prefix`-…) in the allowed regions are ever
+    touched; stopped core servers are powered on before fleet ones, and a new instance is created only when none can
+    start. Every instance it started is powered off when the run ends (`stop`), and an idle one is drained and powered
+    off earlier (`idle_off_minutes`), unless another sheelshort run holds it. With `dry_run` the decisions are only
+    logged."""
 
     def __init__(self, p, api: AutoDL | None = None, clock=time.time):
         self.p, self.c = p, p.cfg["fleet"]
@@ -175,6 +430,7 @@ class Fleet:
         self.api = api if api is not None else AutoDL()
         self.clock = clock
         self.pending = 0
+        self.linger_s = 0.0   # with no renders left, keep an idle server this long: QC and upscale jobs still come
         self.managed: dict[str, dict] = {}      # uuid -> {"url", "idle_since"}
         self.starting = False
         self.backoff_until = 0.0
@@ -187,10 +443,8 @@ class Fleet:
     # ---------- run lifecycle ----------
 
     def start(self, jobs: int) -> None:
-        if not self.dry:
-            self._adopt_orphans()
         self.pending = jobs
-        self.log(f"start: {jobs} job(s), {len(self.p.cfg['comfy']['servers'])} server(s), up to {self.c['max_extra']} extra"
+        self.log(f"start: {jobs} job(s), {len(self.p.cfg['comfy']['servers'])} server(s), up to {self.c['max_servers']} in all"
                  + (" [dry run]" if self.dry else ""))
         self._thread = threading.Thread(target=self._loop, daemon=True)
         self._thread.start()
@@ -210,28 +464,6 @@ class Fleet:
         for uuid in list(self.managed):
             self._retire(uuid, "run finished", force=True)
 
-    def _adopt_orphans(self) -> None:
-        """Servers left running by a run that died are taken into this run's pool (they are ours, and already warm);
-        stopped ones are just forgotten. The idle rules power them off if this run has no work for them."""
-        for uuid, pid in _owned().items():
-            if pid == os.getpid() or _alive(pid):
-                continue
-            try:
-                status = self.api.status(uuid)
-            except AutoDLError:
-                _own(uuid, None)
-                continue
-            url = self.api.comfy_url(uuid) if status == "running" else ""
-            if not url:
-                _own(uuid, None)
-                continue
-            self.managed[uuid] = {"url": url, "idle_since": None}
-            _own(uuid, os.getpid())
-            with self.p.lock:
-                if url not in self.p.cfg["comfy"]["servers"]:
-                    self.p.cfg["comfy"]["servers"].append(url)
-            self.log(f"{uuid}: adopted from a run that ended without cleaning up -> {url}")
-
     def _loop(self) -> None:
         while not self._stop.wait(float(self.c.get("tick_s", 20))):
             try:
@@ -244,7 +476,7 @@ class Fleet:
     def tick(self) -> None:
         if self.hold_pending is not None and self.pending < self.hold_pending:
             self.hold_pending = None
-        if (len(self.managed) < int(self.c["max_extra"]) and not self.starting and self.clock() >= self.backoff_until
+        if (len(self.p.cfg["comfy"]["servers"]) < int(self.c["max_servers"]) and not self.starting and self.clock() >= self.backoff_until
                 and self.hold_pending is None and self.gain_minutes() >= float(self.c.get("min_gain_minutes", 3))):
             self.starting = True
             self._up = threading.Thread(target=self._scale_up, daemon=True)
@@ -265,7 +497,8 @@ class Fleet:
             elif m["idle_since"] is None:
                 m["idle_since"] = self.clock()
             idle_for = 0 if m["idle_since"] is None else self.clock() - m["idle_since"]
-            if not busy and (self.pending == 0 or idle_for >= 60 * float(self.c.get("idle_off_minutes", 10))):
+            done = self.pending == 0 and idle_for >= self.linger_s
+            if not busy and (done or idle_for >= 60 * float(self.c.get("idle_off_minutes", 10))):
                 if self._retire(uuid, f"idle {idle_for / 60:.0f} min" if self.pending else "no work left") and self.pending:
                     self.hold_pending = self.pending   # work is waiting but this server got none: another would sit idle too
 
@@ -312,14 +545,9 @@ class Fleet:
                 self.backoff_until = self.clock() + 60 * float(self.c.get("retry_minutes", 5))
                 return
             self.managed[uuid] = {"url": "", "idle_since": None}   # owned from here on, so `stop` powers it off
-            _own(uuid, os.getpid())                                # and a later run powers it off if this one dies
+            hold(uuid)                                             # and the reaper does if this run dies
             t0 = self.clock()
-            self.api.wait_status(uuid, "running", timeout_s=900)
-            url = ""
-            while not url and self.clock() - t0 < 1200 and not self._stop.is_set():
-                url = self.api.comfy_url(uuid)
-                if not url:
-                    time.sleep(10)
+            url = bring_up(self.api, uuid, self._stop, self.clock)
             if not url:
                 self.log(f"{uuid}: ComfyUI never answered; powering it off")
                 self._retire(uuid, "not reachable", force=True)
@@ -338,19 +566,20 @@ class Fleet:
         finally:
             self.starting = False
 
-    def _ours(self, inst: dict) -> bool:
-        return (inst.get("name") or "").startswith(self.c["name_prefix"]) and \
-            any(r in (inst.get("region_name") or "") for r in self.c.get("region_names", ["北京"]))
-
     def _power_on_stopped(self) -> str | None:
-        for inst in self.api.instances():
-            if self._ours(inst) and inst.get("status") == "shutdown" and inst["uuid"] not in self.managed:
-                try:
-                    self.api.power_on(inst["uuid"])
-                    self.log(f"{inst['uuid']}: powered on")
-                    return inst["uuid"]
-                except AutoDLError as e:
-                    self.log(f"{inst['uuid']}: power on failed ({e})")
+        core = self.c.get("core") or []
+        insts = sorted((i for i in self.api.instances() if ours(self.c, i) and i.get("status") == "shutdown"),
+                       key=lambda i: (i["uuid"] not in core, core.index(i["uuid"]) if i["uuid"] in core else 0))
+        for inst in insts:
+            if inst["uuid"] in self.managed or not hold(inst["uuid"], claim=True):   # another run is starting it
+                continue
+            try:
+                self.api.power_on(inst["uuid"])
+                self.log(f"{inst['uuid']}: powered on")
+                return inst["uuid"]
+            except AutoDLError as e:
+                let_go(inst["uuid"])
+                self.log(f"{inst['uuid']}: power on failed ({e})")
         return None
 
     def _create(self) -> str | None:
@@ -379,9 +608,12 @@ class Fleet:
         if self.dry:
             self.log(f"would power off {uuid} ({why})")
             return True
+        if not let_go(uuid):
+            self.log(f"{uuid}: out of this run's pool ({why}); another run still uses it")
+            return True
         try:
             self.api.power_off(uuid)
-            _own(uuid, None)
+            forget(uuid)
             self.log(f"{uuid}: powered off ({why})")
         except AutoDLError as e:
             self.log(f"{uuid}: power off FAILED ({e}); run `sheelshort fleet <project> off`")
@@ -394,7 +626,3 @@ class Fleet:
     def log_raw(self, msg: str) -> None:
         from .project import log
         log(msg)
-
-
-def managed(api: AutoDL, prefix: str) -> list[dict]:
-    return [i for i in api.instances() if (i.get("name") or "").startswith(prefix)]
