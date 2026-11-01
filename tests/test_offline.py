@@ -239,11 +239,18 @@ class _FakeAutoDL:
         self.list.append({"uuid": uuid, "name": name, "status": "running", "region_name": "北京B区"})
         return uuid
 
+    def _set(self, uuid, status):
+        for i in self.list:
+            if i["uuid"] == uuid:
+                i["status"] = status
+
     def power_on(self, uuid):
         self.calls.append(("power_on", uuid))
+        self._set(uuid, "running")
 
     def power_off(self, uuid):
         self.calls.append(("power_off", uuid))
+        self._set(uuid, "shutdown")
 
     def wait_status(self, uuid, want, timeout_s=0):
         return 0.0
@@ -261,6 +268,7 @@ class _FakeProject:
         self.cfg["fleet"].update({"dry_run": False, **fleet_cfg})
         self.lock, self._assigned = threading.Lock(), {}
         self.busy, self.dead = set(), set()
+        self.root, self.dry = Path("/nonexistent"), False
 
     def client(self, url):
         p = self
@@ -349,7 +357,7 @@ def test_fleet_does_not_flap_after_an_idle_power_off():
     assert sum(c[0] == "create" for c in api.calls) == 1        # no new server while the backlog has not moved
     fl.pending = 7
     _scaled(fl)
-    assert sum(c[0] == "create" for c in api.calls) == 2        # the backlog moves: scaling may resume
+    assert api.calls[-1] == ("power_on", "pro-new0")            # the backlog moves: scaling resumes, reusing the stopped one
 
 
 def test_fleet_dry_run_changes_nothing():
@@ -484,6 +492,70 @@ def test_clipqc_text_on_a_prop_is_not_a_caption():
     assert clipqc.judge_panel(chars, 2, {"type": "CU", "subjects": ["fg"], "props": ["card"]}, pan, False, False, props) == []
     assert clipqc.judge_panel(chars, 2, {"type": "CU", "subjects": ["fg"], "props": ["cup"]}, pan, False, False, props) == \
         ["cut 2: on-screen text"]
+
+
+def _core_fleet():
+    from sheelshort import fleet
+    fleet.OWNED.unlink(missing_ok=True)
+    api = _FakeAutoDL([{"uuid": "pro-a", "name": "", "status": "shutdown", "region_name": "北京B区"},
+                       {"uuid": "pro-b", "name": "", "status": "shutdown", "region_name": "北京B区"},
+                       {"uuid": "pro-x", "name": "sheelshort-bj-1", "status": "shutdown", "region_name": "北京B区"},
+                       {"uuid": "pro-mine", "name": "other", "status": "running", "region_name": "北京B区"}])
+    p = _FakeProject(core=["pro-a", "pro-b"])
+    p.cfg["comfy"]["servers"] = []
+    return fleet, api, p
+
+
+def test_core_servers_start_on_the_first_job_and_stop_when_idle():
+    fleet, api, p = _core_fleet()
+    spawned = []
+    ses = fleet.Session(p, api=api, spawn=spawned.append)
+    assert api.calls == []                                     # nothing starts before a job needs a GPU
+    ses.ensure(); ses.ensure()
+    assert api.calls == [("power_on", "pro-a")]                # min_servers = 1: the first core server only
+    assert p.cfg["comfy"]["servers"] == ["https://pro-a.example:8443"]
+    assert fleet.holders("pro-a") == [os.getpid()]
+    ses.release()
+    assert spawned == [p.root] and fleet.holders("pro-a") == []
+    t0 = fleet.time.time()                                     # let_go stamped "idle since" with real time
+    left = fleet.reap_idle(api, p.cfg["fleet"], log=lambda m: None, clock=lambda: t0 + 60)
+    assert api.calls[-1] == ("power_on", "pro-a") and 500 < left <= 600     # 10 min not up yet
+    fleet.reap_idle(api, p.cfg["fleet"], log=lambda m: None, clock=lambda: t0 + 601)
+    assert api.calls[-1] == ("power_off", "pro-a")
+    assert not any(c[1] == "pro-mine" for c in api.calls)   # never an instance that is not ours
+    assert fleet.reap_idle(api, p.cfg["fleet"], log=lambda m: None) is None    # nothing left to watch
+
+
+def test_a_running_core_server_is_used_and_kept_while_another_run_holds_it():
+    fleet, api, p = _core_fleet()
+    api._set("pro-b", "running")
+    ses = fleet.Session(p, api=api, spawn=lambda root: None)
+    ses.ensure()
+    assert api.calls == [] and p.cfg["comfy"]["servers"] == ["https://pro-b.example:8443"]   # warm: no power-on
+    with fleet._registry() as d:
+        d["pro-b"]["pids"].append(os.getppid())                 # another live sheelshort run uses it too
+    ses.release()
+    fleet.reap_idle(api, p.cfg["fleet"], log=lambda m: None, clock=lambda: fleet.time.time() + 3600)
+    assert api.calls == []
+    with fleet._registry() as d:
+        d["pro-b"]["pids"] = []
+        d["pro-b"]["since"] = 0.0
+    fleet.reap_idle(api, p.cfg["fleet"], log=lambda m: None, idle=lambda url: False)   # its queue has work
+    assert api.calls == []
+    fleet.reap_idle(api, p.cfg["fleet"], log=lambda m: None, clock=lambda: fleet.time.time() + 601)
+    assert api.calls == [("power_off", "pro-b")]
+
+
+def test_fleet_powers_on_core_servers_before_fleet_ones():
+    from sheelshort.fleet import Fleet
+    fleet, api, p = _core_fleet()
+    fleet.Session(p, api=api, spawn=lambda root: None).ensure()   # pro-a, as the command's first server
+    fl = Fleet(p, api=api, clock=lambda: 1000.0)
+    fl.pending = 30
+    _scaled(fl)
+    assert api.calls == [("power_on", "pro-a"), ("power_on", "pro-b")]
+    fl.stop()
+    assert api.calls[-1] == ("power_off", "pro-b") and p.cfg["comfy"]["servers"] == ["https://pro-a.example:8443"]
 
 
 if __name__ == "__main__":

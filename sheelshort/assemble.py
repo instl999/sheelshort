@@ -261,7 +261,7 @@ def upscaled(p: Project, ep: str, video: Path) -> Path:
     key = f"upscale/{ep}/{video.stem}_{int(video.stat().st_mtime)}"
     caps_path = REPO / ".cache" / "server_caps.json"
     out = None
-    for _ in range(len(p.cfg["comfy"]["servers"])):
+    for _ in range(max(1, len(p.cfg["comfy"]["servers"]))):
         caps = load_json(caps_path) if caps_path.exists() else {}
         bad = set(caps.get("no_rtx_vsr", []))
         out = p.run_job(key, lambda cl: flows.upscale_rtx(p.put(cl, video), scale + 0.005, f"sheelshort/{ep}_{video.stem}_up"),
@@ -289,7 +289,7 @@ def run(p: Project, ep: str) -> Path:
     e = p.cfg["edit"]
     plan = edl(p, ep)
     from concurrent.futures import ThreadPoolExecutor
-    with ThreadPoolExecutor(max(1, 2 * len(p.cfg["comfy"]["servers"]))) as ex:   # upscale the chosen takes in parallel
+    with ThreadPoolExecutor(max(2, 2 * len(p.cfg["comfy"]["servers"]))) as ex:   # upscale the chosen takes in parallel
         ups = list(ex.map(lambda it: str(upscaled(p, ep, Path(it["video"]))), plan["clips"]))
     for it, up in zip(plan["clips"], ups):
         it["video"] = up
