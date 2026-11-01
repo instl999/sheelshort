@@ -9,7 +9,9 @@ from __future__ import annotations
 
 import re
 import subprocess
+import threading
 from pathlib import Path
+from urllib.parse import urlparse
 
 from . import h3prompt, media, sfx
 from .project import REPO, Project, load_json, log, save_json
@@ -301,6 +303,10 @@ def srt_time(s: float) -> str:
     return f"{int(s // 3600):02d}:{int(s % 3600 // 60):02d}:{int(s % 60):02d},{int(round(s % 1 * 1000)) % 1000:03d}"
 
 
+CAPS = REPO / ".cache" / "server_caps.json"   # what each server's (machine's) driver cannot do
+_caps_lock = threading.Lock()   # upscales run in parallel: one of them brings in a capable machine, the rest wait
+
+
 def upscaled(p: Project, ep: str, video: Path) -> Path:
     """The take upscaled on the servers to cover 1080x1920 (`edit.upscale = "rtx"`), else the take itself."""
     e = p.cfg["edit"]
@@ -315,22 +321,35 @@ def upscaled(p: Project, ep: str, video: Path) -> Path:
         return dest
     from . import flows
     key = f"upscale/{ep}/{video.stem}_{int(video.stat().st_mtime)}"
-    caps_path = REPO / ".cache" / "server_caps.json"
+    caps_path = CAPS
     out = None
-    for _ in range(max(1, len(p.cfg["comfy"]["servers"]))):
-        caps = load_json(caps_path) if caps_path.exists() else {}
-        bad = set(caps.get("no_rtx_vsr", []))
+    for _ in range(max(1, len(p.cfg["comfy"]["servers"])) + int(e.get("upscale_machine_tries", 3))):
+        with _caps_lock:
+            caps = load_json(caps_path) if caps_path.exists() else {}
+            bad_m = set(caps.get("no_rtx_vsr_machines", []))
+            where = p.waker.machines() if p.waker else {}
+            bad = {u for u, m in where.items() if m in bad_m} | ({u for u in caps.get("no_rtx_vsr", []) if u not in where})
+            if p.waker and not set(p.cfg["comfy"]["servers"]) - bad:
+                # every machine in the pool has an old driver: bring in another (some machines lack RTX VSR)
+                log(f"{video.stem}: no server in the pool can run RTX upscaling; starting another machine")
+                if not p.waker.add_capable(bad_m):
+                    break
+                continue
         out = p.run_job(key, lambda cl: flows.upscale_rtx(p.put(cl, video), scale + 0.005, f"sheelshort/{ep}_{video.stem}_up"),
                         p.d("clips", ep, "up"), video.stem, ("gifs", "videos"), 1800, exclude=bad)
         job = p.state["jobs"].get(key, {})
         if out or "NvVFX" not in job.get("error", ""):
             break
-        # this server's NVIDIA video-effects runtime cannot load RTX VSR: remember it and try another server
-        with p.lock:
+        # this machine's NVIDIA video-effects runtime cannot load RTX VSR (an old driver): remember the machine
+        with _caps_lock:
             caps = load_json(caps_path) if caps_path.exists() else {}
             caps["no_rtx_vsr"] = sorted(set(caps.get("no_rtx_vsr", [])) | {job["server"]})
+            m = (p.waker.machines() if p.waker else {}).get(job["server"])
+            if m:
+                caps["no_rtx_vsr_machines"] = sorted(set(caps.get("no_rtx_vsr_machines", [])) | {m})
             save_json(caps_path, caps)
-        log(f"{video.stem}: RTX VSR unavailable on {job['server']}; retrying elsewhere")
+        log(f"{video.stem}: RTX upscaling unavailable on {urlparse(job['server']).hostname} (machine {m or '?'}); "
+            "moving to another server")
         p.forget(key)
     mp4 = [f for f in out or [] if f.suffix == ".mp4"]
     if not mp4:

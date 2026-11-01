@@ -971,6 +971,61 @@ def test_a_server_out_of_stock_is_asked_again_within_the_minute():
     assert fleet.grab(api, [], {"grab_gap_s": 5}, said.append) is None
 
 
+def test_only_one_run_works_on_a_project_at_a_time():
+    import subprocess
+    from sheelshort import cli
+    with tempfile.TemporaryDirectory() as tmp:
+        p = _scratch_project(tmp, {})
+        cli.run_lock(p)
+        r = subprocess.run([sys.executable, "-c", "import sys; from pathlib import Path; sys.path.insert(0, sys.argv[1]); "
+                            "from sheelshort import cli; from sheelshort.project import Project; cli.run_lock(Project(Path(sys.argv[2])))",
+                            str(ROOT), str(p.root)], capture_output=True, text=True)
+        assert r.returncode == 1 and "another run is already working" in r.stderr
+        cli._RUN_LOCK.close()
+
+
+def test_an_upscale_moves_off_a_machine_with_an_old_driver():
+    import subprocess
+    from sheelshort import fleet
+    fleet.OWNED.unlink(missing_ok=True)
+    api = _FakeAutoDL([{"uuid": "pro-a", "name": "", "status": "shutdown", "region_name": "北京B区", "machine_id": "m-old"},
+                       {"uuid": "pro-b", "name": "", "status": "shutdown", "region_name": "北京B区", "machine_id": "m-new"}])
+    with tempfile.TemporaryDirectory() as tmp:
+        p = _scratch_project(tmp, {})
+        p.cfg["fleet"].update({"enabled": True, "dry_run": False, "core": ["pro-a", "pro-b"], "min_servers": 1, "max_servers": 1})
+        p.cfg["comfy"]["servers"] = []
+        p.cfg["edit"]["upscale"] = "rtx"
+        old_caps = assemble.CAPS
+        assemble.CAPS = Path(tmp) / "caps.json"
+        p.waker = fleet.Session(p, api=api, spawn=lambda root: None)
+        p.waker.ensure()
+        assert p.cfg["comfy"]["servers"] == ["https://pro-a.example:8443"]
+        take = p.d("clips", "E01") / "K1_h3_t1.mp4"
+        subprocess.run(["ffmpeg", "-v", "error", "-f", "lavfi", "-i", "color=c=gray:s=360x640:d=1", "-f", "lavfi", "-i",
+                        "anullsrc", "-shortest", "-c:v", "libx264", "-c:a", "aac", str(take)], check=True)
+        ran = []
+
+        def run_job(key, build, out_dir, stem, kinds, timeout, exclude=frozenset(), units=1.0):
+            url = next(u for u in p.cfg["comfy"]["servers"] if u not in exclude)
+            ran.append(url)
+            if "pro-a" in url:
+                p.state["jobs"][key] = {"server": url, "status": "failed", "error": "ComfyError: prompt 1 failed: "
+                                        "RTXVideoSuperResolution #2: NvVFX_Load failed: The requested feature was not found"}
+                return None
+            out = out_dir / f"{stem}.mp4"
+            out.write_bytes(take.read_bytes())
+            return [out]
+        p.run_job = run_job
+        try:
+            up = assemble.upscaled(p, "E01", take)
+        finally:
+            assemble.CAPS = old_caps
+        assert up.name == "K1_h3_t1_up.mp4" and ran == ["https://pro-a.example:8443", "https://pro-b.example:8443"]
+        assert ("power_off", "pro-a") in api.calls and ("power_on", "pro-b") in api.calls       # swapped at max_servers
+        assert json.loads((Path(tmp) / "caps.json").read_text())["no_rtx_vsr_machines"] == ["m-old"]
+        p.waker.release()
+
+
 if __name__ == "__main__":
     for name, fn in list(globals().items()):
         if name.startswith("test_"):

@@ -157,6 +157,29 @@ def sfx_command(p: Project, a) -> None:
             print(f"{name:12s} {v.get('what', '')}" + ("  [project]" if name in sfx.own(p.bible) else ""))
 
 
+_RUN_LOCK = None
+
+
+def run_lock(p: Project) -> None:
+    """One working command per project: two runs on the same project overwrite each other's state and takes (a run
+    stopped with a signal while it waited for a server once kept going beside its restart)."""
+    global _RUN_LOCK
+    import fcntl
+    import os
+    path = p.root / ".run.lock"
+    _RUN_LOCK = open(path, "a+")   # noqa: SIM115 - held for the life of the process
+    try:
+        fcntl.flock(_RUN_LOCK, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except OSError:
+        _RUN_LOCK.seek(0)
+        other = _RUN_LOCK.read().strip() or "?"
+        raise SystemExit(f"another run is already working on {p.root.name} (pid {other}); wait for it, or stop it first")
+    _RUN_LOCK.seek(0)
+    _RUN_LOCK.truncate()
+    _RUN_LOCK.write(str(os.getpid()))
+    _RUN_LOCK.flush()
+
+
 def _exit_on_signal(signum, frame):   # SIGTERM/SIGHUP end the run normally, so cleanup (the fleet's power-off) runs
     raise SystemExit(128 + signum)
 
@@ -203,6 +226,7 @@ def main(argv: list[str] | None = None) -> None:
         sfx_command(p, a)
         return
     if a.command in ("cast", "perform", "render", "assemble", "review", "make", "evaluate", "package"):
+        run_lock(p)
         p.run_info["command"] = " ".join(sys.argv[1:] if argv is None else argv)
         save_json(p.root / "progress.json", p.run_info)
         if sys.platform == "darwin" and shutil.which("caffeinate"):   # the Mac must not sleep under a long run
