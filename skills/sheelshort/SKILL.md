@@ -35,6 +35,11 @@ Characters, locations, props, visual style. Rules that matter:
   ("压抑着愤怒" or "lazy, mocking" in a voice description makes every line come out in that one register).
 - **`voice_sample`**: one neutral sentence of ~25–35 characters the cast voice will say (its transcript).
 - **`voice_en`**: the same timbre in English, a few words.
+- **`demeanor`**: the character's standing manner, in English, as the audience should read them in any unwritten
+  moment ("composed and warm, attentive eyes; never sarcastic or contemptuous"; for a villain "smug, eyes half-lidded,
+  a faint sneer"). The engine repeats it in every face shot of the character (a shot's own action overrides it), so
+  the video model fills gaps in character: without it, 林晚 got an eye-roll that read as contempt. `check` notes main
+  characters (with a `card`) that have none.
 
 ## 3. Write `episodes/<EP>.json`
 Set `music` to mood tags for the instrumental bed (e.g. "suspenseful night drama underscore, solo cello, sparse piano, no vocals"). Clips of 4–15 s; each clip is a sequence of cuts (default 3 s, `dur` may be 2–6). One location per clip, at most

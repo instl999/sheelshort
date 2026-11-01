@@ -18,6 +18,7 @@ A complete worked example is `projects/waimai2/` (bible.json, episodes/E01.json,
       "hair": "long wavy dark-brown hair falling past the shoulders with a side part on her right, worn loose",
       "costume": "a deep-red satin slip evening gown with thin straps, ankle length, black pointed-toe high heels, small pearl stud earrings",
       "voice_en": "in a warm, slightly low female voice",
+      "demeanor": "composed and warm, attentive eyes, a quiet strength; never sarcastic, never contemptuous",
       "voice_design": "二十八岁左右的成年女性，音色温暖、略偏低沉，普通话标准，语速中等",
       "voice_sample": "我等了你整整三年，每天晚上都站在这扇窗前，看着这座城市的灯一盏一盏地熄灭。"
     }

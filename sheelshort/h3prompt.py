@@ -444,6 +444,10 @@ def cast_notes(bible: dict) -> list[str]:
     """Advice on the cast: identity anchors H3 can hold from shot to shot."""
     out = []
     for c, ch in bible.get("characters", {}).items():
+        if ch.get("card") and not ch.get("demeanor"):
+            out.append(f"character {c}: no `demeanor`; give main characters their standing manner (\"calm and composed, "
+                       "warm attentive eyes; never sarcastic or contemptuous\") so the video model fills unwritten "
+                       "moments in character")
         m = SMALL_MARK.search(ch.get("keep", ""))
         if m:
             out.append(f"character {c}: '{m.group(0)}' as an identity anchor: small facial marks drift and flicker from "
@@ -613,7 +617,8 @@ def build(scene: dict, clip: dict, refs: Refs, cameras: dict[int, dict] | None =
                    f"proportions come from the front, side and back reference sheet <Picture {own[1]}>")
         else:
             src = f"in {pics(c) if own else pics('__keyframe__')}"
-        defs.append(f"{S(c)} is {chars[c]['name']}, the {chars[c]['role']} {src}: {chars[c]['look']}")
+        defs.append(f"{S(c)} is {chars[c]['name']}, the {chars[c]['role']} {src}: {chars[c]['look']}"
+                    + (f" {chars[c]['name']}'s manner: {chars[c]['demeanor'].rstrip('.')}." if chars[c].get("demeanor") else ""))
         if c in phone_only(clip):
             defs.append(f"{S(c)} never appears in the picture of this clip; only {S(c)}'s voice is heard, through a phone.")
     for pr in props:
@@ -712,6 +717,8 @@ def build(scene: dict, clip: dict, refs: Refs, cameras: dict[int, dict] | None =
             faces = [cut["speaker"]] if typ == "OTS" and cut.get("speaker") else cut.get("subjects", [])
             for c in faces:
                 parts.append(f"Fine facial detail on {S(c)}: {chars[c]['face_detail']}")
+                if chars[c].get("demeanor"):   # who they are, so H3 fills unwritten moments in character (an eye-roll once)
+                    parts.append(f"{S(c)}'s manner, unless this shot's action says otherwise: {chars[c]['demeanor'].rstrip('.')}.")
         who = cut.get("subjects", [])
         if cut.get("via") == "phone" and who:
             parts.append(f"{S(who[0])} holds a phone to the ear, eyes unfocused, listening; no one else is on the call in the room.")
