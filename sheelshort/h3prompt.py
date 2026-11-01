@@ -167,6 +167,16 @@ def check_rules(scene: dict) -> list[str]:
                 errs.append(f"{where}: voice-over shot without a line")
             if t in ("MS", "WS") and cut.get("line"):
                 errs.append(f"{where}: medium and wide shots are for positioning/movement; give dialogue its own close-up")
+            if cut.get("via"):
+                if cut["via"] != "phone":
+                    errs.append(f"{where}: via {cut['via']!r}; the only value is \"phone\"")
+                elif not cut.get("line"):
+                    errs.append(f"{where}: via phone without a line")
+                elif cut.get("speaker") in cut.get("subjects", []):
+                    errs.append(f"{where}: a phone line is heard from the other end; the shot shows the listener, not "
+                                "the speaker (cut to the speaker without `via` to show them talking)")
+            if cut.get("extras") and t in ("CU", "ECU", "VO"):
+                errs.append(f"{where}: extras need room in the frame; give them to a medium, wide or over-the-shoulder shot")
             if cut.get("angle", "front") not in ANGLE_PHRASE:
                 errs.append(f"{where}: angle {cut['angle']!r} not one of {sorted(ANGLE_PHRASE)}")
             if cut.get("to") and cut["to"] not in chars:
@@ -401,6 +411,12 @@ def clip_props(clip: dict) -> list[str]:
     return list(dict.fromkeys(pr for cut in clip["cuts"] for pr in cut.get("props", [])))
 
 
+def phone_only(clip: dict) -> set[str]:
+    """Characters heard only through a phone in this clip (`via: "phone"`), never seen in it."""
+    seen = {c for cut in clip["cuts"] for c in cut.get("subjects", []) + [cut.get("over")] if c}
+    return {cut["speaker"] for cut in clip["cuts"] if cut.get("via") == "phone" and cut.get("speaker")} - seen
+
+
 def speaker_order(clip: dict) -> list[str]:
     return list(dict.fromkeys(c["speaker"] for c in clip["cuts"] if c.get("line")))
 
@@ -536,6 +552,8 @@ def build(scene: dict, clip: dict, refs: Refs, cameras: dict[int, dict] | None =
         else:
             src = f"in {pics(c) if own else pics('__keyframe__')}"
         defs.append(f"{S(c)} is {chars[c]['name']}, the {chars[c]['role']} {src}: {chars[c]['look']}")
+        if c in phone_only(clip):
+            defs.append(f"{S(c)} never appears in the picture of this clip; only {S(c)}'s voice is heard, through a phone.")
     for pr in props:
         src = pics(pr) if pr in pic_no else pics("__keyframe__")
         defs.append(f"{S(pr)} is the {prop_defs[pr]['name']} in {src}: {prop_defs[pr]['look']}")
@@ -562,7 +580,8 @@ def build(scene: dict, clip: dict, refs: Refs, cameras: dict[int, dict] | None =
 
     # ---- retention_analysis ----
     shots_of = {c: [i for i, cut in enumerate(clip["cuts"], 1)
-                    if c in cut.get("subjects", []) or c == cut.get("over") or (c == cut.get("speaker") and cut["type"] != "VO")]
+                    if c in cut.get("subjects", []) or c == cut.get("over")
+                    or (c == cut.get("speaker") and cut["type"] != "VO" and cut.get("via") != "phone")]
                 for c in cast}
     ret = []
     if refs.keyframe:
@@ -632,7 +651,9 @@ def build(scene: dict, clip: dict, refs: Refs, cameras: dict[int, dict] | None =
             for c in faces:
                 parts.append(f"Fine facial detail on {S(c)}: {chars[c]['face_detail']}")
         who = cut.get("subjects", [])
-        if typ in ("CU", "MCU", "RX") and len(who) == 1:
+        if cut.get("via") == "phone" and who:
+            parts.append(f"{S(who[0])} holds a phone to the ear, eyes unfocused, listening; no one else is on the call in the room.")
+        elif typ in ("CU", "MCU", "RX") and len(who) == 1:
             parts.append(gaze(who[0], partner(clip, i - 1), sides, lambda c: labels[c]))
         elif typ == "OTS" and who:
             parts.append(gaze(who[0], cut["over"], sides, lambda c: labels[c]))
@@ -640,6 +661,9 @@ def build(scene: dict, clip: dict, refs: Refs, cameras: dict[int, dict] | None =
             a, b = sorted(who[:2], key=lambda c: sides[c] != "left")
             parts.append(f"{S(a)} is on the left of frame and {S(b)} on the right, facing each other.")
         parts.append(f(cut["action"]))
+        if cut.get("extras"):
+            parts.append(f"In the background: {f(cut['extras']).rstrip('.')}. They are extras who never speak, never "
+                         "look at the camera and stay softer than the main characters; no one else is in the shot.")
         if typ == "VO":
             parts.append("The camera starts as a close-up and slowly pushes in to an extreme close-up of the eyes, with small amplitude and at slow speed.")
         else:
@@ -653,7 +677,13 @@ def build(scene: dict, clip: dict, refs: Refs, cameras: dict[int, dict] | None =
             else:
                 voice = f" with the voice timbre of <Audio {aud[c]}>" if c in aud else f", {chars[c]['voice_en']}"
             said = cut.get("say") or cut["line"]   # the acted form keeps its punctuation (…… —— ！) verbatim
-            if typ == "VO" and c not in cut.get("subjects", []):   # the speaker's thoughts over someone else's shot
+            if cut.get("via") == "phone":
+                held = " and ".join(S(x) for x in cut.get("subjects", [])) or "someone"
+                parts.append(f"{S(c)} (S{sid[c]}) is on the other end of a phone call and is not in the picture; {S(c)}'s "
+                             f"voice comes through the phone held by {held}, thin and slightly compressed like a phone "
+                             f"speaker{voice}, {cut['delivery']}, <d>[{lang}] {said}</d> {held} listens and does not speak, "
+                             "lips closed.")
+            elif typ == "VO" and c not in cut.get("subjects", []):   # the speaker's thoughts over someone else's shot
                 others = " and ".join(S(x) for x in cut.get("subjects", []))
                 parts.append(f"Over this shot {S(c)}'s (S{sid[c]}) inner voice-over is heard{voice}, {cut['delivery']}, "
                              f"<d>[{lang}] {said}</d> {others} does not speak.")

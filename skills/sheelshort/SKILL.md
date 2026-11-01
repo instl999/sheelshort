@@ -100,6 +100,13 @@ shot is a face**, a close-up or reaction held 2–3 s and cut hard, never a wide
 resolves it in its first beat. Show emotion
 through observable cues (eyes drop, jaw tightens, a delayed answer), not emotion labels.
 
+**Costume changes, phone calls, extras.** A character who changes clothes gets bible `outfits`, and the episode (or
+clip) says who wears what (`"outfits": {"chenmo": "suit"}`). A line heard over the phone is `"via": "phone"` on a shot
+of the listener (`MCU`/`CU` of them holding the phone; the caller is not in `subjects`); cut to the caller without
+`via` to show them talking. People in the background who never speak go in `extras` on a medium, wide or
+over-the-shoulder shot ("two lawyers in black suits behind {chenmo}"); a shot without `extras` holds only its
+`subjects`, and clip QC re-takes a close or medium shot that came back with a crowd.
+
 **Sound effects (`sfx` on a cut):** after the cuts are written, do a sound pass. The render already carries the
 diegetic sound you describe in `sound` (rain, footsteps, a door); `sfx` adds an *editorial* accent the edit lays on
 the beat: the boom as a hidden identity is revealed, a riser into it, the whoosh of a time jump, the ding of the text
