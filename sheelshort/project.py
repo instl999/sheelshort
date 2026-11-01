@@ -84,16 +84,25 @@ class Project:
 
     @property
     def chars(self) -> dict:
-        return self.bible["characters"]
+        """The bible's characters and each of their outfits as a character of its own (wardrobe.py)."""
+        from . import wardrobe
+        return {**self.bible["characters"], **wardrobe.variants(self.bible)}
+
+    def base(self, c: str) -> str:
+        """The character an outfit id belongs to (the id itself for a character in its own costume)."""
+        return self.chars.get(c, {}).get("base", c)
 
     def episode(self, ep: str) -> dict:
+        """The episode file as written (outfits not applied; clips() and scene() apply them)."""
         return load_json(self.root / "episodes" / f"{ep}.json")
 
     def clips(self, ep: str) -> list[dict]:
         """The episode's clips; in test mode (`limit_s`) only the opening ones: clips are taken in order until the
         running length reaches the limit, and one that would overshoot it by more than 5 s is left out."""
+        from . import wardrobe
         from .h3prompt import clip_len
-        clips = self.episode(ep)["clips"]
+        e = self.episode(ep)
+        clips = [wardrobe.dress(e, c) for c in e["clips"]]
         if not self.limit_s:
             return clips
         out, t = [], 0.0
@@ -128,8 +137,10 @@ class Project:
 
     def scene(self, ep: str) -> dict:
         """Bible + episode in the shape h3prompt expects."""
+        from . import wardrobe
         e = self.episode(ep)
-        return {**self.bible, **{k: v for k, v in e.items() if k != "id"}, "episode": ep}
+        return {**self.bible, **{k: v for k, v in e.items() if k != "id"}, "characters": self.chars,
+                "clips": [wardrobe.dress(e, c) for c in e["clips"]], "episode": ep}
 
     def d(self, *parts: str) -> Path:
         p = self.root.joinpath(*parts)
@@ -149,7 +160,8 @@ class Project:
         return self.supplied(stem, IMAGE_EXTS) or self.root / "assets" / f"{stem}.png"
 
     def voice(self, c: str) -> Path:
-        return self.root / "voices" / f"{c}.wav"
+        """The cast voice (an outfit speaks with its character's voice); `<id>_h3.wav` beside it is H3's cut."""
+        return self.root / "voices" / f"{self.base(c)}.wav"
 
     def wf(self, name: str) -> dict:
         if name not in self._wf:

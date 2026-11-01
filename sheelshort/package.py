@@ -128,6 +128,12 @@ def run(p: Project) -> Path:
         "本剧集画面、人物与配音均由人工智能生成。剧中人物均为虚构，与现实人物无关。\n"
         "The video, characters and voices of this series were generated with AI. All characters are fictional and do not "
         "depict real people.\n", encoding="utf-8")
+    from . import sfx
+    lines = sfx.credits(p)   # Attribution-licensed sound effects must be credited where the episodes are published
+    (out / "CREDITS.txt").unlink(missing_ok=True)
+    if lines:
+        (out / "CREDITS.txt").write_text("音效 Sound effects (freesound.org):\n" + "\n".join(lines) + "\n", encoding="utf-8")
+        log(f"package: {len(lines)} sound effect credit(s) in CREDITS.txt; publish them with the series")
     shutil.rmtree(out / "_work", ignore_errors=True)
     log(f"package: {len(eps_meta)} episode(s) -> {out}")
     return out

@@ -40,7 +40,7 @@ def refs_for(p: Project, clip: dict, acted: bool, ep: str = "") -> tuple[h3promp
     if not acted:
         for c in h3prompt.speaker_order(clip)[:3]:
             v = acted_ref(p, ep, clip, c) if p.cfg["render"].get("voice_ref", "cast") == "acted" else None
-            v = v or p.voice(c).with_name(f"{c}_h3.wav")
+            v = v or p.voice(c).with_name(f"{p.base(c)}_h3.wav")
             refs.voices[c] = v.name
             files[v.name] = v
     missing = [str(f) for f in files.values() if not f.exists()]

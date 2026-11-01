@@ -1,0 +1,159 @@
+{
+ "title": "雨夜外卖",
+ "language": "zh-CN",
+ "style": "The target video is a photorealistic live-action Chinese urban vertical short drama in 9:16 with cinematic composition, a moody cool-teal and amber film grade with deep blacks, light that is motivated by each location's own sources, and faces with natural skin texture.",
+ "look_preset": "cinematic",
+ "characters": {
+  "chenmo": {
+   "name": "Chen Mo",
+   "name_zh": "陈默",
+   "card": "外卖骑手",
+   "role": "young man",
+   "look": "a 28-year-old Chinese man with a lean angular face, straight thick dark brows, calm deep-set dark eyes, a thin pale scar on the nose bridge, short black hair damp and slightly messy, wearing a glossy royal-blue hooded delivery rider's raincoat with the hood down and a silver reflective strip across the chest, plain with no logo, over a grey T-shirt.",
+   "keep": "thin pale scar on the nose bridge, short black hair, royal-blue rider raincoat with a silver reflective strip",
+   "face_detail": "a thin pale scar on the nose bridge, calm deep-set eyes, light stubble and fine skin texture.",
+   "hair": "short black hair, damp and slightly messy",
+   "costume": "a glossy royal-blue hooded delivery rider's raincoat with the hood down and a silver reflective strip across the chest, no logo or lettering, a grey T-shirt underneath, black work trousers, black sneakers",
+   "voice_en": "in a low, slightly husky young male voice",
+   "voice_design": "二十八岁左右的年轻男性，音色低沉、略带沙哑，中低音，普通话标准，语速偏慢。",
+   "voice_sample": "今天晚上的单子有点多，送完最后这一单，我就收工回家了。",
+   "outfits": {
+    "suit": {
+     "look": "a 28-year-old Chinese man with a lean angular face, straight thick dark brows, calm deep-set dark eyes, a thin pale scar on the nose bridge, short black hair neatly combed back, wearing a tailored dark navy two-piece suit over a crisp white shirt with an open collar and no tie.",
+     "keep": "thin pale scar on the nose bridge, short neatly combed black hair, dark navy suit with a white open-collar shirt",
+     "costume": "a tailored dark navy two-piece suit, a crisp white shirt with an open collar and no tie, polished black leather shoes",
+     "hair": "short black hair neatly combed back",
+     "face_detail": "a thin pale scar on the nose bridge, calm deep-set eyes, clean-shaven, fine skin texture."
+    }
+   }
+  },
+  "linwei": {
+   "name": "Lin Wei",
+   "name_zh": "林薇",
+   "card": "陈默前女友",
+   "role": "young woman",
+   "look": "a 26-year-old Chinese woman with a delicate oval face, softly arched brows, large almond-shaped eyes, a small mole on the left cheek, long straight glossy black hair with a centre part falling past her shoulders, refined makeup with rose-pink lips, wearing an elegant white satin sleeveless dress and small pearl stud earrings.",
+   "keep": "small mole on the left cheek, long straight black hair with a centre part, white satin sleeveless dress, pearl stud earrings",
+   "face_detail": "a small mole on the left cheek, long eyelashes, rose-pink lips, fine smooth skin texture.",
+   "hair": "long straight glossy black hair with a centre part, worn loose past the shoulders",
+   "costume": "an elegant white satin sleeveless knee-length dress, small pearl stud earrings, nude high heels",
+   "voice_en": "in a soft, clear young female voice",
+   "voice_design": "二十六岁左右的年轻女性，音色柔和清亮，中高音，普通话标准，语速中等。",
+   "voice_sample": "这家店的甜点做得很好，我每次路过都会进来买一块蛋糕。"
+  },
+  "zihang": {
+   "name": "Zhao Zihang",
+   "name_zh": "赵子航",
+   "card": "富二代 林薇未婚夫",
+   "role": "young man",
+   "look": "a 29-year-old Chinese man with a narrow pale face, thin raised brows, hooded eyes with a lazy look, a small gold stud in his left earlobe, glossy black hair slicked straight back with pomade, wearing a tailored wine-red designer suit over a black silk shirt open at the collar and a heavy gold wristwatch.",
+   "keep": "small gold stud in the left earlobe, glossy slicked-back black hair, wine-red suit over a black silk shirt, gold wristwatch",
+   "face_detail": "a small gold stud in the left earlobe, hooded eyes, smooth pale skin.",
+   "hair": "glossy black hair slicked straight back with pomade",
+   "costume": "a tailored wine-red designer two-piece suit, a black silk shirt open at the collar, a heavy gold wristwatch, black loafers",
+   "voice_en": "in a bright, thin young male voice",
+   "voice_design": "二十九岁左右的年轻男性，音色明亮偏薄，中音，普通话标准，略带京腔，语速偏快。",
+   "voice_sample": "下周我要去上海出差，顺便看看那边新开的几家餐厅怎么样。"
+  },
+  "wangjl": {
+   "name": "Manager Wang",
+   "name_zh": "王经理",
+   "card": "云顶餐厅经理",
+   "role": "middle-aged man",
+   "look": "a 45-year-old plump Chinese man with a round fleshy face and a double chin, small narrow eyes, a dark mole on the left cheek, thinning black hair combed straight back, wearing a black waistcoat over a white long-sleeved shirt and a black bow tie.",
+   "keep": "dark mole on the left cheek, thinning combed-back black hair, black waistcoat with white shirt and black bow tie",
+   "face_detail": "a dark mole on the left cheek, a double chin, slightly shiny skin.",
+   "hair": "thinning black hair combed straight back",
+   "costume": "a black waistcoat buttoned over a white long-sleeved shirt, a black bow tie, black trousers, black leather shoes",
+   "voice_en": "in a round, slightly nasal middle-aged male voice",
+   "voice_design": "四十五岁左右的中年男性，音色圆厚，带一点鼻音，中音，普通话略带南方口音，语速偏快。",
+   "voice_sample": "今天的包间都订满了，厨房那边记得提前把菜单准备好。"
+  },
+  "suqing": {
+   "name": "Su Qing",
+   "name_zh": "苏晴",
+   "card": "陈氏集团董事长秘书",
+   "role": "woman",
+   "look": "a 30-year-old Chinese woman with an oval face and a defined jaw, straight dark brows, cool steady eyes behind slim black rectangular glasses, small silver stud earrings, short straight black hair cut in a sleek jaw-length bob, wearing a sharply tailored black skirt suit over a white silk blouse.",
+   "keep": "slim black rectangular glasses, sleek jaw-length black bob, black tailored skirt suit with white blouse",
+   "face_detail": "slim black rectangular glasses, cool steady eyes, small silver stud earrings, fine skin texture.",
+   "hair": "short straight black hair in a sleek jaw-length bob",
+   "costume": "a sharply tailored black skirt suit, a white silk blouse, small silver stud earrings, black pumps",
+   "voice_en": "in a clear, crisp female voice",
+   "voice_design": "三十岁左右的成年女性，音色清晰干净，中音，普通话标准，吐字利落，语速中等。",
+   "voice_sample": "明天上午九点的会议改到十点，资料我已经发到您的邮箱了。"
+  },
+  "guodong": {
+   "name": "Chen Guodong",
+   "name_zh": "陈国栋",
+   "card": "陈默二叔 陈氏集团副总",
+   "role": "older man",
+   "look": "a 65-year-old Chinese man with a broad square face, heavy brows, smiling heavy-lidded eyes with deep crow's feet, a brown mole beside his left nostril, black hair combed back with grey-white temples, wearing a dark charcoal Zhongshan suit buttoned up to the stand collar.",
+   "keep": "brown mole beside the left nostril, black hair with grey-white temples, dark charcoal buttoned Zhongshan suit",
+   "face_detail": "a brown mole beside his left nostril, deep crow's feet, grey-white temples.",
+   "hair": "black hair combed back with grey-white temples",
+   "costume": "a dark charcoal Zhongshan suit buttoned up to the stand collar, dark trousers, polished black leather shoes",
+   "voice_en": "in a mellow, deep middle-aged male voice",
+   "voice_design": "五十五岁左右的中年男性，音色醇厚低沉，略带沙哑，中低音，普通话标准，语速不紧不慢。",
+   "voice_sample": "公司这几年发展得很快，明年我们准备在南方再开两个分厂。"
+  }
+ },
+ "locations": {
+  "yunding_room": {
+   "name": "private dining room of an upscale restaurant",
+   "look": "a private dining room in an upscale Chinese restaurant: a large round table with a white tablecloth, plated dishes, crystal wine glasses and a small white tiered engagement cake, a big crystal chandelier above the table, dark wood-panelled walls with thin gold trim, a deep-red patterned carpet, a tall window with heavy curtains where rain streams down the dark glass, a dark wooden double door, no lettering anywhere.",
+   "keep": "the round table with the white tablecloth and engagement cake, the crystal chandelier, the dark wood panels, the deep-red carpet, the rain-streaked window",
+   "time": "night",
+   "light": "night indoors during a rainstorm; the warm crystal chandelier above and behind the table is the key light, warm wall sconces add a side glow, glittering highlights on the glassware, the rain-streaked window behind is cold blue-black; no daylight anywhere",
+   "name_zh": "云顶餐厅 包间"
+  },
+  "yunding_door": {
+   "name": "restaurant entrance in the rain at night",
+   "look": "the entrance of an upscale restaurant at night in a heavy rainstorm: four wide granite steps up to a tall glass door framed in brass under a small dark canopy, two potted pine bonsai beside the door, the wet street at the foot of the steps with deep puddles reflecting the lights, no signage or lettering anywhere.",
+   "keep": "the granite steps, the brass-framed glass door under the canopy, the pine bonsai, the puddles at the foot of the steps",
+   "time": "night",
+   "light": "deep night in heavy rain; warm amber light spills out of the glass door behind the actors as backlight and rim, cold blue street light from the side, rain streaks glittering in the light, wet reflective ground; no daylight anywhere",
+   "name_zh": "云顶餐厅 门口"
+  },
+  "chairman_office": {
+   "name": "chairman's office in a city tower",
+   "look": "a spacious chairman's office high in a city tower: floor-to-ceiling windows overlooking skyscrapers, a large dark walnut desk with a black leather chair and a few neat folders, a grey stone floor, a low black leather sofa, a wall of dark bookshelves, a tall wooden door, no lettering anywhere.",
+   "keep": "the floor-to-ceiling windows over the skyline, the dark walnut desk, the grey stone floor, the bookshelf wall",
+   "time": "day",
+   "light": "mid-morning; low sun streams in through the floor-to-ceiling windows from one side, warm raking key light across faces and the desk, long window-frame shadows across the stone floor, cool shade on the far side of the room",
+   "name_zh": "陈氏集团 董事长办公室"
+  }
+ },
+ "props": {
+  "takeout_bag": {
+   "name": "food delivery bag",
+   "look": "a plain white plastic food delivery bag knotted at the top, holding two stacked takeaway containers, beaded with raindrops, no logo or lettering.",
+   "keep": "the plain white plastic bag with two takeaway containers, raindrops on it"
+  },
+  "phone": {
+   "name": "smartphone",
+   "look": "a black smartphone with a cracked corner on its screen protector, wet with raindrops, its screen glowing with an incoming call shown only as a green circle, no legible text.",
+   "keep": "the black smartphone with the cracked screen corner"
+  },
+  "umbrella": {
+   "name": "black umbrella",
+   "look": "a large plain black long-handled umbrella with a curved black handle, open.",
+   "keep": "the large plain black umbrella"
+  },
+  "sedan": {
+   "name": "black luxury sedan",
+   "look": "a long gleaming black luxury executive sedan with tinted windows and bright headlights, no badges, no number plate text.",
+   "keep": "the long black sedan with tinted windows"
+  },
+  "will": {
+   "name": "will document",
+   "look": "a thin stapled document of white A4 pages with a round red seal stamp near the bottom of the top page and dense small printed paragraphs too small to read.",
+   "keep": "the thin white stapled document with the red seal"
+  },
+  "folder": {
+   "name": "black document folder",
+   "look": "a slim black leather document folder, closed, with a few white pages showing at the edge.",
+   "keep": "the slim black leather folder"
+  }
+ }
+}

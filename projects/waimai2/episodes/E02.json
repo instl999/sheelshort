@@ -1,0 +1,617 @@
+{
+ "id": "E02",
+ "title": "第二份遗嘱",
+ "music": "suspenseful corporate power drama underscore, low strings, deep percussion hits, sparse piano, cold synth pad, instrumental, no vocals",
+ "logline": "Manager Wang kneels in the rain, Zhao Zihang learns his family's deal is in Chen Mo's hands and Lin Wei is left behind; the next morning Chen Mo's uncle walks into the chairman's office with a later will that hands him the group.",
+ "blocking": {
+  "yunding_door": {
+   "chenmo": "right",
+   "suqing": "right",
+   "wangjl": "left",
+   "zihang": "left",
+   "linwei": "left"
+  },
+  "chairman_office": {
+   "chenmo": "right",
+   "guodong": "left"
+  }
+ },
+ "clips": [
+  {
+   "id": "K1",
+   "location": "yunding_door",
+   "summary": "{wangjl} runs out into the rain begging forgiveness; {chenmo} tells {suqing} to replace the manager and {wangjl} drops to his knees.",
+   "soundscape": "Heavy rain hammering on the canopy and the street, splashing footsteps, the sedan's engine idling.",
+   "cuts": [
+    {
+     "type": "CU",
+     "subjects": [
+      "wangjl"
+     ],
+     "speaker": "wangjl",
+     "to": "chenmo",
+     "line": "陈董！我有眼不识泰山！",
+     "say": "陈……陈董！我有眼不识泰山！",
+     "act": "冲进雨里，结巴，又怕又急，声音发抖",
+     "emotion": "fear",
+     "delivery": "panicked, rain plastering his hair, eyes wide",
+     "composition": "Close-up of {wangjl} bursting out into the rain without an umbrella, the lit glass door behind him.",
+     "action": "{wangjl} rushes forward through the rain, hands raised, hair plastered to his forehead.",
+     "camera": "Handheld, backing away in front of him.",
+     "end": "",
+     "dur": 2.5
+    },
+    {
+     "type": "WS",
+     "subjects": [
+      "chenmo",
+      "suqing",
+      "wangjl"
+     ],
+     "composition": "Wide shot of {loc} in the downpour: {chenmo} and {suqing} under her black umbrella beside the black sedan at the foot of the steps on the right, {wangjl} stumbling down the steps toward them on the left.",
+     "action": "{wangjl} slips down the last steps; {chenmo} does not turn.",
+     "camera": "Static wide, rain streaking through the light.",
+     "end": "",
+     "dur": 2.0,
+     "props": [
+      "sedan",
+      "umbrella"
+     ]
+    },
+    {
+     "type": "MS",
+     "subjects": [
+      "chenmo",
+      "suqing"
+     ],
+     "composition": "Medium two-shot of {chenmo} and {suqing} under the umbrella.",
+     "action": "{chenmo} ignores the manager and turns to {suqing}.",
+     "camera": "Slow push in.",
+     "end": "",
+     "dur": 1.7,
+     "props": [
+      "umbrella"
+     ]
+    },
+    {
+     "type": "OTS",
+     "subjects": [
+      "chenmo"
+     ],
+     "speaker": "chenmo",
+     "over": "suqing",
+     "to": "suqing",
+     "line": "这家店的经理，换了吧。",
+     "say": "这家店的经理……换了吧。",
+     "act": "淡淡的，像随口一说，没有一点火气",
+     "emotion": "cold",
+     "delivery": "flat and quiet, not even looking at the manager",
+     "composition": "Over-the-shoulder shot past {suqing}'s short black bob onto {chenmo} under the umbrella.",
+     "action": "{chenmo} speaks quietly, his eyes on {suqing}.",
+     "camera": "Static.",
+     "end": "",
+     "dur": 2.6,
+     "props": [
+      "umbrella"
+     ]
+    },
+    {
+     "type": "RX",
+     "subjects": [
+      "wangjl"
+     ],
+     "composition": "Close-up of {wangjl} in the rain.",
+     "action": "{wangjl}'s face crumples; his knees start to buckle.",
+     "camera": "Handheld, dipping with him.",
+     "end": "",
+     "dur": 1.6
+    },
+    {
+     "type": "MS",
+     "subjects": [
+      "wangjl"
+     ],
+     "composition": "Medium shot of {wangjl} at the foot of the steps.",
+     "action": "{wangjl} drops to his knees in the puddle, rain pouring over him.",
+     "camera": "High angle, static.",
+     "end": "",
+     "dur": 1.9
+    }
+   ]
+  },
+  {
+   "id": "K2",
+   "location": "yunding_door",
+   "summary": "{zihang} and {linwei} come out; {zihang} recognises {suqing}, who tells him his father's deal with the Chen Group will be reviewed by {chenmo} himself.",
+   "soundscape": "Heavy rain, the glass door swinging, footsteps on wet granite.",
+   "cuts": [
+    {
+     "type": "MS",
+     "subjects": [
+      "zihang",
+      "linwei"
+     ],
+     "composition": "Medium shot of the glass door at the top of the steps.",
+     "action": "{zihang} and {linwei} hurry out under the canopy; {zihang} stops dead, staring down at the sedan.",
+     "camera": "Static, then a slight push in as he stops.",
+     "end": "",
+     "dur": 2.0
+    },
+    {
+     "type": "CU",
+     "subjects": [
+      "zihang"
+     ],
+     "speaker": "zihang",
+     "to": "suqing",
+     "line": "苏秘书？你怎么会……",
+     "say": "苏……苏秘书？你怎么会——",
+     "act": "脸色大变，声音一下子虚了，说不下去",
+     "emotion": "shock",
+     "delivery": "colour draining from his face, the words dying",
+     "composition": "Close-up of {zihang} under the canopy, warm light from the door behind him.",
+     "action": "{zihang}'s smug expression collapses.",
+     "camera": "Fast push in.",
+     "end": "",
+     "dur": 2.1
+    },
+    {
+     "type": "OTS",
+     "subjects": [
+      "suqing"
+     ],
+     "speaker": "suqing",
+     "over": "zihang",
+     "to": "zihang",
+     "line": "赵少，令尊下周和陈氏集团的合作，陈董会亲自审核。",
+     "say": "赵少，令尊下周和陈氏集团的合作……陈董会亲自审核。",
+     "act": "礼貌但冰冷，语速平稳，最后四个字加重",
+     "emotion": "cold",
+     "delivery": "polite and icy, unhurried",
+     "composition": "Over-the-shoulder shot past {zihang}'s slicked-back head onto {suqing} under the black umbrella below.",
+     "action": "{suqing} looks up at him evenly.",
+     "camera": "Static, focus on {suqing}.",
+     "end": "",
+     "dur": 3.8,
+     "props": [
+      "umbrella"
+     ]
+    },
+    {
+     "type": "RX",
+     "subjects": [
+      "zihang"
+     ],
+     "composition": "Close-up of {zihang}.",
+     "action": "{zihang}'s forced smile freezes on his face.",
+     "camera": "Slow push in.",
+     "end": "",
+     "dur": 1.6
+    }
+   ]
+  },
+  {
+   "id": "K3",
+   "location": "yunding_door",
+   "summary": "{linwei} steps forward trembling to explain; {chenmo} cuts her off and gets into the car with {suqing}.",
+   "soundscape": "Heavy rain, a car door closing, the sedan pulling away through the puddles.",
+   "cuts": [
+    {
+     "type": "MCU",
+     "subjects": [
+      "linwei"
+     ],
+     "speaker": "linwei",
+     "to": "chenmo",
+     "line": "陈默，我……我不知道……",
+     "say": "陈默，我……我不知道……",
+     "act": "往前一步，声音发颤，想解释又说不出口",
+     "emotion": "plead",
+     "delivery": "stepping forward, voice shaking, eyes wet",
+     "composition": "Medium close-up from mid-chest up of {linwei} at the edge of the canopy, rain falling just in front of her.",
+     "action": "{linwei} takes a step forward into the rain.",
+     "camera": "Handheld, drifting with her.",
+     "end": "",
+     "dur": 2.1
+    },
+    {
+     "type": "OTS",
+     "subjects": [
+      "chenmo"
+     ],
+     "speaker": "chenmo",
+     "over": "linwei",
+     "to": "linwei",
+     "line": "你不需要知道。",
+     "say": "你不需要……知道。",
+     "act": "平静，不看她太久，语气很淡",
+     "emotion": "cold",
+     "delivery": "calm, distant",
+     "composition": "Over-the-shoulder shot past {linwei}'s wet hair onto {chenmo} under the umbrella by the car.",
+     "action": "{chenmo} looks at her briefly, then away.",
+     "camera": "Static.",
+     "end": "",
+     "dur": 2.4
+    },
+    {
+     "type": "RX",
+     "subjects": [
+      "linwei"
+     ],
+     "composition": "Close-up of {linwei}, rain on her face.",
+     "action": "{linwei}'s eyes fill; her lips part but nothing comes.",
+     "camera": "Static.",
+     "end": "",
+     "dur": 1.6
+    },
+    {
+     "type": "MS",
+     "subjects": [
+      "chenmo",
+      "suqing"
+     ],
+     "composition": "Medium shot beside the black sedan.",
+     "action": "{chenmo} turns and gets into the back of the sedan while {suqing} holds the umbrella over the door.",
+     "camera": "Slow pan with him.",
+     "end": "",
+     "dur": 2.0,
+     "props": [
+      "sedan",
+      "umbrella"
+     ]
+    },
+    {
+     "type": "WS",
+     "subjects": [
+      "linwei"
+     ],
+     "composition": "Wide shot of {loc}: {linwei} alone on the wet steps in her white dress as the black sedan pulls away.",
+     "action": "The sedan's tail lights recede into the rain; {linwei} stands motionless.",
+     "camera": "Slow pull back, isolating her.",
+     "end": "",
+     "dur": 2.0,
+     "props": [
+      "sedan"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "K4",
+   "location": "chairman_office",
+   "summary": "Next morning in {loc}, {chenmo} in a dark suit stands at the window; {suqing} reports the Zhao proposal and he sends it back.",
+   "soundscape": "Quiet office hum high above the city, faint traffic far below, footsteps on stone.",
+   "cuts": [
+    {
+     "type": "WS",
+     "subjects": [
+      "chenmo",
+      "suqing"
+     ],
+     "composition": "Wide shot of {loc}: {chenmo} in a dark suit standing at the floor-to-ceiling window on the right, the city behind the glass, {suqing} crossing the stone floor from the left with a black folder.",
+     "action": "{suqing} walks toward him; he does not turn from the window.",
+     "camera": "Slow dolly in across the room.",
+     "end": "",
+     "dur": 2.2,
+     "props": [
+      "folder"
+     ]
+    },
+    {
+     "type": "MCU",
+     "subjects": [
+      "suqing"
+     ],
+     "speaker": "suqing",
+     "to": "chenmo",
+     "line": "赵家的合作方案，已经放在您桌上。",
+     "say": "赵家的合作方案，已经放在您桌上了。",
+     "act": "公事公办，语气平稳",
+     "emotion": "calm",
+     "delivery": "businesslike, folder held to her chest",
+     "composition": "Medium close-up from mid-chest up of {suqing}, the sunlit window soft behind her.",
+     "action": "{suqing} holds the folder to her chest.",
+     "camera": "Static.",
+     "end": "",
+     "dur": 3.6,
+     "props": [
+      "folder"
+     ]
+    },
+    {
+     "type": "OTS",
+     "subjects": [
+      "chenmo"
+     ],
+     "speaker": "chenmo",
+     "over": "suqing",
+     "to": "suqing",
+     "line": "退回去。",
+     "say": "退回去。",
+     "act": "没有犹豫，简短，平静",
+     "emotion": "firm",
+     "delivery": "without hesitation, turning from the window",
+     "composition": "Over-the-shoulder shot past {suqing}'s short bob onto {chenmo} by the window, sunlight raking across his face.",
+     "action": "{chenmo} turns from the window.",
+     "camera": "Slow push in.",
+     "end": "",
+     "dur": 1.6
+    },
+    {
+     "type": "ECU",
+     "subjects": [],
+     "composition": "Extreme close-up of the walnut desk in the sun: a man's hand pushing a black folder back across the desk.",
+     "action": "The folder slides away across the desk.",
+     "camera": "Static, top-down.",
+     "end": "",
+     "dur": 1.4,
+     "props": [
+      "folder"
+     ]
+    }
+   ],
+   "outfits": {
+    "chenmo": "suit"
+   }
+  },
+  {
+   "id": "K5",
+   "location": "chairman_office",
+   "summary": "{guodong} walks in beaming with two lawyers and greets {chenmo} like a loving uncle.",
+   "soundscape": "The heavy door swings open, footsteps on stone, a briefcase clicks.",
+   "cuts": [
+    {
+     "type": "MS",
+     "subjects": [
+      "guodong"
+     ],
+     "composition": "Medium shot of the tall wooden door, two lawyers in grey suits with briefcases a step behind {guodong}, out of focus.",
+     "action": "{guodong} pushes the door open and strides in, arms spread, beaming.",
+     "camera": "Handheld, backing away in front of him.",
+     "end": "",
+     "dur": 2.0
+    },
+    {
+     "type": "MCU",
+     "subjects": [
+      "guodong"
+     ],
+     "speaker": "guodong",
+     "to": "chenmo",
+     "intro": true,
+     "line": "小默啊，这么多年在外面受苦了，二叔心疼。",
+     "say": "小默啊……这么多年在外面受苦了，二叔心疼。",
+     "act": "满脸堆笑，语气亲热，拖着长辈腔，笑里带着打量",
+     "emotion": "warm",
+     "delivery": "a broad warm smile that does not reach his eyes",
+     "composition": "Held chest-up medium close-up of {guodong} composed off-centre, the sunlit office soft behind him.",
+     "action": "{guodong} smiles broadly, eyes narrowing as he sizes his nephew up.",
+     "camera": "Slow push in.",
+     "end": "",
+     "dur": 4.2
+    },
+    {
+     "type": "RX",
+     "subjects": [
+      "chenmo"
+     ],
+     "composition": "Close-up of {chenmo}, sunlight raking across his face.",
+     "action": "{chenmo}'s face stays unreadable.",
+     "camera": "Static.",
+     "end": "",
+     "dur": 1.6
+    },
+    {
+     "type": "OTS",
+     "subjects": [
+      "chenmo"
+     ],
+     "speaker": "chenmo",
+     "over": "guodong",
+     "to": "guodong",
+     "line": "二叔。",
+     "say": "二叔。",
+     "act": "平平地叫一声，不冷不热",
+     "emotion": "calm",
+     "delivery": "neutral, guarded",
+     "composition": "Over-the-shoulder shot past {guodong}'s grey temple onto {chenmo}.",
+     "action": "{chenmo} nods once.",
+     "camera": "Static.",
+     "end": "",
+     "dur": 1.6
+    }
+   ],
+   "outfits": {
+    "chenmo": "suit"
+   }
+  },
+  {
+   "id": "K6",
+   "location": "chairman_office",
+   "summary": "{guodong} questions whether a delivery rider can run the group and puts a will on the desk.",
+   "soundscape": "Quiet office, paper on wood.",
+   "cuts": [
+    {
+     "type": "MCU",
+     "subjects": [
+      "guodong"
+     ],
+     "speaker": "guodong",
+     "to": "chenmo",
+     "line": "不过集团这么大，你一个送外卖的，管得过来吗？",
+     "say": "不过集团这么大……你一个送外卖的，管得过来吗？",
+     "act": "笑着，话锋一转，语气轻飘飘的，带着嘲弄",
+     "emotion": "cold",
+     "delivery": "still smiling, the warmth turning to mockery",
+     "composition": "Medium close-up from mid-chest up of {guodong}, smiling.",
+     "action": "{guodong} tilts his head, his smile thinning.",
+     "camera": "Handheld, slow drift around him.",
+     "end": "",
+     "dur": 4.6
+    },
+    {
+     "type": "MS",
+     "subjects": [
+      "guodong",
+      "chenmo"
+     ],
+     "composition": "Medium shot across the walnut desk: {guodong} on the left, {chenmo} on the right behind the desk.",
+     "action": "{guodong} lays a stapled document on the desk and slides it toward {chenmo}.",
+     "camera": "Slow push in toward the desk.",
+     "end": "",
+     "dur": 1.9,
+     "props": [
+      "will"
+     ]
+    },
+    {
+     "type": "ECU",
+     "subjects": [],
+     "composition": "Extreme close-up of the stapled document with the red seal on the sunlit walnut desk, fingertips resting on it.",
+     "action": "Two fingers tap the red seal once.",
+     "camera": "Slow tilt down to the seal.",
+     "end": "",
+     "dur": 1.4,
+     "props": [
+      "will"
+     ]
+    },
+    {
+     "type": "MCU",
+     "subjects": [
+      "guodong"
+     ],
+     "speaker": "guodong",
+     "to": "chenmo",
+     "line": "这份遗嘱，你先看看。",
+     "say": "这份遗嘱……你先看看。",
+     "act": "慢悠悠的，胸有成竹",
+     "emotion": "calm",
+     "delivery": "unhurried, confident",
+     "composition": "Medium close-up from mid-chest up of {guodong} leaning over the desk.",
+     "action": "{guodong} straightens up and folds his hands.",
+     "camera": "Static.",
+     "end": "",
+     "dur": 2.3
+    }
+   ],
+   "outfits": {
+    "chenmo": "suit"
+   }
+  },
+  {
+   "id": "K7",
+   "location": "chairman_office",
+   "summary": "{suqing} sees the will is dated one day later than theirs; {guodong} declares the group is his.",
+   "soundscape": "Quiet office; a page turns; a long silence.",
+   "cuts": [
+    {
+     "type": "CU",
+     "subjects": [
+      "suqing"
+     ],
+     "speaker": "suqing",
+     "to": "chenmo",
+     "line": "这份遗嘱的日期，比我们手里的晚了一天。",
+     "say": "这……这份遗嘱的日期，比我们手里的，晚了一天。",
+     "act": "一向冷静的人第一次乱了，开头卡了一下，压着惊讶",
+     "emotion": "shock",
+     "delivery": "her composure cracking, eyes darting over the page",
+     "composition": "Close-up of {suqing} looking down at the document, sunlight on her glasses.",
+     "action": "{suqing}'s eyes stop on the page; her face changes.",
+     "camera": "Slow push in.",
+     "end": "",
+     "dur": 4.2,
+     "props": [
+      "will"
+     ]
+    },
+    {
+     "type": "RX",
+     "subjects": [
+      "chenmo"
+     ],
+     "composition": "Close-up of {chenmo}.",
+     "action": "{chenmo}'s eyes go still.",
+     "camera": "Static.",
+     "end": "",
+     "dur": 1.6
+    },
+    {
+     "type": "MCU",
+     "subjects": [
+      "guodong"
+     ],
+     "speaker": "guodong",
+     "to": "chenmo",
+     "line": "老爷子临终前改了主意。",
+     "say": "老爷子临终前……改了主意。",
+     "act": "轻笑一声，慢条斯理",
+     "emotion": "cold",
+     "delivery": "a soft chuckle, savouring it",
+     "composition": "Medium close-up from mid-chest up of {guodong}, the window light behind him.",
+     "action": "{guodong} chuckles softly.",
+     "camera": "Static.",
+     "end": "",
+     "dur": 2.6
+    },
+    {
+     "type": "OTS",
+     "subjects": [
+      "guodong"
+     ],
+     "speaker": "guodong",
+     "over": "chenmo",
+     "to": "chenmo",
+     "line": "从今天起，陈氏集团，归我。",
+     "say": "从今天起，陈氏集团……归我。",
+     "act": "笑容收起，一字一顿，压低声音，带着威胁",
+     "emotion": "cold",
+     "delivery": "the smile gone, leaning in, menacing",
+     "composition": "Over-the-shoulder shot past {chenmo}'s dark suit shoulder onto {guodong} leaning over the desk.",
+     "action": "{guodong} leans in over the desk, his smile vanishing.",
+     "camera": "Slow push in on {guodong}.",
+     "end": "",
+     "dur": 2.7
+    }
+   ],
+   "outfits": {
+    "chenmo": "suit"
+   }
+  },
+  {
+   "id": "K8",
+   "location": "chairman_office",
+   "summary": "{chenmo} looks at the will, then slowly raises his head.",
+   "soundscape": "Silence, a clock ticking faintly, the city hum far below.",
+   "cuts": [
+    {
+     "type": "ECU",
+     "subjects": [],
+     "composition": "Extreme close-up of the will with the red seal on the sunlit desk, a man's fingertips resting at its edge.",
+     "action": "The fingertips press slowly down on the page.",
+     "camera": "Slow push in.",
+     "end": "",
+     "dur": 1.4,
+     "props": [
+      "will"
+     ]
+    },
+    {
+     "type": "CU",
+     "subjects": [
+      "chenmo"
+     ],
+     "composition": "Close-up of {chenmo} looking down at the desk, sunlight raking across half his face.",
+     "action": "{chenmo} slowly raises his head and looks straight at his uncle, eyes cold and steady.",
+     "camera": "Very slow push in as his eyes come up.",
+     "end": "",
+     "dur": 2.7
+    }
+   ],
+   "outfits": {
+    "chenmo": "suit"
+   }
+  }
+ ]
+}

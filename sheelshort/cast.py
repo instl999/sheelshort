@@ -6,6 +6,7 @@ prop_<id>.png, voice_<id>.wav + voice_<id>.txt transcript) replaces the generate
 """
 from __future__ import annotations
 
+import re
 import shutil
 from concurrent.futures import ThreadPoolExecutor
 
@@ -21,6 +22,29 @@ def portrait_prompt(ch: dict) -> str:
             f"celebrity. {ch['look']} Front view, head and shoulders, looking straight at the camera with a neutral expression, "
             "plain light-grey seamless studio backdrop, soft even key light, sharp focus on the eyes, long eyelashes and fine skin "
             "texture visible, 85mm lens, high detail, no text, no watermark.")
+
+
+def outfit_prompt(ch: dict) -> str:
+    """Re-dress a character's close-up for another outfit: the image editor keeps the face, so it stays the same person."""
+    return ("Keep exactly the same person as image 1: the identical face, features, skin, marks, age, hair and expression, "
+            f"the same head-and-shoulders framing, front view, plain light-grey studio backdrop and soft even light. Change "
+            f"only the clothing to: {ch['costume']}. Photorealistic, no text, no watermark.")
+
+
+def age_hint(problems: list[str], ch: dict) -> str:
+    """A sentence that pushes the next attempt toward the written age when the last one read older or younger."""
+    for pr in problems:
+        m = re.search(r"looks about (\d+)", pr)
+        want = re.search(r"(\d{2})-year-old", ch["look"])
+        if m and want:
+            seen, age = int(m.group(1)), int(want.group(1))
+            if seen > age:
+                return (f" The person is exactly {age} years old and looks it: firm skin with only the fine lines of that "
+                        "age, no deep wrinkles, no sagging, no grey hair unless written above.")
+            if seen < age:
+                return (f" The person is exactly {age} years old and looks it: visible lines at the eyes and mouth, mature "
+                        "features, the skin texture of that age.")
+    return ""
 
 
 def sheet_prompt(ch: dict) -> str:
@@ -67,8 +91,10 @@ def images(p: Project) -> None:
             jobs.append(lambda loc=loc, v=v, key=key: p.run_job(key, lambda cl: flows.t2i(
                 p.wf("t2i"), plate_prompt(v, b.get("look_preset", "cinematic")), *ic["plate_size"], p.seed(key), f"sheelshort/loc_{loc}"),
                 p.d("assets"), f"loc_{loc}", ("images",), 900))
-    jobs += [lambda c=c: character(p, c) for c in b["characters"] if c in chars]
+    outfits = {c for c in chars if c in p.chars and p.base(c) != c}
+    jobs += [lambda c=c: character(p, c) for c in b["characters"] if c in chars | {p.base(o) for o in outfits}]
     _parallel(p, jobs)
+    _parallel(p, [lambda c=c: character(p, c) for c in sorted(outfits)])   # re-dressed from the close-ups made above
 
 
 def character(p: Project, c: str) -> None:
@@ -80,13 +106,24 @@ def character(p: Project, c: str) -> None:
     done = load_json(p.root / "assets" / "qc.json") if (p.root / "assets" / "qc.json").exists() else {}
     portrait = p.asset(f"char_{c}")
 
-    def make_portrait(a: int):
+    base = p.base(c)
+
+    def make_portrait(a: int, last: list[str]):
         key = f"cast/char_{c}" if a == 0 else f"cast/char_{c}_a{a}"
-        out = p.run_job(key, lambda cl: flows.t2i(p.wf("t2i"), portrait_prompt(ch), *ic["portrait_size"], p.seed(key),
-                                                  f"sheelshort/char_{c}"), p.d("assets", "candidates"), f"char_{c}_a{a}", ("images",), 900)
+        if base != c:   # an outfit: the character's own close-up, re-dressed
+            src = p.asset(f"char_{base}")
+            if not src.exists():
+                log(f"cast {c}: no close-up of {base} to re-dress")
+                return None
+            run = lambda cl: flows.edit(p.wf("edit"), outfit_prompt(ch), [p.put(cl, src)], ic["sheet_long_side"],
+                                        p.seed(key), f"sheelshort/char_{c}")
+        else:
+            run = lambda cl: flows.t2i(p.wf("t2i"), portrait_prompt(ch) + age_hint(last, ch), *ic["portrait_size"],
+                                       p.seed(key), f"sheelshort/char_{c}")
+        out = p.run_job(key, run, p.d("assets", "candidates"), f"char_{c}_a{a}", ("images",), 900)
         return out[0] if out else None
 
-    def make_sheet(a: int):
+    def make_sheet(a: int, last: list[str]):
         key = f"cast/sheet_{c}" if a == 0 else f"cast/sheet_{c}_a{a}"
         out = p.run_job(key, lambda cl: flows.edit(p.wf("edit"), sheet_prompt(ch), [p.put(cl, portrait)], ic["sheet_long_side"],
                                                    p.seed(key), f"sheelshort/sheet_{c}", aspect="16:9", background="#D9D9D9"),
@@ -96,7 +133,7 @@ def character(p: Project, c: str) -> None:
     user_portrait = p.supplied(f"char_{c}", IMAGE_EXTS) is not None
     if not qcfg.get("enabled", True):
         if not portrait.exists():
-            f = make_portrait(0)
+            f = make_portrait(0, [])
             f and shutil.copy2(f, portrait)
     elif f"char_{c}" not in done:
         canon = user_portrait or (qc.locked(p) and portrait.exists())   # only images already rendered are canon
@@ -107,7 +144,8 @@ def character(p: Project, c: str) -> None:
             done.pop(f"sheet_{c}", None)
     qpath = p.root / "assets" / "qc.json"
     rec = load_json(qpath).get(f"char_{c}") if qpath.exists() else None
-    if rec and rec["problems"] and rec.get("seen"):   # what regeneration could not fix, the text is aligned to (the image wins)
+    if rec and rec["problems"] and rec.get("seen") and base == c:   # what regeneration could not fix, the text is aligned to
+        # (an outfit's text is the writer's; its face is its character's, aligned there)
         left = qc.align_text(p, c, rec["problems"], rec["seen"])
         if left != rec["problems"]:
             qc.report(p, {f"char_{c}": {**rec, "problems": left}})
@@ -117,7 +155,7 @@ def character(p: Project, c: str) -> None:
         return
     if not qcfg.get("enabled", True):
         if not sheet.exists():
-            f = make_sheet(0)
+            f = make_sheet(0, [])
             f and shutil.copy2(f, sheet)
     elif f"sheet_{c}" not in done or not sheet.exists():
         _best_of(p, f"sheet_{c}", sheet, make_sheet, qc.check_sheet, c,
@@ -129,7 +167,7 @@ def _best_of(p: Project, name: str, dest, make, check, c: str, attempts: int, ke
     `dest` was replaced."""
     tried = []
     for a in range(attempts):
-        f = dest if (a == 0 and keep_existing and dest.exists()) else make(a)
+        f = dest if (a == 0 and keep_existing and dest.exists()) else make(a, tried[-1][3] if tried else [])
         if f is None:
             continue
         try:
@@ -153,12 +191,13 @@ def _best_of(p: Project, name: str, dest, make, check, c: str, attempts: int, ke
 
 
 def speakers(p: Project) -> list[str]:
+    """Characters with a line in the clips in scope (a test run casts voices only for its own opening)."""
     out = {}
-    for ep in p.episodes():
+    for ep in (p.only_eps or p.episodes()) if p.limit_s else p.episodes():
         for clip in p.clips(ep):
             for cut in clip["cuts"]:
                 if cut.get("line"):
-                    out.setdefault(cut["speaker"])
+                    out.setdefault(p.base(cut["speaker"]))
     return list(out) or [c for c, ch in p.chars.items() if ch.get("voice_design")]
 
 
