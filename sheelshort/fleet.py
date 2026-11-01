@@ -290,6 +290,12 @@ def grab(api, uuids: list[str], c: dict, log, claim: bool = True, stop=None) -> 
     return None
 
 
+def uuid_for(url: str) -> str | None:
+    """The instance whose ComfyUI answers at `url` (from the holder registry)."""
+    with _registry() as d:
+        return next((u for u, e in d.items() if e.get("url") and e["url"].rstrip("/") == url.rstrip("/")), None)
+
+
 def spawn_reaper(project_root) -> None:
     """Start the background watcher that powers idle servers off (`fleet <project> idle`), unless one is running."""
     import subprocess
@@ -409,6 +415,59 @@ class Session:
             t.join()
         if not servers:
             self.log("no server could be started")
+
+    def machines(self) -> dict[str, str]:
+        """Pool address -> AutoDL machine id (a power-on can land an instance on another machine, and drivers differ
+        from machine to machine)."""
+        try:
+            mid = {i["uuid"]: i.get("machine_id", "") for i in self.api.instances()}
+        except Exception:  # noqa: BLE001
+            return {}
+        out = {}
+        for url in list(self.p.cfg["comfy"]["servers"]):
+            u = next((x for x, v in self.held.items() if v == url), None) or uuid_for(url)
+            if u and mid.get(u):
+                out[url] = mid[u]
+        return out
+
+    def add_capable(self, avoid_machines: set[str]) -> str | None:
+        """Bring one more server into the pool on a machine not in `avoid_machines` (one whose driver cannot run a
+        feature, say RTX upscaling). At `max_servers`, an idle server of this run on an avoided machine makes room.
+        Returns the new server's address, or None."""
+        with self.lock:
+            servers = self.p.cfg["comfy"]["servers"]
+            if len(servers) >= int(self.c.get("max_servers", 4)):
+                where = self.machines()
+                spare = [u for u, url in self.held.items() if url and where.get(url) in avoid_machines
+                         and not self.p._assigned.get(url)]
+                if not spare:
+                    return None
+                u = spare[0]
+                url = self.held.pop(u)
+                with self.p.lock:
+                    if url in servers:
+                        servers.remove(url)
+                if let_go(u):
+                    try:
+                        self.api.power_off(u)
+                        forget(u)
+                        self.log(f"{u}: powered off to make room for a machine that can do the job")
+                    except AutoDLError as e:
+                        self.log(f"{u}: power off failed ({e})")
+            try:
+                insts = [i for i in self.api.instances() if ours(self.c, i)]
+            except Exception as e:  # noqa: BLE001
+                self.log(f"listing servers failed: {e}")
+                return None
+            stopped = [i["uuid"] for i in insts if i.get("status") == "shutdown" and i.get("machine_id") not in avoid_machines]
+            u = grab(self.api, stopped, self.c, self.log)
+            if not u:
+                u = Fleet(self.p, api=self.api)._create()
+                if not u:
+                    return None
+                hold(u)
+            self._up(u)
+            return self.held.get(u) or None
 
     def _up(self, u: str) -> None:
         t0 = time.time()
