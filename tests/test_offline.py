@@ -1130,6 +1130,19 @@ def test_an_episode_is_held_back_rather_than_cut_from_a_soft_resize():
             fleet.CAPS = old
 
 
+def test_more_replacement_tries_when_heavy_work_is_queued():
+    from sheelshort import fleet
+    with tempfile.TemporaryDirectory() as tmp:
+        p = _scratch_project(tmp, {})
+        ses = fleet.Session(p, api=_FakeAutoDL([]), spawn=lambda root: None)
+        assert ses.replace_budget() == (20 * 60, 3)                       # nothing queued: the base
+        p.scaler = type("F", (), {"pending": 30})()                       # 30 renders x 5 min = 150 GPU min
+        secs, n = ses.replace_budget()
+        assert n == 8 and secs == 60 * 60                                 # 3 + 150 // 30; window capped at 60 min
+        p.scaler.pending = 400
+        assert ses.replace_budget()[1] == 10                              # never more than replace_max_new_heavy
+
+
 if __name__ == "__main__":
     for name, fn in list(globals().items()):
         if name.startswith("test_"):

@@ -114,4 +114,6 @@ probe_rtx = true                     # each server is probed for RTX upscaling e
 release_after_hours = 3              # an instance shut down this long is released (deleted) by the reaper; 0 = never
 replace_window_minutes = 20          # how long a replacement may take (no stock: tried every minute)...
 replace_max_new = 3                  # ...and how many new machines it may try, so a run doesn't burn hours of GPU time
+replace_max_new_heavy = 10           # with heavy work queued: one more machine per 30 GPU min of it, up to this many...
+replace_window_minutes_heavy = 60    # ...and a window growing by 1 min per 3 GPU min of work, up to this long
 tick_s = 20
