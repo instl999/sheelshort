@@ -68,7 +68,9 @@ def takes(p: Project, ep: str, only: set[str] | None = None) -> None:
                 key, lambda cl: flows.drama3(p.put(cl, voice), transcript, drama3_text(ln), p.seed(key) + t,
                                              f"sheelshort/{ep}_{ln['key']}_t{t}", max_frames=_max_frames(ln)),
                 out, f"{ln['key']}_t{t}", ("audio",), 1800))
-    with ThreadPoolExecutor(max(1, len(p.cfg["comfy"]["servers"]) * 2)) as ex:
+    if jobs:
+        p.wake()
+    with ThreadPoolExecutor(max(2, len(p.cfg["comfy"]["servers"]) * 2)) as ex:
         list(ex.map(lambda f: f(), jobs))
 
 

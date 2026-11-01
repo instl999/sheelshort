@@ -91,6 +91,17 @@ def _esc(path) -> str:
     return "'" + str(path).replace("\\", "/").replace(":", r"\:").replace("'", r"\'") + "'"
 
 
+def _place(src: Path, dest: Path) -> None:
+    """Put a finished file into the delivery: a hard link (a 110-episode series would otherwise hold every master
+    twice, ~80 GB), a copy where links are impossible."""
+    import os
+    dest.unlink(missing_ok=True)
+    try:
+        os.link(src, dest)
+    except OSError:
+        shutil.copy2(src, dest)
+
+
 def run(p: Project) -> Path:
     out = p.d("delivery")
     e = p.cfg["edit"]
@@ -102,11 +113,11 @@ def run(p: Project) -> Path:
         if not master.exists():
             log(f"package: {ep} has no master yet; skipped")
             continue
-        shutil.copy2(master, p.d("delivery", "episodes") / f"{ep}.mp4")
+        _place(master, p.d("delivery", "episodes") / f"{ep}.mp4")
         if clean.exists():
-            shutil.copy2(clean, p.d("delivery", "episodes") / f"{ep}_clean.mp4")
+            _place(clean, p.d("delivery", "episodes") / f"{ep}_clean.mp4")
         if srt.exists():
-            shutil.copy2(srt, p.d("delivery", "episodes") / f"{ep}.srt")
+            _place(srt, p.d("delivery", "episodes") / f"{ep}.srt")
         e_json = p.episode(ep)
         frame = p.d("delivery", "_work") / f"{ep}_hook.jpg"
         media._run(["ffmpeg", "-y", "-v", "error", "-ss", "1.2", "-i", str(clean if clean.exists() else master),
@@ -128,6 +139,12 @@ def run(p: Project) -> Path:
         "本剧集画面、人物与配音均由人工智能生成。剧中人物均为虚构，与现实人物无关。\n"
         "The video, characters and voices of this series were generated with AI. All characters are fictional and do not "
         "depict real people.\n", encoding="utf-8")
+    from . import sfx
+    lines = sfx.credits(p)   # Attribution-licensed sound effects must be credited where the episodes are published
+    (out / "CREDITS.txt").unlink(missing_ok=True)
+    if lines:
+        (out / "CREDITS.txt").write_text("音效 Sound effects (freesound.org):\n" + "\n".join(lines) + "\n", encoding="utf-8")
+        log(f"package: {len(lines)} sound effect credit(s) in CREDITS.txt; publish them with the series")
     shutil.rmtree(out / "_work", ignore_errors=True)
     log(f"package: {len(eps_meta)} episode(s) -> {out}")
     return out

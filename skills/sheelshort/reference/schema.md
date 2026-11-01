@@ -1,6 +1,6 @@
 # sheelshort project files
 
-A complete worked example is `projects/guilai/` (bible.json, episodes/E01.json).
+A complete worked example is `projects/waimai2/` (bible.json, episodes/E01.json, E02.json).
 
 ## bible.json
 ```json
@@ -8,6 +8,7 @@ A complete worked example is `projects/guilai/` (bible.json, episodes/E01.json).
   "title": "归来 (The Return)",
   "language": "zh-CN",
   "style": "The target video is a photorealistic live-action Chinese vertical short drama in 9:16 with cinematic composition, ...",
+  "look_preset": "cinematic",
   "characters": {
     "linxia": {
       "name": "Lin Xia", "role": "woman",
@@ -22,7 +23,7 @@ A complete worked example is `projects/guilai/` (bible.json, episodes/E01.json).
     }
   },
   "locations": {
-    "penthouse": {"name": "penthouse living room", "look": "...", "keep": "...", "time": "night",
+    "penthouse": {"name": "penthouse living room", "name_zh": "顶层公寓", "look": "...", "keep": "...", "time": "night",
                   "light": "night; warm brass table lamps as the key light against the cool blue night skyline"}
   },
   "props": {
@@ -30,6 +31,25 @@ A complete worked example is `projects/guilai/` (bible.json, episodes/E01.json).
   }
 }
 ```
+
+A character may have `outfits` for costume changes: `"outfits": {"suit": {"look": "...the whole look sentence in this
+outfit...", "keep": "...anchors + this outfit...", "costume": "a charcoal three-piece suit, white shirt, black tie"}}`.
+The outfit is the same person (name, voice, face): `cast` re-dresses the character's close-up with the image editor
+and makes a sheet from it. Never make a second character for a change of clothes.
+
+`sfx` (optional) holds the project's own sound-effect cues, written by `python -m sheelshort sfx <project> add`:
+`{"door_slam": {"file": "inputs/sfx/door_slam.mp3", "url": "...", "source": "freesound.org/s/571797", "license": "CC0",
+"what": "...", "sync": 1.01, "len": 1.67, "level": -4}}`. `sync` is the second of the file that lands on the cue time.
+
+A location may have `crowd: true` (a restaurant, a lobby, a street: passers-by may fill the background) and `lights`
+for other times of day: `"lights": {"night": "night; warm floor lamps as key, the city glowing blue through the
+window"}`. A clip (or episode) chooses one with `"time": "night"`; `cast` relights the location's plates with the
+image editor, so it stays the same room. Without `crowd`, a shot holds only its written people (and `extras`).
+
+`look_preset` (optional, default `cinematic`) sets the light, colour and acting of every prompt, the location plates
+and the finishing grade: `cinematic` is moody and directional (rural, period, thriller); `bright` is high-key and
+clean (comedy, bright urban stories); `glossy` is warm and glowing with soft bokeh (romance). A location's `name_zh`
+(optional) is the vertical title shown as a scene there opens.
 
 ## episodes/E01.json
 ```json
@@ -58,13 +78,24 @@ A complete worked example is `projects/guilai/` (bible.json, episodes/E01.json).
 
 | cut field | meaning |
 |---|---|
-| `type` | `MS` medium, `CU` close-up, `ECU`, `OTS` over-the-shoulder, `VO` inner voice (close-up pushing in) |
+| `type` | `WS` wide (geography), `MS` medium, `MCU` medium close-up (mid-chest up, may carry a line), `CU` close-up, `ECU`, `OTS` over-the-shoulder, `VO` inner voice (close-up pushing in), `RX` reaction while the previous line continues |
 | `subjects` | characters (and only they) visible in the cut |
+| `to` | optional: whom the subject looks at or addresses (default: the nearest other speaker in the clip) |
+| `angle` | optional camera angle: `front` (default), `three-quarter`, `profile`, `high`, `low`. A changed angle makes a cut to the same person at the same size a real cut |
 | `speaker` / `over` | who speaks; whose shoulder is in the foreground of an OTS |
 | `line` / `say` / `act` / `emotion` / `delivery` | subtitle text / acted wording / Chinese voice direction / scoring class / English face direction |
 | `composition`, `action`, `camera`, `sound`, `end` | picture prompt text; `{charid}` and `{loc}` become H3 subject labels |
 | `props` | props visible in the cut (must exist in bible.props) |
 | `dur` | seconds (default 3); dialogue cuts are lengthened to fit the acted line |
+| `via` | `"phone"`: the line is heard through a phone from the other end; the shot shows the listener (the speaker is not in `subjects`), and the edit puts the line in the telephone band |
+| `extras` | optional background people who never speak (`"two lawyers in black suits behind {chenmo}"`); not in close-ups. Without it a shot holds only its `subjects`, and clip QC re-takes a close or medium shot with a crowd in it |
+| `sfx` | optional sound effect(s) on the cut's first frame: a cue name (`"hit"`), a list, or `{"cue": "slap", "at": 0.8}` for a moment inside the cut |
+
+Episode (or clip) field `outfits`: `{"<charid>": "<outfit>"}` dresses a character in one of their bible `outfits` for the
+episode (a clip's entry overrides it; `"default"` is the character's own costume).
+
+Episode (or clip) field `blocking`: `{"<location>": {"<charid>": "left" | "right"}}` fixes which side of the line of
+action each character stands on; by default the people who talk to each other most are put on opposite sides.
 
 ## Outputs
 `assets/` reference pack · `voices/` cast voices · `perform/<EP>/` takes, choice.json, timing.json, one track per clip ·
