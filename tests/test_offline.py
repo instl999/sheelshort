@@ -1143,6 +1143,17 @@ def test_more_replacement_tries_when_heavy_work_is_queued():
         assert ses.replace_budget()[1] == 10                              # never more than replace_max_new_heavy
 
 
+def test_an_outfit_close_up_is_a_head_crop_of_the_approved_close_up():
+    import subprocess
+    from sheelshort import cast
+    with tempfile.TemporaryDirectory() as tmp:
+        src, dest = Path(tmp) / "char_a.png", Path(tmp) / "char_a__suit.png"
+        subprocess.run(["ffmpeg", "-v", "error", "-f", "lavfi", "-i", "color=c=gray:s=768x1024", "-frames:v", "1", str(src)], check=True)
+        cast.head_crop(src, dest)
+        info = media.probe(dest)
+        assert (info["width"], info["height"]) == (768, 1024)
+
+
 if __name__ == "__main__":
     for name, fn in list(globals().items()):
         if name.startswith("test_"):
