@@ -72,6 +72,10 @@ music_under_lu = 18              # the music bed sits this far under the dialogu
 grade = "auto"                   # finishing grade: "auto" follows the bible's look_preset; "film", "bright", "glossy", "none"
 location_cards = true            # a vertical title with the place's name_zh as each new scene opens
 upscale = "rtx"                  # "rtx": NVIDIA RTX Video Super Resolution on the servers to 1080x1920; "" = plain resize
+upscale_wait_minutes = 120       # no server in the pool can run RTX upscaling (old driver): keep bringing in another
+                                 # machine this long (a swap at max_servers), then hold the episode back
+upscale_fallback = "fail"        # "fail": an episode that could not be upscaled is held back and reported, never cut soft;
+                                 # "resize": use a plain resize instead (with a warning)
 font = "Heiti SC"            # libass family name; must have CJK glyphs
 music = "auto"                   # "auto": ACE-Step bed from the episode's `music` tags; a file path; or "" for none
 

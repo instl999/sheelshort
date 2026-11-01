@@ -166,6 +166,7 @@ def run(p: Project, eps: str | list[str], only: set[str] | None = None, takes: i
     if p.cfg.get("fleet", {}).get("enabled") and not p.dry:
         from .fleet import Fleet
         fl = Fleet(p)
+        p.scaler = fl   # the servers it adds can be swapped out too (an old driver that cannot upscale)
         fl.linger_s = 120   # clip QC and upscales follow the renders: an added server stays for them (waimai2 lost it)
         fl.start(sum(1 for j in jobs if getattr(j, "renders", False)))   # only real renders are work worth a server
     workers = 2 * max(len(p.cfg["comfy"]["servers"]), int(p.cfg["fleet"]["max_servers"]) if fl else 0)
@@ -195,6 +196,8 @@ def run(p: Project, eps: str | list[str], only: set[str] | None = None, takes: i
         def one(it):
             try:
                 assemble.upscaled(p, *it)
+            except Exception as e:  # noqa: BLE001 - reported; assemble tries again and holds the episode back if it must
+                log(f"{it[0]} {it[1].stem}: {e}")
             finally:
                 pr.finish(f"upscale/{it[0]}/{it[1].stem}")
         pool(one, todo)

@@ -10,6 +10,7 @@ from __future__ import annotations
 import re
 import subprocess
 import threading
+import time
 from pathlib import Path
 from urllib.parse import urlparse
 
@@ -330,11 +331,20 @@ def upscaled(p: Project, ep: str, video: Path) -> Path:
             where = p.waker.machines() if p.waker else {}
             bad = {u for u, m in where.items() if m in bad_m} | ({u for u in caps.get("no_rtx_vsr", []) if u not in where})
             if p.waker and not set(p.cfg["comfy"]["servers"]) - bad:
-                # every machine in the pool has an old driver: bring in another (some machines lack RTX VSR)
-                log(f"{video.stem}: no server in the pool can run RTX upscaling; starting another machine")
-                if not p.waker.add_capable(bad_m):
-                    break
-                continue
+                # every machine in the pool has an old driver: bring in another (some machines lack RTX VSR), and keep
+                # trying while AutoDL has none free; a plain resize is never the quiet way out
+                waited = 0.0
+                limit = 60 * float(e.get("upscale_wait_minutes", 120))
+                while not p.waker.add_capable(bad_m):
+                    if waited >= limit:
+                        break
+                    log(f"{video.stem}: no server that can run RTX upscaling yet; trying again in 1 min "
+                        f"({waited / 60:.0f}/{limit / 60:.0f} min)")
+                    time.sleep(60)
+                    waited += 60
+                else:
+                    continue
+                break
         out = p.run_job(key, lambda cl: flows.upscale_rtx(p.put(cl, video), scale + 0.005, f"sheelshort/{ep}_{video.stem}_up"),
                         p.d("clips", ep, "up"), video.stem, ("gifs", "videos"), 1800, exclude=bad)
         job = p.state["jobs"].get(key, {})
@@ -353,8 +363,11 @@ def upscaled(p: Project, ep: str, video: Path) -> Path:
         p.forget(key)
     mp4 = [f for f in out or [] if f.suffix == ".mp4"]
     if not mp4:
-        log(f"{video.stem}: upscale failed; using the plain resize")
-        return video
+        if e.get("upscale_fallback", "fail") == "resize":
+            log(f"{video.stem}: WARNING upscale failed; using the plain resize (edit.upscale_fallback = \"resize\")")
+            return video
+        raise RuntimeError(f"{video.stem}: no server could run RTX upscaling; the episode is held back rather than cut "
+                           "from a soft plain resize. Run the same command again when a GPU is free (finished work is kept)")
     mp4 = sorted(mp4, key=lambda f: media.probe(f)["audio_codec"] is None)
     mp4[0].replace(dest)
     return dest
@@ -461,7 +474,7 @@ def settle_loudness(f: Path, target: float, tol: float = 0.5, ceiling: float = -
     gain, best = target - i, None
     for _ in range(3):   # the limiter takes back some of the gain: add the shortfall and go again from the original
         subprocess.run(["ffmpeg", "-y", "-v", "error", "-i", str(f), "-map", "0", "-c:v", "copy",
-                        "-af", f"volume={gain:.2f}dB,alimiter=limit={10 ** ((ceiling - 0.5) / 20):.3f}:level=false:attack=1:release=50",
+                        "-af", f"volume={gain:.2f}dB,alimiter=limit={10 ** ((ceiling - 1.5) / 20):.3f}:level=false:attack=1:release=50",
                         "-c:a", "aac", "-b:a", "192k", "-movflags", "+faststart", str(tmp)], check=True)
         i2, tp2 = loudness_stats(tmp)
         if best is None or abs(i2 - target) < abs(best[0] - target):
