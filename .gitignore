@@ -21,3 +21,6 @@ sheelshort.toml
 projects/*/*
 !projects/*/bible.json
 !projects/*/episodes/
+
+# local notes for the owner
+PENDING_APPROVALS.md

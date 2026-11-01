@@ -136,6 +136,53 @@ def tile(images: list[Path], dest: Path, cols: int, cell: tuple[int, int] = (270
     scaled = ";".join(f"[{i}:v]scale={w}:{h}:force_original_aspect_ratio=decrease,crop=min(iw\\,{w}):min(ih\\,{h}),pad={w}:{h}:-1:-1[s{i}]"
                       for i in range(len(images)))
     layout = "|".join(f"{(i % cols) * w}_{(i // cols) * h}" for i in range(len(images)))
-    graph = f"{scaled};{''.join(f'[s{i}]' for i in range(len(images)))}xstack=inputs={len(images)}:layout={layout}:fill=black[v]"
+    if len(images) == 1:   # xstack needs two inputs at least (a one-shot clip, e.g. a voice-over, has one panel)
+        graph = scaled[:-len("[s0]")] + "[v]"
+    else:
+        graph = f"{scaled};{''.join(f'[s{i}]' for i in range(len(images)))}xstack=inputs={len(images)}:layout={layout}:fill=black[v]"
     _run(args + ["-filter_complex", graph, "-map", "[v]", "-frames:v", "1", "-q:v", "3", str(dest)])
     return dest
+
+
+def face_box(video: Path, t: float) -> tuple[float, float, float, float] | None:
+    """The largest face in the frame at `t` seconds, as (x0, y0, x1, y1) fractions of the frame (OpenCV Haar cascade)."""
+    try:
+        import cv2
+        import numpy as np
+        if not hasattr(cv2, "CascadeClassifier"):   # OpenCV 5 dropped the Haar detector: no face, the card takes a default side
+            return None
+    except ImportError:
+        return None
+    p = subprocess.run(["ffmpeg", "-v", "error", "-ss", f"{max(0, t):.3f}", "-i", str(video), "-frames:v", "1",
+                        "-f", "image2pipe", "-vcodec", "png", "-"], capture_output=True)
+    img = cv2.imdecode(np.frombuffer(p.stdout, np.uint8), cv2.IMREAD_GRAYSCALE) if p.stdout else None
+    if img is None:
+        return None
+    h, w = img.shape
+    det = cv2.CascadeClassifier(cv2.data.haarcascades + "haarcascade_frontalface_default.xml")
+    faces = det.detectMultiScale(img, scaleFactor=1.1, minNeighbors=5, minSize=(w // 10, w // 10))
+    if len(faces) == 0:
+        det = cv2.CascadeClassifier(cv2.data.haarcascades + "haarcascade_profileface.xml")
+        faces = det.detectMultiScale(img, scaleFactor=1.1, minNeighbors=5, minSize=(w // 10, w // 10))
+    if len(faces) == 0:
+        return None
+    x, y, fw, fh = max(faces, key=lambda f: f[2] * f[3])
+    return (x / w, y / h, (x + fw) / w, (y + fh) / h)
+
+
+def shot_cuts(video: Path, threshold: float = 0.3) -> list[float]:
+    """Times of the hard cuts in a video (ffmpeg scene-change score above `threshold`)."""
+    p = subprocess.run(["ffmpeg", "-hide_banner", "-i", str(video), "-vf", f"select='gt(scene,{threshold})',showinfo",
+                        "-an", "-f", "null", "-"], capture_output=True, text=True)
+    import re
+    return [float(m) for m in re.findall(r"pts_time:([0-9.]+)", p.stderr)]
+
+
+def pacing(video: Path) -> dict:
+    """Shot statistics of an edited episode, comparable with the reference series' study (mean ~2.1 s per shot)."""
+    import statistics
+    dur = probe(video)["duration"]
+    cuts = [0.0] + shot_cuts(video) + [dur]
+    shots = [b - a for a, b in zip(cuts, cuts[1:]) if b - a > 0.2]
+    return {"duration_s": round(dur, 1), "shots": len(shots), "mean_shot_s": round(statistics.mean(shots), 2),
+            "median_shot_s": round(statistics.median(shots), 2), "over_5s": sum(1 for s in shots if s > 5)}

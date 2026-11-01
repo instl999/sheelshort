@@ -6,3 +6,5 @@ av
 faster-whisper>=1.1
 zhconv
 imageio-ffmpeg
+opencv-python-headless<5
+jieba

@@ -73,6 +73,7 @@ class Project:
         self._uploaded: dict[tuple[str, str], str] = {}
         self._wf: dict[str, dict] = {}
         self._touched: set[str] = set()
+        self._warned: dict[str, float] = {}
         self.limit_s: float | None = None   # test mode: only the opening clips of each episode, about this long
         self.only_eps: list[str] | None = None   # the episodes this run works on (casting covers only their characters)
 
@@ -181,7 +182,7 @@ class Project:
     def object_info(self, c: comfy.ComfyClient) -> dict:
         return c.object_info(REPO / ".cache" / f"object_info_{urlparse(c.base_url).hostname}.json")
 
-    def pick(self) -> comfy.ComfyClient:
+    def pick(self, exclude: set[str] | frozenset = frozenset()) -> comfy.ComfyClient:
         """The least busy server with a free slot. A server holds at most `[comfy] in_flight` of this run's jobs (one
         running, one queued behind it); the others wait here, not in a server's queue, so a server the fleet adds
         mid-run gets work at once instead of finding everything already queued elsewhere."""
@@ -190,13 +191,17 @@ class Project:
             with self.lock:
                 best, best_load, reachable = None, None, 0
                 for url in list(self.cfg["comfy"]["servers"]):
+                    if url in exclude:
+                        continue
                     if self._assigned.get(url, 0) >= cap:
                         reachable += 1
                         continue
                     try:
                         running, pending = self.client(url).queue_info()
                     except Exception as e:  # noqa: BLE001 - an unreachable server is skipped
-                        log(f"server {urlparse(url).hostname} unavailable: {e}")
+                        if time.time() - self._warned.get(url, 0) > 60:   # once a minute, not on every retry
+                            log(f"server {urlparse(url).hostname} unavailable: {str(e)[:120]}")
+                            self._warned[url] = time.time()
                         continue
                     reachable += 1
                     load = running + pending + self._assigned.get(url, 0)
@@ -222,7 +227,7 @@ class Project:
     # ---------- jobs ----------
 
     def run_job(self, key: str, build, out_dir: Path, stem: str, kinds: tuple[str, ...] = comfy.OUTPUT_KEYS,
-                timeout_s: float = 3600) -> list[Path] | None:
+                timeout_s: float = 3600, exclude: set[str] | frozenset = frozenset()) -> list[Path] | None:
         """Queue one workflow, or resume it after a crash; a finished job is never queued twice.
 
         `build(client)` returns the API-format workflow; it runs only when the job is (re)queued, so uploads happen on
@@ -237,7 +242,7 @@ class Project:
                 c = self.client(job["server"])
                 log(f"{key}: resuming {job['prompt_id']} on {urlparse(c.base_url).hostname}")
             else:
-                c = self.pick() if not self.dry else self.client(self.cfg["comfy"]["servers"][0])
+                c = self.pick(exclude) if not self.dry else self.client(self.cfg["comfy"]["servers"][0])
                 api = build(c)
                 problems = comfy.validate(api, self.object_info(c))
                 req = self.d("requests") / f"{key.replace('/', '_')}.json"

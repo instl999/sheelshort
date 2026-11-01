@@ -146,7 +146,7 @@ def h3_reference(tpl: dict, prompt: str, seconds: int, images: list[str], audios
 
 
 def vlm_describe(image: str, prompt: str, model: str, mmproj: str, chat_handler: str, seed: int,
-                 max_tokens: int = 700, max_size: int = 1024) -> dict:
+                 max_tokens: int = 700, max_size: int = 1024, offload: bool = False) -> dict:
     """Ask a local llama.cpp vision model (as in the server's 通用反推 workflow) about one image; text via ShowText."""
     return {
         "1": {"class_type": "LoadImage", "inputs": {"image": image}},
@@ -160,7 +160,7 @@ def vlm_describe(image: str, prompt: str, model: str, mmproj: str, chat_handler:
         "4": {"class_type": "llama_cpp_instruct_adv", "inputs": {
             "llama_model": ["2", 0], "parameters": ["3", 0], "images": ["1", 0], "preset_prompt": "Empty - Nothing",
             "custom_prompt": prompt, "system_prompt": "", "inference_mode": "images", "max_frames": 24,
-            "max_size": max_size, "seed": seed, "force_offload": False, "save_states": False}},
+            "max_size": max_size, "seed": seed, "force_offload": offload, "save_states": False}},
         "5": {"class_type": "ShowText|pysssss", "inputs": {"text": ["4", 0]}},
     }
 
@@ -265,4 +265,19 @@ def music(tags: str, seconds: float, seed: int, prefix: str, steps: int = 50, cf
                                                    "sampler_name": "euler", "scheduler": "simple", "denoise": 1.0}},
         "7": {"class_type": "VAEDecodeAudio", "inputs": {"samples": ["6", 0], "vae": ["1", 2]}},
         "8": {"class_type": "SaveAudio", "inputs": {"audio": ["7", 0], "filename_prefix": prefix}},
+    }
+
+
+def upscale_rtx(video: str, scale: float, prefix: str, quality: str = "ULTRA") -> dict:
+    """NVIDIA RTX Video Super Resolution on a rendered clip (deterministic, fast, no invented detail), audio kept."""
+    return {
+        "1": {"class_type": "VHS_LoadVideo", "inputs": {"video": video, "force_rate": 0, "custom_width": 0, "custom_height": 0,
+                                                       "frame_load_cap": 0, "skip_first_frames": 0, "select_every_nth": 1,
+                                                       "format": "None"}},
+        "2": {"class_type": "RTXVideoSuperResolution", "inputs": {
+            "images": ["1", 0], "resize_type": "scale by multiplier", "resize_type.scale": round(scale, 3), "quality": quality}},
+        "3": {"class_type": "VHS_VideoCombine", "inputs": {
+            "images": ["2", 0], "audio": ["1", 2], "frame_rate": 24, "loop_count": 0, "filename_prefix": prefix,
+            "format": "video/h264-mp4", "pix_fmt": "yuv420p", "crf": 14, "save_metadata": False, "trim_to_audio": False,
+            "pingpong": False, "save_output": True}},
     }

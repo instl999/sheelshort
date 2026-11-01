@@ -79,13 +79,8 @@ class AutoDL:
         The public proxy on :8443 is HTTPS whatever the in-container protocol."""
         s = self.snapshot(uuid)
         for key in ("service_6006_domain", "service_6008_domain"):
-            if s.get(key):
-                url = f"https://{s[key]}"
-                try:
-                    if httpx.get(f"{url}/system_stats", timeout=10).status_code == 200:
-                        return url
-                except httpx.HTTPError:
-                    pass
+            if s.get(key) and is_comfy(f"https://{s[key]}", timeout=10):
+                return f"https://{s[key]}"
         return ""
 
     def wait_status(self, uuid: str, want: str, timeout_s: float = 1800, poll_s: float = 5) -> float:
@@ -98,17 +93,72 @@ class AutoDL:
         raise TimeoutError(f"{uuid} not {want} after {timeout_s}s (last: {self.status(uuid)})")
 
 
+def is_comfy(url: str, timeout: float = 15) -> bool:
+    """True only if ComfyUI itself answers at `url`: its /system_stats JSON lists the GPUs. The port ComfyUI uses
+    differs between boots, and the app's other port may answer any path with an HTML page and status 200; taking that
+    for ComfyUI put two servers in the pool that never got a job (2026-10-31, E03/E04)."""
+    try:
+        r = httpx.get(f"{url}/system_stats", timeout=timeout)
+        return r.status_code == 200 and bool(r.json().get("devices"))
+    except (httpx.HTTPError, ValueError, AttributeError):
+        return False
+
+
 def wait_comfy(url: str, timeout_s: float = 1800, poll_s: float = 5) -> float:
     """Seconds until ComfyUI at `url` answers /system_stats."""
     t0 = time.time()
     while time.time() - t0 < timeout_s:
-        try:
-            if httpx.get(f"{url}/system_stats", timeout=15).status_code == 200:
-                return time.time() - t0
-        except httpx.HTTPError:
-            pass
+        if is_comfy(url):
+            return time.time() - t0
         time.sleep(poll_s)
     raise TimeoutError(f"ComfyUI at {url} not answering after {timeout_s}s")
+
+
+OWNED = Path(os.environ.get("SHEELSHORT_FLEET_OWNED") or Path(__file__).resolve().parent.parent / ".cache" / "fleet_owned.json")
+
+
+def _owned() -> dict:
+    import json
+    return json.loads(OWNED.read_text()) if OWNED.exists() else {}
+
+
+def _own(uuid: str, pid: int | None) -> None:
+    import json
+    d = _owned()
+    if pid is None:
+        d.pop(uuid, None)
+    else:
+        d[uuid] = pid
+    OWNED.parent.mkdir(parents=True, exist_ok=True)
+    OWNED.write_text(json.dumps(d))
+
+
+def _alive(pid: int) -> bool:
+    try:
+        os.kill(pid, 0)
+        return True
+    except OSError:
+        return False
+
+
+def reap_orphans(api: "AutoDL", log=print) -> list[str]:
+    """Power off servers a dead sheelshort process had started (killed before it could clean up)."""
+    done = []
+    for uuid, pid in _owned().items():
+        if pid == os.getpid() or _alive(pid):
+            continue
+        try:
+            if api.status(uuid) not in ("shutdown",):
+                api.power_off(uuid)
+                log(f"fleet: powered off orphan {uuid} (its run, pid {pid}, ended without cleaning up)")
+            done.append(uuid)
+            _own(uuid, None)
+        except AutoDLError as e:
+            if "NotFound" in str(e) or "未查询到" in str(e):   # released meanwhile: nothing left to do
+                _own(uuid, None)
+            else:
+                log(f"fleet: could not power off orphan {uuid}: {e}")
+    return done
 
 
 class Fleet:
@@ -128,6 +178,7 @@ class Fleet:
         self.managed: dict[str, dict] = {}      # uuid -> {"url", "idle_since"}
         self.starting = False
         self.backoff_until = 0.0
+        self.hold_pending: int | None = None   # after an idle power-off: no scale-up until the backlog drops below this
         self.lock = threading.Lock()
         self._stop = threading.Event()
         self._thread: threading.Thread | None = None
@@ -136,6 +187,8 @@ class Fleet:
     # ---------- run lifecycle ----------
 
     def start(self, jobs: int) -> None:
+        if not self.dry:
+            self._adopt_orphans()
         self.pending = jobs
         self.log(f"start: {jobs} job(s), {len(self.p.cfg['comfy']['servers'])} server(s), up to {self.c['max_extra']} extra"
                  + (" [dry run]" if self.dry else ""))
@@ -155,7 +208,29 @@ class Fleet:
             self.log("waiting for a starting server before powering everything off")
             self._up.join(timeout=1500)
         for uuid in list(self.managed):
-            self._retire(uuid, "run finished")
+            self._retire(uuid, "run finished", force=True)
+
+    def _adopt_orphans(self) -> None:
+        """Servers left running by a run that died are taken into this run's pool (they are ours, and already warm);
+        stopped ones are just forgotten. The idle rules power them off if this run has no work for them."""
+        for uuid, pid in _owned().items():
+            if pid == os.getpid() or _alive(pid):
+                continue
+            try:
+                status = self.api.status(uuid)
+            except AutoDLError:
+                _own(uuid, None)
+                continue
+            url = self.api.comfy_url(uuid) if status == "running" else ""
+            if not url:
+                _own(uuid, None)
+                continue
+            self.managed[uuid] = {"url": url, "idle_since": None}
+            _own(uuid, os.getpid())
+            with self.p.lock:
+                if url not in self.p.cfg["comfy"]["servers"]:
+                    self.p.cfg["comfy"]["servers"].append(url)
+            self.log(f"{uuid}: adopted from a run that ended without cleaning up -> {url}")
 
     def _loop(self) -> None:
         while not self._stop.wait(float(self.c.get("tick_s", 20))):
@@ -167,20 +242,32 @@ class Fleet:
     # ---------- decisions ----------
 
     def tick(self) -> None:
+        if self.hold_pending is not None and self.pending < self.hold_pending:
+            self.hold_pending = None
         if (len(self.managed) < int(self.c["max_extra"]) and not self.starting and self.clock() >= self.backoff_until
-                and self.gain_minutes() >= float(self.c.get("min_gain_minutes", 3))):
+                and self.hold_pending is None and self.gain_minutes() >= float(self.c.get("min_gain_minutes", 3))):
             self.starting = True
             self._up = threading.Thread(target=self._scale_up, daemon=True)
             self._up.start()
         for uuid, m in list(self.managed.items()):
+            if not m["url"]:
+                continue   # still starting
             busy = self._busy(m["url"])
+            if busy is None:   # unreachable: counts as busy, never idle, but a wrong address must not stay in the pool
+                m.setdefault("bad_since", self.clock())
+                if self.clock() - m["bad_since"] >= 180:
+                    self._re_resolve(uuid, m)
+                busy = True
+            else:
+                m.pop("bad_since", None)
             if busy:
                 m["idle_since"] = None
             elif m["idle_since"] is None:
                 m["idle_since"] = self.clock()
             idle_for = 0 if m["idle_since"] is None else self.clock() - m["idle_since"]
             if not busy and (self.pending == 0 or idle_for >= 60 * float(self.c.get("idle_off_minutes", 10))):
-                self._retire(uuid, f"idle {idle_for / 60:.0f} min" if self.pending else "no work left")
+                if self._retire(uuid, f"idle {idle_for / 60:.0f} min" if self.pending else "no work left") and self.pending:
+                    self.hold_pending = self.pending   # work is waiting but this server got none: another would sit idle too
 
     def gain_minutes(self) -> float:
         """Minutes one more server would take off this run: with n servers working, W minutes of GPU work left and a
@@ -190,14 +277,26 @@ class Fleet:
         s = float(self.c.get("startup_minutes", 5))
         return (w - n * s) / (n * (n + 1))
 
-    def _busy(self, url: str) -> bool:
+    def _busy(self, url: str) -> bool | None:
+        """True if the server has work, False if idle, None if it does not answer as ComfyUI."""
         if self.p._assigned.get(url, 0) > 0:
             return True
         try:
             running, pending = self.p.client(url).queue_info()
             return running + pending > 0
-        except Exception:  # noqa: BLE001 - an unreachable server counts as busy, never as idle to be stopped
-            return True
+        except Exception:  # noqa: BLE001
+            return None
+
+    def _re_resolve(self, uuid: str, m: dict) -> None:
+        """A pool server that has not answered for minutes: look its ComfyUI address up again and swap it in."""
+        m["bad_since"] = self.clock()
+        url = self.api.comfy_url(uuid)
+        if url and url != m["url"]:
+            with self.p.lock:
+                servers = self.p.cfg["comfy"]["servers"]
+                servers[:] = [url if u == m["url"] else u for u in servers]
+            self.log(f"{uuid}: {m['url']} does not answer as ComfyUI; now {url}")
+            m["url"] = url
 
     # ---------- actions ----------
 
@@ -213,6 +312,7 @@ class Fleet:
                 self.backoff_until = self.clock() + 60 * float(self.c.get("retry_minutes", 5))
                 return
             self.managed[uuid] = {"url": "", "idle_since": None}   # owned from here on, so `stop` powers it off
+            _own(uuid, os.getpid())                                # and a later run powers it off if this one dies
             t0 = self.clock()
             self.api.wait_status(uuid, "running", timeout_s=900)
             url = ""
@@ -222,7 +322,7 @@ class Fleet:
                     time.sleep(10)
             if not url:
                 self.log(f"{uuid}: ComfyUI never answered; powering it off")
-                self._retire(uuid, "not reachable")
+                self._retire(uuid, "not reachable", force=True)
                 return
             if self._stop.is_set():
                 return   # the run ended meanwhile: `stop` powers it off
@@ -265,24 +365,35 @@ class Fleet:
                 self.log(f"create {spec} failed: {e}")
         return None
 
-    def _retire(self, uuid: str, why: str) -> None:
-        m = self.managed.pop(uuid, None)
+    def _retire(self, uuid: str, why: str, force: bool = False) -> bool:
+        """Take the server out of the pool and power it off. Under the lock `pick` takes, so a job handed to the server
+        after it was judged idle (a vision check, say) keeps it alive: returns False then."""
+        m = self.managed.get(uuid)
         if m and m.get("url"):
             with self.p.lock:
+                if not force and self.p._assigned.get(m["url"], 0) > 0:
+                    return False
                 if m["url"] in self.p.cfg["comfy"]["servers"]:
                     self.p.cfg["comfy"]["servers"].remove(m["url"])
+        self.managed.pop(uuid, None)
         if self.dry:
             self.log(f"would power off {uuid} ({why})")
-            return
+            return True
         try:
             self.api.power_off(uuid)
+            _own(uuid, None)
             self.log(f"{uuid}: powered off ({why})")
         except AutoDLError as e:
             self.log(f"{uuid}: power off FAILED ({e}); run `sheelshort fleet <project> off`")
+        return True
 
     def log(self, msg: str) -> None:
         from .project import log
         log(f"fleet: {msg}")
+
+    def log_raw(self, msg: str) -> None:
+        from .project import log
+        log(msg)
 
 
 def managed(api: AutoDL, prefix: str) -> list[dict]:
