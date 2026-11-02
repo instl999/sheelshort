@@ -236,7 +236,7 @@ def reap_idle(api: "AutoDL", c: dict, log=print, clock=time.time, idle=queue_idl
 
     hours = float(c.get("release_after_hours", 3))
     for u, inst in insts.items() if hours > 0 else []:
-        if not (inst.get("name") or "").startswith(c["name_prefix"]):
+        if u in (c.get("core") or []) or not (inst.get("name") or "").startswith(c["name_prefix"]):
             continue   # only instances this engine created are ever released: core servers are the owner's
         stopped = _stopped_for(inst, clock)
         if stopped is None or holders(u):
@@ -399,26 +399,47 @@ def uuid_for(url: str) -> str | None:
         return next((u for u, e in d.items() if e.get("url") and e["url"].rstrip("/") == url.rstrip("/")), None)
 
 
+def _code_version() -> str:
+    """This module's code, hashed: a reaper started from older code is replaced, not left running it."""
+    import hashlib
+    return hashlib.sha1(Path(__file__).read_bytes()).hexdigest()[:12]
+
+
+def _reaper() -> tuple[int, str]:
+    """The running reaper's pid and the code version it was started from ("" when unknown or none runs)."""
+    try:
+        pid, _, version = REAPER_PID.read_text().strip().partition(" ")
+        return (int(pid), version) if _alive(int(pid)) else (0, "")
+    except (OSError, ValueError):
+        return 0, ""
+
+
 def spawn_reaper(project_root) -> None:
-    """Start the background watcher that powers idle servers off (`fleet <project> idle`), unless one is running."""
+    """Start the background watcher that powers idle servers off (`fleet <project> idle`), unless one is running.
+    A reaper running older code is stopped and started again: a fix to what it may power off or release must not
+    wait for it to exit (2026-11-01: a reaper started before the core-release fix kept running the old rule)."""
+    import signal
     import subprocess
     import sys
-    try:
-        if _alive(int(REAPER_PID.read_text())):
-            return
-    except (OSError, ValueError):
-        pass
+    pid, version = _reaper()
+    if pid and version == _code_version():
+        return
+    if pid:
+        try:
+            os.kill(pid, signal.SIGTERM)
+        except OSError:
+            pass
     repo = Path(__file__).resolve().parent.parent
     out = open(OWNED.with_name("fleet_reaper.log"), "a")   # noqa: SIM115 - handed to the child
     proc = subprocess.Popen([sys.executable, "-m", "sheelshort", "fleet", str(project_root), "idle"], cwd=repo,
                             stdin=subprocess.DEVNULL, stdout=out, stderr=subprocess.STDOUT, start_new_session=True)
-    REAPER_PID.write_text(str(proc.pid))
+    REAPER_PID.write_text(f"{proc.pid} {_code_version()}")
 
 
 def watch_idle(api: "AutoDL", c: dict, log=print) -> None:
     """The reaper: check until every idle server is powered off (or taken by a new run), then exit."""
     REAPER_PID.parent.mkdir(parents=True, exist_ok=True)
-    REAPER_PID.write_text(str(os.getpid()))
+    REAPER_PID.write_text(f"{os.getpid()} {_code_version()}")
     while True:
         try:
             nxt = reap_idle(api, c, log)

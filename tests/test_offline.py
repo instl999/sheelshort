@@ -1127,6 +1127,40 @@ def test_reaper_never_releases_core_instances():
          "release_after_hours": 3}
     fleet.reap_idle(api, c, log=lambda m: None, clock=lambda: t + 99 * 3600, idle=lambda url: True)
     assert sorted(u for x, u in api.calls if x == "release") == ["pro-ss1", "pro-ss2"]   # only sheelshort-bj-*
+    api.calls.clear()
+    c["core"].append("pro-ss2")   # a core server that happens to carry the fleet's name is still the owner's
+    fleet.reap_idle(api, c, log=lambda m: None, clock=lambda: t + 99 * 3600, idle=lambda url: True)
+    assert sorted(u for x, u in api.calls if x == "release") == ["pro-ss1"]
+
+
+def test_a_reaper_running_old_code_is_replaced():
+    import signal
+    import subprocess
+    from sheelshort import fleet
+    saved = fleet.REAPER_PID.read_text() if fleet.REAPER_PID.exists() else None
+    old = subprocess.Popen(["sleep", "30"])
+    started = []
+    real_popen = subprocess.Popen
+    try:
+        fleet.REAPER_PID.write_text(f"{old.pid} 0123456789ab")           # a reaper from older code
+        subprocess.Popen = lambda *a, **k: started.append(a) or type("P", (), {"pid": 424242})()
+        fleet.spawn_reaper(ROOT / "projects" / "x")
+        assert started and old.wait(timeout=5) == -signal.SIGTERM        # stopped and started again
+        assert fleet.REAPER_PID.read_text() == f"424242 {fleet._code_version()}"
+        started.clear()
+        mine = real_popen(["sleep", "30"])
+        fleet.REAPER_PID.write_text(f"{mine.pid} {fleet._code_version()}")   # current code: left alone
+        fleet.spawn_reaper(ROOT / "projects" / "x")
+        assert not started and mine.poll() is None
+        mine.kill()
+    finally:
+        subprocess.Popen = real_popen
+        if old.poll() is None:
+            old.kill()
+        if saved is None:
+            fleet.REAPER_PID.unlink(missing_ok=True)
+        else:
+            fleet.REAPER_PID.write_text(saved)
 
 
 def test_an_episode_is_held_back_rather_than_cut_from_a_soft_resize():
