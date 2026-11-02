@@ -549,6 +549,38 @@ Open, needing the owner's decisions or a test first (in the review page): episod
 scoring per line, prop states and injuries, a series layer (`series.json`, `continuity.json`, `check --series`), group
 scenes beyond three characters.
 
+### 0.17 Lessons from drama-studio, and series safety (2026-11-01)
+
+drama-studio (the predecessor) tuned and benchmarked the same U22 on Zealman servers. What carries over:
+- **Our U22 as shipped runs `MysticXXX_MMH3-V1` at 0.7**, an adult-style LoRA, on every clip (stock Zealman U22 has it
+  at 0.45). drama-studio measured, same clips and seeds, that it gives faces a glossy, waxy finish, and that turning it
+  off restored hair strands and skin texture. `render.h3_loras` sets any LoRA by a fragment of its name.
+- **Its tuned U22 (`u22_tuned.api.json`, from YJ01):** DMAD distill 0.8 + cinematic-realism LoRA 0.2, MysticXXX off,
+  the SelfLift sampler (10 steps from a 0.6 low-res start, H3's own upscaler), sparse attention. It won on realism and
+  motion accuracy against stock U22, and on identity and prompt adherence in a 72-render benchmark against U30, U32
+  and U00. All four of our servers carry its nodes and models.
+- **RIFE 24 -> 30 fps inside the render** (`render.interp = "rife"`, +~16 s a clip) instead of the edit repeating
+  frames.
+- Not carried over: 2.09 MP to stop burned captions (ours burn captions in ~6% of panels, theirs ~80% below 2 MP),
+  U24 and the sealed U00, full-frame subtitle erasing (it softened faces).
+- `python -m sheelshort ab` renders the same clips under each variant for the owner to judge; the default changes only
+  after that.
+
+Series safety, for 110 episodes run unattended:
+- **Season ledger** (`ledger.py`): each episode's end state (outfits, injuries, props, who knows what, story time)
+  feeds the next; `check` refuses contradictions, and injuries in force go into every later prompt.
+- **Arc** (`arc.json`): one row per episode; repetition of conflict shape or places and broken cliffhanger-to-opener
+  links are noted.
+- **Series lock** (`lock.py`): workflows, settings, LoRAs, models and the cast frozen once approved; `check` refuses
+  local drift and render jobs avoid a server whose node inputs changed or whose models are missing. Node inputs are
+  compared by name and type only: option lists and defaults differ between servers of one image.
+- **Drift** (`drift.py`): per episode, SFace identity per character, colour (luma, black level, white balance) and
+  voice pitch against the cast, with alarms against the series' own running medians.
+- **Regression:** golden prompts (the 雲境 showcase) and golden graphs in `tests/golden/`, CI on every push, and
+  `smoke`: one clip at its production seed against an accepted reference render after a server change.
+- **Compliance:** the visible AI label (top right, all episode by default) and the GB 45438-2025 `AIGC` metadata field
+  in every master and clean cut; `[compliance] terms` and traffic-diversion notes in `check`.
+
 ## 1. Market research: does this already exist?
 
 **Short answer: partly.** Several open-source projects cover most of the pipeline. None of them matches this exact combination: agent-native, English-market/PineDrama-targeted, H3 plus ComfyUI as user-supplied backends, and fully automatic QC and assembly.

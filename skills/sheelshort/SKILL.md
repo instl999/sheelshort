@@ -20,6 +20,14 @@ cliffhanger: `check` notes any episode over 100 s.
 If the script is a single scene, it is one episode. Keep the user's dialogue; tighten it only where a line is too long
 for its shot (rule below), and say what you changed.
 
+**For a series, write `arc.json` first** (one row per episode, before any episode file):
+`{"episodes": [{"ep": "E001", "hook": "...", "conflict": "...", "shape": "humiliation", "turn": "...",
+"cliffhanger": "...", "paywall": false}, ...]}`. `shape` is the episode's conflict in one or two words
+(humiliation, reveal, confrontation, rescue, betrayal, reversal...). `check` refuses an episode file without its row
+and notes three episodes running with the same shape or the same places, and an episode that does not open on the
+cliffhanger before it (the same people as that episode's last clip, or a `picks_up` line in the episode saying how it
+picks up). Long runs die of sameness: vary the shapes.
+
 ## 2. Write `bible.json` (see `reference/schema.md`)
 Characters, locations, props, visual style. Rules that matter:
 - **`style`** (opens every prompt) is lens, grade and realism only, with **no time of day or light source**. Each
@@ -42,6 +50,20 @@ Characters, locations, props, visual style. Rules that matter:
   characters (with a `card`) that have none.
 
 ## 3. Write `episodes/<EP>.json`
+**What the story changes (season ledger).** The engine carries every episode's end state into the next one
+(`python -m sheelshort ledger <project>` writes `ledger.md`). Tell it what changes:
+- `when` (the story day and time the episode starts, "第3天 傍晚") and `jump` when time has passed since the episode
+  before ("三天后"). Without a `jump` the episode continues straight on, so nobody may change clothes between them
+  unless a clip's `outfits` shows it.
+- `changes`: `{"after": "K3", "who": "linwan", "injury": {"left_hand": "a white gauze bandage wrapped round her left
+  palm"}}` (written into every later prompt of hers until `{"who": "linwan", "heals": ["left_hand"]}`; make injuries
+  large and plain, like the identity anchors); `{"who": "zhaokai", "learns": ["father"]}`; `{"prop": "bangle",
+  "where": "in the tray on the dresser", "holder": "zhoumin"}`; `{"prop": "letter", "gone": "burned in the fireplace"}`
+  (and `"back"` if it returns). Without `after` a change happens at the episode's end.
+- Secrets are the bible's `facts` (`{"father": "沈怀山 is 唐宁's father"}`); a cut whose line depends on one says
+  `"knows": ["father"]`, and `check` refuses it if the speaker has not learned it yet.
+`check` also refuses a prop used after it is gone.
+
 Set `music` to mood tags for the instrumental bed (e.g. "suspenseful night drama underscore, solo cello, sparse piano, no vocals"). Clips of 4–15 s; each clip is a sequence of cuts (default 3 s, `dur` may be 2–6). One location per clip, at most
 three characters (better two). Fields per cut: `type`, `subjects`, `speaker`, `over`, `line`, `say`, `act`,
 `emotion`, `delivery`, `composition`, `action`, `camera`, `sound`, `end`, `props`. Write character and location
@@ -204,6 +226,18 @@ python -m sheelshort assemble <project> E01   # master.mp4 (+ master_clean.mp4):
 python -m sheelshort review <project> E01     # edit/E01/review.html
 python -m sheelshort package <project>        # delivery/: episodes, clean cuts, SRTs, cover, thumbnails, metadata
 ```
+**Lock the series once the cast is approved** (before the long run): `python -m sheelshort lock <project> --note
+"cast approved"` freezes the workflows, render and edit settings, LoRAs, models and every cast and location reference
+in `series_lock.json`. `check` (so `make`/`render`) then refuses anything that drifted, and a render server whose image
+changed is not used. A deliberate change (a re-cast, a new look after an A/B) is locked again with a note; never
+relock to get past a drift you cannot explain. After a server image or model change, `python -m sheelshort smoke
+<project> E01 --only K1` renders one clip at its production seed against the reference render (`--accept` the first
+time).
+
+**Graph A/Bs:** `python -m sheelshort ab <project> E01 --only K1,K2 --variants current,tuned` renders the same clips
+with the same prompt, references and seed under each variant (`ab/<EP>/`: a frame sheet per clip, a side-by-side
+video and `report.md`). The owner judges; a default changes only after that.
+
 (`make <project> E01` runs them all. **Test first:** `make <project> E01 --seconds 20` produces only the opening
 ~20 s as a finished video (`edit/E01/master_20s.mp4`), casting only the characters in it: use it to check casting, voices
 and look before spending GPU time on the whole episode.)
@@ -245,4 +279,12 @@ and look before spending GPU time on the whole episode.)
   shows the same from another terminal. Estimates learn from the servers' measured times
   (`.cache/job_times.json`), so the first run on a new setup is rougher. Give the user the end time when they ask
   how long a run will take.
+- **Drift across the series:** after each episode, `make` measures every single-person face shot against the
+  character's close-up (SFace), the master's brightness and white balance, and each line's pitch against the cast
+  voice (`drift/<EP>.json`); `drift.md` lays the episodes side by side, and alarms go into `BATCH_REPORT.md`. A face
+  under 0.36 or well under its own series level, a colour shift, or a voice over two semitones off means: look at
+  those shots before the next episode.
+- **Compliance:** every master carries the visible AI label (`edit.ai_label`, top right) and the AIGC metadata field;
+  the clean cut too. `[compliance] terms` lists words that may not appear in any line, title or card; `check` also
+  notes phone numbers, web addresses and contact handles (platforms reject traffic diversion).
 - Never change a tested default without an A/B; report what you changed and why.

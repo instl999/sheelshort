@@ -46,6 +46,59 @@ def fix_known_issues(api: dict) -> dict:
     return api
 
 
+def set_loras(api: dict, strengths: dict[str, float]) -> dict:
+    """LoRA strengths by a fragment of the file name (`render.h3_loras`), in both LoRA forms the H3 graphs use:
+    LoraLoaderModelOnly nodes (U22 as shipped) and ZealmanH3ModelLoader slots (the tuned U22). 0 switches one off."""
+    for frag, s in strengths.items():
+        for k in ids(api, "LoraLoaderModelOnly"):
+            if frag in api[k]["inputs"]["lora_name"]:
+                api[k]["inputs"]["strength_model"] = float(s)
+        for k in ids(api, "ZealmanH3ModelLoader"):
+            for slot in api[k]["inputs"].values():
+                if isinstance(slot, dict) and frag in slot.get("lora", ""):
+                    slot.update(on=float(s) > 0, strength=float(s) or slot.get("strength", 0))
+    return api
+
+
+def loras(api: dict) -> dict[str, float]:
+    """The LoRAs a graph applies and at what strength (0 for one switched off): recorded with each take."""
+    out = {}
+    for k in ids(api, "LoraLoaderModelOnly"):
+        out[api[k]["inputs"]["lora_name"]] = round(float(api[k]["inputs"]["strength_model"]), 3)
+    for k in ids(api, "ZealmanH3ModelLoader"):
+        for slot in api[k]["inputs"].values():
+            if isinstance(slot, dict) and slot.get("lora"):
+                out[slot["lora"]] = round(float(slot["strength"]), 3) if slot.get("on") else 0.0
+    return out
+
+
+def set_sampler(api: dict, steps: int | None = None, lowres_scale: float | None = None) -> dict:
+    """Step count and SelfLift low-res scale (`render.h3_steps`, `render.h3_lowres_scale`); graphs without a
+    SelfLift sampler keep their own split."""
+    if steps and ids(api, "SelfLiftH3Sampler"):
+        for k in ids(api, "BasicScheduler"):
+            api[k]["inputs"]["steps"] = int(steps)
+    if lowres_scale:
+        for k in ids(api, "SelfLiftH3Sampler"):
+            api[k]["inputs"]["lowres_scale"] = float(lowres_scale)
+    return api
+
+
+def add_interp(api: dict, fps: int) -> dict:
+    """RIFE frame interpolation 24 -> `fps` inside the render, on the decoded frames before encoding (drama-studio
+    measured +16 s per clip). Without it the edit converts 24 to 30 fps by repeating frames, which judders on motion."""
+    for vc in ids(api, "VHS_VideoCombine"):
+        out = api[vc]["inputs"]
+        if out.get("frame_rate") == fps:
+            continue
+        nid = new_id(api)
+        api[nid] = {"class_type": "RIFEInterpolation", "inputs": {
+            "images": out["images"], "source_fps": float(out.get("frame_rate", 24)), "target_fps": float(fps),
+            "scale": 1.0, "model_name": "flownet.pkl", "batch_size": 8, "use_fp16": True}}
+        out.update(images=[nid, 0], frame_rate=fps)
+    return api
+
+
 def t2i(tpl: dict, prompt: str, width: int, height: int, seed: int, prefix: str) -> dict:
     """Z-Image text-to-image (C01)."""
     api = fix_known_issues(copy.deepcopy(tpl))
@@ -268,7 +321,7 @@ def music(tags: str, seconds: float, seed: int, prefix: str, steps: int = 50, cf
     }
 
 
-def upscale_rtx(video: str, scale: float, prefix: str, quality: str = "ULTRA") -> dict:
+def upscale_rtx(video: str, scale: float, prefix: str, quality: str = "ULTRA", fps: float = 24) -> dict:
     """NVIDIA RTX Video Super Resolution on a rendered clip (deterministic, fast, no invented detail), audio kept."""
     return {
         "1": {"class_type": "VHS_LoadVideo", "inputs": {"video": video, "force_rate": 0, "custom_width": 0, "custom_height": 0,
@@ -277,7 +330,7 @@ def upscale_rtx(video: str, scale: float, prefix: str, quality: str = "ULTRA") -
         "2": {"class_type": "RTXVideoSuperResolution", "inputs": {
             "images": ["1", 0], "resize_type": "scale by multiplier", "resize_type.scale": round(scale, 3), "quality": quality}},
         "3": {"class_type": "VHS_VideoCombine", "inputs": {
-            "images": ["2", 0], "audio": ["1", 2], "frame_rate": 24, "loop_count": 0, "filename_prefix": prefix,
+            "images": ["2", 0], "audio": ["1", 2], "frame_rate": fps, "loop_count": 0, "filename_prefix": prefix,
             "format": "video/h264-mp4", "pix_fmt": "yuv420p", "crf": 14, "save_metadata": False, "trim_to_audio": False,
             "pingpong": False, "save_output": True}},
     }
