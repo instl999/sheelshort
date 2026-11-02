@@ -1,0 +1,421 @@
+{
+ "id": "D01",
+ "title": "雲境",
+ "logline": "A plainly dressed young woman is brushed off by a snobbish sales consultant at 蓝城雲境; the sales director recognises her, she buys the show flat outright, and that night a call reveals she is acquiring the whole development.",
+ "music": "elegant suspense underscore for a luxury urban drama, plucked strings, soft piano, low pulse, building to a cool confident reveal, instrumental, no vocals",
+ "blocking": {
+  "club_lobby": {
+   "linwan": "right",
+   "zhaokai": "left",
+   "zhoumin": "left"
+  },
+  "flat_living": {
+   "linwan": "right",
+   "zhaokai": "left",
+   "zhoumin": "left"
+  }
+ },
+ "clips": [
+  {
+   "id": "K1",
+   "location": "club_entrance",
+   "summary": "{linwan} climbs the steps of the clubhouse and stops before the revolving door.",
+   "soundscape": "Light wind across the stone forecourt, distant birdsong, soft footsteps on stone.",
+   "cuts": [
+    {
+     "type": "WS",
+     "subjects": [
+      "linwan"
+     ],
+     "composition": "Wide shot of {loc}: the grey stone steps and the bronze revolving door under the dark faceted canopy, {linwan} small in frame climbing the steps.",
+     "action": "{linwan} climbs the last steps, the canvas tote over her shoulder, and stops in front of the revolving door.",
+     "camera": "Slow crane down as she climbs.",
+     "end": "",
+     "dur": 2.6,
+     "sound": "Footsteps on stone."
+    },
+    {
+     "type": "CU",
+     "subjects": [
+      "linwan"
+     ],
+     "composition": "Close-up of {linwan} in front of the glass, the warm lobby glow behind her.",
+     "action": "{linwan} stands before the glass with her head level and her eyes looking straight ahead at the revolving door, calm and steady, lips closed; she takes one slow breath, her right hand tightening on the tote strap, then steps forward toward the door.",
+     "camera": "Slow push in, at eye level.",
+     "end": "",
+     "dur": 2.2,
+     "angle": "three-quarter"
+    }
+   ]
+  },
+  {
+   "id": "K2",
+   "location": "club_lobby",
+   "summary": "{zhaokai} intercepts {linwan} in the lobby, sizes up her clothes and quotes the price to get rid of her.",
+   "soundscape": "The hush of a vaulted marble lobby, a faint fountain trickle, footsteps echoing.",
+   "cuts": [
+    {
+     "type": "WS",
+     "subjects": [
+      "linwan",
+      "zhaokai"
+     ],
+     "composition": "Wide shot of {loc}: the vaulted white ceiling, the dark red sculpture on the round marble inlay, {linwan} walking across the polished floor toward it, {zhaokai} striding in from the left to cut her off.",
+     "action": "{zhaokai} steps into her path with a professional smile.",
+     "camera": "Static, wide and symmetrical.",
+     "end": "",
+     "dur": 2.4
+    },
+    {
+     "type": "MCU",
+     "subjects": [
+      "zhaokai"
+     ],
+     "composition": "Medium close-up from mid-chest up of {zhaokai}, the sculpture soft behind him.",
+     "action": "{zhaokai} looks her up and down, his eyes stopping on her sneakers and the canvas tote.",
+     "camera": "Static.",
+     "end": "",
+     "dur": 2.4,
+     "speaker": "zhaokai",
+     "line": "小姐，看房要预约的。",
+     "say": "小姐，看房……是要预约的。",
+     "act": "上下打量她，假笑，语气敷衍",
+     "emotion": "cold",
+     "delivery": "a fake polite smile, eyes flicking down to her sneakers"
+    },
+    {
+     "type": "OTS",
+     "subjects": [
+      "linwan"
+     ],
+     "composition": "Over-the-shoulder from behind {zhaokai} onto {linwan}, the arched windows soft behind her.",
+     "action": "{linwan} meets his eyes, unbothered.",
+     "camera": "Slow push in on her face.",
+     "end": "",
+     "dur": 2.4,
+     "over": "zhaokai",
+     "speaker": "linwan",
+     "line": "我想看一下样板间。",
+     "say": "我想看一下样板间。",
+     "act": "平静，不卑不亢，语速很慢",
+     "emotion": "calm",
+     "delivery": "calm and unbothered, meeting his eyes"
+    },
+    {
+     "type": "MCU",
+     "subjects": [
+      "zhaokai"
+     ],
+     "composition": "Medium close-up from mid-chest up of {zhaokai}, slightly lower angle, the vaulted ceiling above him.",
+     "action": "{zhaokai} smiles thinly and lets the number hang.",
+     "camera": "Slow push in.",
+     "end": "",
+     "dur": 3.6,
+     "angle": "low",
+     "speaker": "zhaokai",
+     "line": "我们这儿最小的一套，两千八百万。",
+     "say": "我们这儿最小的一套……两千八百万。",
+     "act": "轻蔑地笑，故意把数字说得很慢",
+     "emotion": "cold",
+     "delivery": "a thin contemptuous smile, saying the price slowly"
+    },
+    {
+     "type": "RX",
+     "subjects": [
+      "linwan"
+     ],
+     "composition": "Close-up of {linwan}, her eyes steady on him.",
+     "action": "{linwan} looks at him without blinking; the corner of her mouth lifts very slightly.",
+     "camera": "Rack focus from the blurred sculpture to her eyes.",
+     "end": "",
+     "dur": 1.8
+    }
+   ]
+  },
+  {
+   "id": "K3",
+   "location": "club_lobby",
+   "summary": "{zhoumin} hurries in, recognises {linwan} and turns deferential; {zhaokai} freezes.",
+   "soundscape": "The lobby hush, quick heels on marble coming closer.",
+   "cuts": [
+    {
+     "type": "MS",
+     "subjects": [
+      "zhoumin"
+     ],
+     "composition": "Medium shot of {zhoumin} coming fast out of the arched corridor, a phone in her hand.",
+     "action": "{zhoumin} sees {linwan} and stops dead mid-stride.",
+     "camera": "Handheld, tracking her, then stopping with her.",
+     "end": "",
+     "dur": 2.0,
+     "sound": "Heels clicking, then stopping."
+    },
+    {
+     "type": "MCU",
+     "subjects": [
+      "zhoumin"
+     ],
+     "composition": "Medium close-up from mid-chest up of {zhoumin}, the lobby soft behind her.",
+     "action": "{zhoumin} hurries the last steps to {linwan}, bowing slightly.",
+     "camera": "Static.",
+     "end": "",
+     "dur": 2.8,
+     "to": "linwan",
+     "sfx": "riser",
+     "speaker": "zhoumin",
+     "line": "林小姐？您怎么亲自过来了？",
+     "say": "林……林小姐？您怎么亲自过来了？",
+     "act": "又惊又慌，立刻换上恭敬的笑",
+     "emotion": "shock",
+     "delivery": "startled, then instantly deferential, bowing slightly"
+    },
+    {
+     "type": "RX",
+     "subjects": [
+      "zhaokai"
+     ],
+     "composition": "Close-up of {zhaokai}, the smile frozen on his face, his glasses catching the light.",
+     "action": "{zhaokai}'s smile freezes; he swallows.",
+     "camera": "Static.",
+     "end": "",
+     "dur": 1.8,
+     "sfx": "hit"
+    },
+    {
+     "type": "MCU",
+     "subjects": [
+      "linwan"
+     ],
+     "composition": "Medium close-up from mid-chest up of {linwan}, the sculpture's red blurred behind her.",
+     "action": "{linwan} answers {zhoumin} without a glance at {zhaokai}.",
+     "camera": "Slow push in.",
+     "end": "",
+     "dur": 2.0,
+     "to": "zhoumin",
+     "speaker": "linwan",
+     "line": "随便看看。",
+     "say": "随便……看看。",
+     "act": "淡淡地，没有看赵凯",
+     "emotion": "calm",
+     "delivery": "flat and quiet, not even glancing at him"
+    },
+    {
+     "type": "MCU",
+     "subjects": [
+      "zhoumin"
+     ],
+     "composition": "Medium close-up from mid-chest up of {zhoumin}, turning her head to the side.",
+     "action": "{zhoumin} turns to {zhaokai} with a fixed smile and glares at him.",
+     "camera": "Quick whip of focus as she turns.",
+     "end": "",
+     "dur": 2.6,
+     "to": "zhaokai",
+     "angle": "three-quarter",
+     "speaker": "zhoumin",
+     "line": "快！带林小姐去样板间！",
+     "say": "快！带林小姐……去样板间！",
+     "act": "压低声音，狠狠瞪赵凯",
+     "emotion": "anger",
+     "delivery": "hissing at him through a fixed smile"
+    }
+   ]
+  },
+  {
+   "id": "K4",
+   "location": "flat_living",
+   "summary": "In the show flat {linwan} walks to the window and buys it outright; {zhaokai} gapes in the doorway.",
+   "soundscape": "The quiet of an empty luxury flat, faint city hum through the glass.",
+   "cuts": [
+    {
+     "type": "WS",
+     "subjects": [
+      "linwan",
+      "zhoumin"
+     ],
+     "composition": "Wide shot of {loc}: the floor-to-ceiling windows full of low sun, the curved sofa and the patterned rug, {linwan} walking to the window, {zhoumin} two steps behind her.",
+     "action": "{linwan} stops at the glass and looks out over the gardens.",
+     "camera": "Slow dolly forward.",
+     "end": "",
+     "dur": 2.4
+    },
+    {
+     "type": "MCU",
+     "subjects": [
+      "zhoumin"
+     ],
+     "composition": "Medium close-up from mid-chest up of {zhoumin}, the window light on her face.",
+     "action": "{zhoumin} gestures at the view, watching {linwan}'s face carefully.",
+     "camera": "Gentle handheld drift.",
+     "end": "",
+     "dur": 3.2,
+     "to": "linwan",
+     "speaker": "zhoumin",
+     "line": "这一户是整个项目视野最好的。",
+     "say": "这一户……是整个项目视野最好的。",
+     "act": "殷勤地介绍，小心翼翼",
+     "emotion": "warm",
+     "delivery": "eager and careful, watching her face"
+    },
+    {
+     "type": "MCU",
+     "subjects": [
+      "linwan"
+     ],
+     "composition": "Medium close-up from mid-chest up of {linwan} against the bright window, her face in soft side light.",
+     "action": "{linwan} keeps looking at the view as she answers.",
+     "camera": "Static.",
+     "end": "",
+     "dur": 2.4,
+     "angle": "three-quarter",
+     "speaker": "linwan",
+     "line": "就这套吧。全款。",
+     "say": "就这套吧。……全款。",
+     "act": "平静，像在买一杯咖啡，最后两个字轻轻落下",
+     "emotion": "calm",
+     "delivery": "calm and offhand, as if ordering a coffee"
+    },
+    {
+     "type": "RX",
+     "subjects": [
+      "zhaokai"
+     ],
+     "composition": "Close-up of {zhaokai} standing in the doorway behind them.",
+     "action": "{zhaokai}'s mouth falls open.",
+     "camera": "Static.",
+     "end": "",
+     "dur": 1.8,
+     "sfx": "cash"
+    }
+   ]
+  },
+  {
+   "id": "K5",
+   "location": "flat_living",
+   "summary": "{zhaokai} asks for the commission; {zhoumin} fires him.",
+   "soundscape": "The quiet flat, faint city hum.",
+   "cuts": [
+    {
+     "type": "MCU",
+     "subjects": [
+      "zhaokai"
+     ],
+     "composition": "Medium close-up from mid-chest up of {zhaokai}, the doorway behind him.",
+     "action": "{zhaokai} hurries over, rubbing his hands with an ingratiating grin.",
+     "camera": "Handheld, slight drift.",
+     "end": "",
+     "dur": 3.4,
+     "angle": "three-quarter",
+     "to": "linwan",
+     "speaker": "zhaokai",
+     "line": "林小姐，这一单能记在我名下吗？",
+     "say": "林小姐，这一单……能记在我名下吗？",
+     "act": "厚着脸皮，讨好地赔笑",
+     "emotion": "plead",
+     "delivery": "an ingratiating grin, rubbing his hands"
+    },
+    {
+     "type": "RX",
+     "subjects": [
+      "linwan"
+     ],
+     "composition": "Close-up of {linwan}, the window light behind her.",
+     "action": "{linwan} turns her head slowly to look at him, unreadable.",
+     "camera": "Static.",
+     "end": "",
+     "dur": 1.8
+    },
+    {
+     "type": "MCU",
+     "subjects": [
+      "zhoumin"
+     ],
+     "composition": "Medium close-up from mid-chest up of {zhoumin}, not looking at him.",
+     "action": "{zhoumin} speaks without turning her head.",
+     "camera": "Slow push in.",
+     "end": "",
+     "dur": 2.4,
+     "to": "zhaokai",
+     "speaker": "zhoumin",
+     "line": "你明天不用来了。",
+     "say": "你明天……不用来了。",
+     "act": "冷冷地，不看他，一字一顿",
+     "emotion": "cold",
+     "delivery": "cold and final, not looking at him"
+    },
+    {
+     "type": "RX",
+     "subjects": [
+      "zhaokai"
+     ],
+     "composition": "Close-up of {zhaokai}, slightly high angle.",
+     "action": "All colour drains from {zhaokai}'s face; his glasses slip down his nose.",
+     "camera": "Slow push in.",
+     "end": "",
+     "dur": 2.0,
+     "angle": "high"
+    }
+   ]
+  },
+  {
+   "id": "K6",
+   "location": "flat_living",
+   "time": "night",
+   "outfits": {
+    "linwan": "suit"
+   },
+   "summary": "That night, alone at the window of the same flat, {linwan} takes a call: she is buying the whole development.",
+   "soundscape": "Night quiet in the flat, the faint low hum of the city through the glass.",
+   "cuts": [
+    {
+     "type": "WS",
+     "subjects": [
+      "linwan"
+     ],
+     "composition": "Wide shot of {loc} at night, the city lights glowing beyond the floor-to-ceiling windows, {linwan} standing alone at the glass, a phone to her ear.",
+     "action": "{linwan} stands still, looking out at the lights.",
+     "camera": "Very slow push in.",
+     "end": "",
+     "dur": 2.4,
+     "sfx": "whoosh"
+    },
+    {
+     "type": "MCU",
+     "subjects": [
+      "linwan"
+     ],
+     "composition": "Medium close-up from mid-chest up of {linwan} by the window, the night city soft behind her, the phone at her ear.",
+     "action": "{linwan} listens, her face lit by the warm lamp on one side and the blue city on the other.",
+     "camera": "Static.",
+     "end": "",
+     "dur": 4.8,
+     "angle": "three-quarter",
+     "speaker": "zhoumin",
+     "line": "林董，蓝城雲境整个项目的收购协议，明早九点签。",
+     "say": "林董……蓝城雲境整个项目的收购协议，明早九点签。",
+     "act": "恭敬，压低声音，汇报的语气",
+     "emotion": "calm",
+     "delivery": "respectful and low, reporting",
+     "via": "phone"
+    },
+    {
+     "type": "CU",
+     "subjects": [
+      "linwan"
+     ],
+     "composition": "Close-up of {linwan}, the city lights blurred behind her.",
+     "action": "{linwan}'s mouth curves into a faint, knowing smile; she holds the look out at the city.",
+     "camera": "Slow push in.",
+     "end": "",
+     "dur": 2.8,
+     "sfx": "hit",
+     "speaker": "linwan",
+     "line": "知道了。",
+     "say": "知道了。",
+     "act": "淡淡地，嘴角带一点笑意",
+     "emotion": "calm",
+     "delivery": "quiet, a faint knowing smile"
+    }
+   ]
+  }
+ ]
+}

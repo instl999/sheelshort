@@ -1,0 +1,390 @@
+{
+ "253": {
+  "inputs": {
+   "samples": [
+    "418",
+    0
+   ],
+   "vae": [
+    "411",
+    2
+   ]
+  },
+  "class_type": "VAEDecode",
+  "_meta": {
+   "title": "VAE解码"
+  }
+ },
+ "254": {
+  "inputs": {
+   "samples": [
+    "418",
+    0
+   ],
+   "vae": [
+    "411",
+    3
+   ]
+  },
+  "class_type": "VAEDecodeAudio",
+  "_meta": {
+   "title": "VAE解码（音频）"
+  }
+ },
+ "255": {
+  "inputs": {
+   "sampler_name": "euler"
+  },
+  "class_type": "KSamplerSelect",
+  "_meta": {
+   "title": "K采样器选择"
+  }
+ },
+ "261": {
+  "inputs": {
+   "scheduler": "beta",
+   "steps": 8,
+   "denoise": 1,
+   "model": [
+    "329",
+    0
+   ]
+  },
+  "class_type": "BasicScheduler",
+  "_meta": {
+   "title": "基本调度器"
+  }
+ },
+ "265": {
+  "inputs": {
+   "prompt": [
+    "403",
+    18
+   ],
+   "width": [
+    "403",
+    19
+   ],
+   "height": [
+    "403",
+    20
+   ],
+   "length": [
+    "403",
+    21
+   ],
+   "ref_image_size": "max",
+   "clip": [
+    "411",
+    1
+   ],
+   "vae": [
+    "411",
+    2
+   ],
+   "audio_vae": [
+    "411",
+    3
+   ],
+   "ref_images.ref_image_0": [
+    "403",
+    0
+   ],
+   "ref_images.ref_image_1": [
+    "403",
+    1
+   ],
+   "ref_images.ref_image_2": [
+    "403",
+    2
+   ],
+   "ref_images.ref_image_3": [
+    "403",
+    3
+   ],
+   "ref_images.ref_image_4": [
+    "403",
+    4
+   ],
+   "ref_images.ref_image_5": [
+    "403",
+    5
+   ],
+   "ref_images.ref_image_6": [
+    "403",
+    6
+   ],
+   "ref_videos.ref_video_0": [
+    "403",
+    9
+   ],
+   "ref_videos.ref_video_1": [
+    "403",
+    10
+   ],
+   "ref_videos.ref_video_2": [
+    "403",
+    11
+   ],
+   "ref_audios.ref_audio_0": [
+    "403",
+    15
+   ],
+   "ref_audios.ref_audio_1": [
+    "403",
+    16
+   ],
+   "ref_audios.ref_audio_2": [
+    "403",
+    17
+   ],
+   "ref_images.ref_image_7": [
+    "403",
+    7
+   ],
+   "ref_images.ref_image_8": [
+    "403",
+    8
+   ]
+  },
+  "class_type": "MiniMaxH3ReferenceToVideo",
+  "_meta": {
+   "title": "MiniMax H3 参考生成视频"
+  }
+ },
+ "328": {
+  "inputs": {
+   "conditioning": [
+    "265",
+    0
+   ]
+  },
+  "class_type": "ConditioningZeroOut",
+  "_meta": {
+   "title": "条件零化"
+  }
+ },
+ "329": {
+  "inputs": {
+   "max_resolution": 1024,
+   "jpeg_quality": 80,
+   "suppress_default_preview": true,
+   "preview_frames": [
+    "403",
+    21
+   ],
+   "preview_fps": 12,
+   "tiny_vae": "taeh3.safetensors",
+   "model": [
+    "401",
+    0
+   ],
+   "vae": [
+    "411",
+    2
+   ]
+  },
+  "class_type": "ModelPreviewOverrideKJ",
+  "_meta": {
+   "title": "Model Preview Override"
+  }
+ },
+ "332": {
+  "inputs": {
+   "selection": "sol-attn",
+   "selection.tau": 1.3,
+   "start_percent": 0.2,
+   "end_percent": 1,
+   "dense_blocks": "",
+   "min_tokens": 12288,
+   "extra_tokens": 256,
+   "sink_conditioning": "exact_kv_and_rows",
+   "verbose": true,
+   "model": [
+    "411",
+    0
+   ]
+  },
+  "class_type": "BlockSparseAttention",
+  "_meta": {
+   "title": "模型稀疏注意力"
+  }
+ },
+ "333": {
+  "inputs": {
+   "shift_video": 12,
+   "shift_audio": 3.0000000000000004,
+   "model": [
+    "332",
+    0
+   ]
+  },
+  "class_type": "MiniMaxH3SigmaShift",
+  "_meta": {
+   "title": "MiniMax H3 Sigma Shift"
+  }
+ },
+ "364": {
+  "inputs": {
+   "frame_rate": 24,
+   "loop_count": 0,
+   "filename_prefix": "comfyui",
+   "format": "video/h264-mp4",
+   "pix_fmt": "yuv420p",
+   "crf": 16,
+   "save_metadata": false,
+   "trim_to_audio": false,
+   "pingpong": false,
+   "save_output": true,
+   "images": [
+    "253",
+    0
+   ],
+   "audio": [
+    "254",
+    0
+   ]
+  },
+  "class_type": "VHS_VideoCombine",
+  "_meta": {
+   "title": "Video Combine 🎥🅥🅗🅢"
+  }
+ },
+ "397": {
+  "inputs": {
+   "seed": 900198731025885,
+   "cfg": 1,
+   "transition_step": 6,
+   "lowres_scale": 0.5,
+   "rho": 0,
+   "w_min": 0.5,
+   "w_max": 1,
+   "upscaler_model": "h3_upscaler_lms_v0.1.safetensors",
+   "highres_tiling": true,
+   "upscaler_unload": true,
+   "model": [
+    "329",
+    0
+   ],
+   "positive": [
+    "265",
+    0
+   ],
+   "negative": [
+    "328",
+    0
+   ],
+   "vae": [
+    "411",
+    2
+   ],
+   "latent_image": [
+    "265",
+    1
+   ],
+   "sampler": [
+    "255",
+    0
+   ],
+   "sigmas": [
+    "261",
+    0
+   ]
+  },
+  "class_type": "SelfLiftH3Sampler",
+  "_meta": {
+   "title": "SelfLift Progressive Sampler (MiniMax H3)"
+  }
+ },
+ "401": {
+  "inputs": {
+   "chunks": 2,
+   "seq_threshold": 4096,
+   "model": [
+    "333",
+    0
+   ]
+  },
+  "class_type": "MiniMaxChunkFeedForward",
+  "_meta": {
+   "title": "MiniMax H3 Chunk FeedForward"
+  }
+ },
+ "403": {
+  "inputs": {
+   "fps": 24,
+   "video_trim_seconds": "auto",
+   "audio_trim_seconds": "auto",
+   "image_max_side": "1536",
+   "video_max_side": "512",
+   "prompt": "",
+   "seconds": 10,
+   "aspect_ratio": "9:16 (Portrait Widescreen)",
+   "megapixels": 0.92,
+   "multiple": 32
+  },
+  "class_type": "ZealmanH3PickReferenceMedia",
+  "_meta": {
+   "title": "ZealmanH3素材选择"
+  }
+ },
+ "411": {
+  "inputs": {
+   "unet_name": "minimax/minimax_h3_hybrid_fl2va_ref2va_b25-49-int8.safetensors",
+   "weight_dtype": "default",
+   "clip_name": "qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors",
+   "clip_device": "default",
+   "video_vae": "minimax_h3_video_vae_int8_convrot.safetensors",
+   "audio_vae": "minimax_h3_audio_vae_fp32.safetensors",
+   "attention": "comfy kitchen attention",
+   "lora_1": {
+    "on": true,
+    "lora": "minimax/minimax_h3_dmad_full_dareties_v4_step600_comfy_fro.safetensors",
+    "strength": 0.8
+   },
+   "lora_2": {
+    "on": false,
+    "lora": "minimax/MysticXXX_MMH3-V1.safetensors",
+    "strength": 0.45
+   },
+   "lora_3": {
+    "on": true,
+    "lora": "minimax/MinimaxH3真实电影质感V0.1.safetensors",
+    "strength": 0.2
+   },
+   "lora_4": {
+    "on": false,
+    "lora": "minimax/Motion_Repair_V2.safetensors",
+    "strength": 0.3
+   },
+   "lora_5": {
+    "on": false,
+    "lora": "minimax/H3_Fight_Flow_V1.safetensors",
+    "strength": 0.35
+   },
+   "lora_6": {
+    "on": false,
+    "lora": "minimax/motion_speed_slider_mmh3_v1.1.safetensors",
+    "strength": 3
+   }
+  },
+  "class_type": "ZealmanH3ModelLoader",
+  "_meta": {
+   "title": "ZealmanH3模型加载"
+  }
+ },
+ "418": {
+  "inputs": {
+   "offload_model": true,
+   "offload_cache": true,
+   "anything": [
+    "397",
+    0
+   ]
+  },
+  "class_type": "VRAMCleanup",
+  "_meta": {
+   "title": "🎈VRAM-Cleanup"
+  }
+ }
+}

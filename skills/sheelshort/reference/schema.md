@@ -91,9 +91,22 @@ clean (comedy, bright urban stories); `glossy` is warm and glowing with soft bok
 | `via` | `"phone"`: the line is heard through a phone from the other end; the shot shows the listener (the speaker is not in `subjects`), and the edit puts the line in the telephone band |
 | `extras` | optional background people who never speak (`"two lawyers in black suits behind {chenmo}"`); not in close-ups. Without it a shot holds only its `subjects`, and clip QC re-takes a close or medium shot with a crowd in it |
 | `sfx` | optional sound effect(s) on the cut's first frame: a cue name (`"hit"`), a list, or `{"cue": "slap", "at": 0.8}` for a moment inside the cut |
+| `knows` | optional: facts (the bible's `facts`) the speaker's line depends on; the speaker must have learned them (ledger) |
 
 Episode (or clip) field `outfits`: `{"<charid>": "<outfit>"}` dresses a character in one of their bible `outfits` for the
 episode (a clip's entry overrides it; `"default"` is the character's own costume).
+
+Episode fields for the season ledger (`ledger.py`; SKILL.md §3):
+
+| episode field | meaning |
+|---|---|
+| `when` | the story day and time the episode starts ("第3天 傍晚") |
+| `jump` | time has passed since the episode before ("三天后"); without it the episode continues straight on |
+| `picks_up` | how the episode opens on the previous episode's cliffhanger, when its first clip shows other people |
+| `changes` | what the story changes, each after a clip (`"after": "K3"`) or at the end: `{"who", "injury": {part: what is seen}}`, `{"who", "heals": [part]}`, `{"who", "learns": [fact]}`, `{"who", "carries" / "drops": [prop]}`, `{"prop", "where", "holder"}`, `{"prop", "gone": "how"}`, `{"prop", "back": "how"}` |
+
+Bible field `facts`: `{"<fact>": "what it is"}`, the secrets characters learn. Project file `arc.json`:
+`{"episodes": [{"ep", "hook", "conflict", "shape", "turn", "cliffhanger", "paywall"}]}`, one row per episode.
 
 Episode (or clip) field `blocking`: `{"<location>": {"<charid>": "left" | "right"}}` fixes which side of the line of
 action each character stands on; by default the people who talk to each other most are put on opposite sides.
