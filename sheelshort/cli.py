@@ -17,11 +17,19 @@ everything deterministic. Every command is resumable: run it again after a crash
   python -m sheelshort status <project>               what a running command is doing, and when each part ends
   python -m sheelshort approve <project> EP[,EP]       the final cut is approved: its unused takes may be deleted
                                                        once the disk is getting full (`cleanup_below_gb`, 40)
+  python -m sheelshort drift <project> [EP]           drift.md: face identity, colour and voice per episode, with alarms
+  python -m sheelshort smoke <project> EP --only K1 [--accept]   one clip at its production seed against the reference
+                                                       render: run after a server image or model change
+  python -m sheelshort ledger <project>                ledger.md: outfits, injuries, props, who knows what, per episode end
+  python -m sheelshort lock <project> [--note WHY]     freeze workflows, settings, models and the approved cast
+                                                       (series_lock.json); check refuses drift, render skips drifted servers
   python -m sheelshort fleet <project> [off|idle]      AutoDL servers: list them (off: power off every one no run uses;
                                                        idle: watch and power off idle ones, run in the background)
   python -m sheelshort fleet <project> release <uuid>...   delete stopped instances no longer needed (the reaper
                                                        does this by itself after `release_after_hours`, 3)
   python -m sheelshort evaluate <project> EP           A/B per line: acted vs. H3-voiced renders (edit/<EP>/dialogue_ab.md)
+  python -m sheelshort ab <project> EP --only K1,K2 [--variants current,no_mystic,tuned]   A/B the render graph on the
+                                                       same prompt and seed (ab/<EP>/: frame sheets, side by side, report)
   python -m sheelshort sfx <project>                   the sound-effect cues a cut can ask for (library + the bible's own)
   python -m sheelshort sfx <project> search "<English query>" [--license cc0|by|any]
                                                        Freesound candidates (sound skill): downloads, rating, description,
@@ -39,7 +47,7 @@ import time
 from pathlib import Path
 
 from . import assemble, cast, evaluate, h3prompt, perform, render, review, sfx, wardrobe
-from .project import REPO, Project, log, save_json
+from .project import REPO, Project, load_json, log, save_json
 
 
 TIME_WORDS = re.compile(r"sunlight|morning|afternoon|noon|night|dusk|dawn|sunset|moonlight|tungsten|lamp", re.I)
@@ -63,6 +71,8 @@ def check(p: Project, eps: list[str]) -> list[str]:
     for loc, v in b["locations"].items():
         if not v.get("light"):
             errs.append(f"location {loc}: missing `light` (time of day and light sources for every shot there)")
+    from . import compliance, ledger, lock
+    errs += lock.problems(p) + ledger.problems(p, eps) + ledger.arc_problems(p) + compliance.problems(p, eps)
     for ep in eps:
         scene = p.scene(ep)
         errs += [f"{ep} {e}" for e in h3prompt.check_rules(scene) + sfx.check(scene) + wardrobe.check(b, p.episode(ep))]
@@ -198,13 +208,16 @@ def main(argv: list[str] | None = None) -> None:
         signal.signal(sig, _exit_on_signal)
     ap = argparse.ArgumentParser(prog="sheelshort", description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("command", choices=["new", "doctor", "check", "cast", "perform", "render", "assemble", "review", "make", "free", "evaluate", "fleet", "package",
-                                        "status", "sfx", "approve"])
+                                        "status", "sfx", "approve", "ab", "lock", "ledger", "drift", "smoke"])
     ap.add_argument("project")
     ap.add_argument("episode", nargs="?", help="episode id, or several separated by commas (E03,E04)")
     ap.add_argument("rest", nargs="*", help="sfx: the search query, or the cue name and fs:<id> to add")
     ap.add_argument("--script")
     ap.add_argument("--only", help="comma-separated clip ids (or line keys for perform)")
     ap.add_argument("--takes", type=int)
+    ap.add_argument("--accept", action="store_true", help="smoke: make this render the reference")
+    ap.add_argument("--note", default="", help="lock: why the series is (re)locked")
+    ap.add_argument("--variants", default="current,no_mystic,tuned", help="ab: render-graph variants to compare")
     ap.add_argument("--dialogue", choices=["acted", "h3"])
     ap.add_argument("--voice-ref", choices=["cast", "acted"], help="dialogue h3: voice references from the cast clip or acted takes")
     ap.add_argument("--seconds", type=float, help="test mode: only the opening clips of the episode, about this long (e.g. 20)")
@@ -235,6 +248,31 @@ def main(argv: list[str] | None = None) -> None:
     if a.command == "sfx":
         sfx_command(p, a)
         return
+    if a.command == "lock":   # lock <project> [--note why]: freeze the look, sound and cast (series_lock.json)
+        from . import lock
+        import glob
+        info, src = None, ""
+        for url in p.cfg["comfy"]["servers"]:
+            try:
+                info, src = p.object_info(p.client(url)), "a running server"
+                break
+            except Exception:  # noqa: BLE001 - no server up: the newest schemas seen are used
+                continue
+        if info is None:
+            cached = sorted(glob.glob(str(REPO / ".cache" / "object_info_*.json")), key=lambda f: Path(f).stat().st_mtime)
+            if cached:
+                info, src = load_json(Path(cached[-1])), "the newest server schemas on record"
+        out = lock.write(p, info, a.note)
+        log(f"locked {out} (node schemas from {src or 'nowhere: servers are checked only by models'})")
+        for d in (load_json(out).get("history") or [{}])[-1].get("changed", []):
+            log(f"  changed: {d}")
+        return
+    if a.command == "ledger":   # ledger <project>: ledger.md, the state at the end of every episode
+        from . import ledger
+        log(f"wrote {ledger.write(p)}")
+        for x in ledger.problems(p) + ledger.arc_problems(p) + ledger.arc_notes(p):
+            print(x)
+        return
     if a.command == "approve":   # approve <project> EP[,EP]: the final cut; unused takes may go once the disk is tight
         from . import cleanup
         for ep in (a.episode or "").split(","):
@@ -242,7 +280,7 @@ def main(argv: list[str] | None = None) -> None:
                 cleanup.approve(p, ep)
         cleanup.clean_if_tight(p)
         return
-    if a.command in ("cast", "perform", "render", "assemble", "review", "make", "evaluate", "package"):
+    if a.command in ("cast", "perform", "render", "assemble", "review", "make", "evaluate", "package", "ab", "smoke"):
         run_lock(p)
         p.run_info["command"] = " ".join(sys.argv[1:] if argv is None else argv)
         save_json(p.root / "progress.json", p.run_info)
@@ -289,7 +327,8 @@ def _dispatch(a, p: Project) -> None:
                   f"{pc['over_5s']} over 5 s; reference mean {h3prompt.REFERENCE_MEAN_SHOT_S} s{slow}")
             for note in h3prompt.craft_notes(p.scene(ep)) + h3prompt.action_notes(p.scene(ep)) + sfx.note(p.scene(ep)):
                 print(f"{ep} note: {note}")
-        for note in h3prompt.cast_notes(p.bible):
+        from . import compliance, ledger
+        for note in h3prompt.cast_notes(p.bible) + ledger.arc_notes(p) + compliance.notes(p, eps):
             print(f"note: {note}")
         errs = check(p, eps)
         for e in errs:
@@ -327,6 +366,14 @@ def _dispatch(a, p: Project) -> None:
                 log(f"{inst['uuid']} {kind} {inst['status']} {inst.get('region_name')} {inst.get('gpu_spec_uuid')}"
                     + (f", in use by pid {', '.join(map(str, used))}" if used else ""))
         return
+    if a.command == "smoke":   # smoke <project> <EP> --only K1 [--accept]: fixed clip, fixed seed, vs the reference
+        from . import abtest
+        print(abtest.smoke(p, eps[0], (a.only or "K1").split(",")[0], a.accept))
+        return
+    if a.command == "ab":   # ab <project> <EP> --only K1,K2 --variants current,no_mystic,tuned
+        from . import abtest
+        log(f"A/B report: {abtest.run(p, eps[0], only, a.variants.split(','))}")
+        return
     if a.command == "package":
         from . import package
         package.run(p)
@@ -361,11 +408,17 @@ def _dispatch(a, p: Project) -> None:
                 assemble.run(p, ep)
             if a.command in ("review", "make"):
                 review.run(p, ep)
+            if a.command in ("assemble", "make", "drift") and p.cfg["edit"].get("drift", True):
+                from . import drift   # identity, colour and voice against the series so far
+                drift.episode(p, ep)
             if a.command == "evaluate":
                 evaluate.run(p, ep, a.takes or 1)
         except Exception as e:  # noqa: BLE001
             failed[ep] = f"{type(e).__name__}: {str(e)[:300]}"
             log(f"{ep}: FAILED {failed[ep]}; continuing with the next episode")
+    if a.command in ("make", "assemble", "drift") and eps and (p.root / "drift").is_dir():
+        from . import drift
+        log(f"drift report -> {drift.write(p)}")
     if a.command in ("make", "assemble") and eps:
         batch_report(p, eps, failed)
     if failed:
@@ -405,6 +458,9 @@ def batch_report(p: Project, eps: list[str], failed: dict[str, str]) -> None:
                 left.append(f"{cid}: {'; '.join(load_json(qcf)['problems'])}")
         rows.append(f"| {ep} | done | {media.probe(master)['duration']:.0f} s | {len(left)} clip(s) with problems left |")
         notes += [f"- {ep} {x}" for x in left]
+    from . import drift
+    al = drift.alarms(p) if (p.root / "drift").is_dir() else {}
+    notes += [f"- {ep} drift: {x}" for ep in eps for x in al.get(ep, [])]   # drift.md has the whole series
     text = (f"# Batch report ({time.strftime('%Y-%m-%d %H:%M')})\n\n| episode | state | length | notes |\n|---|---|---|---|\n"
             + "\n".join(rows) + "\n\n## Left for a person to judge\n" + ("\n".join(notes) or "- nothing") + "\n")
     (p.root / "BATCH_REPORT.md").write_text(text, encoding="utf-8")

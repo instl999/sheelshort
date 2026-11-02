@@ -12,6 +12,7 @@ edit = "y01.api.json"           # Y01 Qwen-Image-Edit 2511: three-view sheets, r
 voice_design = "n06design.api.json"   # N06 Qwen3-TTS voice design: cast voices from a timbre description
 h3_ref = "u22_base.api.json"    # U22: H3 reference-to-video, H3 speaks the lines itself (dialogue = "h3")
 h3_drive = "u24_stock.api.json" # U24's T8 chain: the picture rendered around the acted dialogue track (dialogue = "acted")
+h3_drive_model = "u22_base.api.json"   # dialogue = "acted": the model chain U24's sampling runs on (node ids of U22 as shipped)
 
 [project]
 min_free_gb = 15                     # stop cleanly below this
@@ -62,6 +63,12 @@ megapixels = 0.52                # first pass; drive mode upscales 2x in latent 
 upscale = 2.0
 lock_strength = 0.35
 h3_megapixels = 0.7              # dialogue = "h3" (U22)
+h3_loras = {}                    # LoRA strength by a fragment of its file name, on any H3 graph; 0 switches one off,
+                                 # e.g. { MysticXXX = 0 } (U22 as shipped runs this adult-style LoRA at 0.7)
+# h3_steps = 10                  # SelfLift graphs only (u22_tuned.api.json): steps and the low-res start scale
+# h3_lowres_scale = 0.6
+interp = ""                      # "rife": interpolate 24 -> edit.fps inside the render (+~16 s a clip); "" = the edit
+                                 # repeats frames to reach 30 fps
 timeout_s = 3600
 
 [edit]
@@ -74,6 +81,11 @@ music_under_lu = 18              # the music bed sits this far under the dialogu
 crf = 21                         # master quality (x264): 21 is ~15 Mbps at 1080p, far above what platforms re-encode
                                  # to, and half the size of 18; a master can be re-exported from the kept takes
 grade = "auto"                   # finishing grade: "auto" follows the bible's look_preset; "film", "bright", "glossy", "none"
+ai_label = "AI生成"               # visible AI-content label (China's AIGC labelling rules, 2025-09-01); "" = none
+ai_label_mode = "always"         # "always": small, top right, the whole episode; "opening": the first ai_label_s seconds
+ai_label_s = 3
+ai_label_metadata = true         # the implicit label: an AIGC metadata field in every master (GB 45438-2025)
+drift = true                     # after each episode: face identity, colour and voice against the series (drift.md)
 location_cards = true            # a vertical title with the place's name_zh as each new scene opens
 upscale = "rtx"                  # "rtx": NVIDIA RTX Video Super Resolution on the servers to 1080x1920; "" = plain resize
 upscale_fallback = "fail"        # "fail": an episode that could not be upscaled is held back and reported, never cut soft;
@@ -126,3 +138,8 @@ tick_s = 20
 [check]
 detail = "strict"               # "strict": a cut that isn't fully written out (composition, every movement, camera, last
                                 # frame) fails `check`, and make/render refuse to start; "notes": report only
+
+[compliance]
+producer = ""                    # ContentProducer in the AIGC metadata: the producing service's name or code
+terms = []                       # words that must not appear in any line, title or card (check fails): platform rules
+

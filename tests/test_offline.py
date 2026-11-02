@@ -1290,6 +1290,217 @@ def test_check_refuses_a_cut_that_is_not_fully_written_out():
     assert "body moves" in errs and "place the people" in errs and "`action` has" in errs   # 23 words needed for two people
 
 
+GOLDEN = ROOT / "tests" / "golden"
+
+
+def _golden(path: Path, got: str) -> None:
+    if os.environ.get("GOLDEN_UPDATE"):
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(got, encoding="utf-8")
+    want = path.read_text(encoding="utf-8")
+    if got != want:
+        import difflib
+        diff = "".join(list(difflib.unified_diff(want.splitlines(True), got.splitlines(True), "golden", "now"))[:40])
+        raise AssertionError(f"{path.name} changed (GOLDEN_UPDATE=1 accepts it):\n{diff}")
+
+
+def _golden_project(tmp: str) -> Project:
+    import shutil
+    shutil.copytree(GOLDEN / "lan", tmp, dirs_exist_ok=True)
+    return Project(Path(tmp))
+
+
+def _names(p: Project, clip: dict) -> h3prompt.Refs:
+    """The references refs_for() would pass, by name only (no files needed)."""
+    refs = h3prompt.Refs()
+    for c in h3prompt.clip_characters(clip):
+        refs.char_pictures[c] = [f"char_{c}.png", f"sheet_{c}.png"]
+    for pr in h3prompt.clip_props(clip):
+        refs.prop_pictures[pr] = [f"prop_{pr}.png"]
+    refs.location_pictures.append(f"loc_{clip['location']}.png")
+    for c in h3prompt.speaker_order(clip)[:3]:
+        refs.voices[c] = f"{p.base(c)}_h3.wav"
+    return refs
+
+
+def test_golden_prompts():
+    """Every prompt of the showcase episode, word for word: an engine change that rewords prompts shows up here."""
+    with tempfile.TemporaryDirectory() as d:
+        p = _golden_project(d)
+        scene = p.scene("D01")
+        for clip in scene["clips"]:
+            _golden(GOLDEN / "prompts" / f"D01_{clip['id']}.txt", h3prompt.build(scene, clip, _names(p, clip)))
+
+
+def test_golden_graphs():
+    """The H3 graphs as queued (minus uploads): production U22 and the tuned U22, with the example config's settings."""
+    import tomllib
+    from sheelshort import abtest, flows, render
+    with tempfile.TemporaryDirectory() as d:
+        p = _golden_project(d)
+        p.cfg = tomllib.loads((ROOT / "sheelshort.example.toml").read_text(encoding="utf-8"))
+        for v in ("current", "tuned"):
+            cfg = abtest.variant_cfg(p, v)
+            api = flows.h3_reference(flows.load(ROOT / "sheelshort" / "workflows" / cfg["workflows"]["h3_ref"]), "PROMPT", 10,
+                                     ["char_a.png", "sheet_a.png", "loc_x.png"], ["a_h3.wav"], 12345, "golden",
+                                     megapixels=cfg["render"]["h3_megapixels"])
+            _golden(GOLDEN / "graphs" / f"h3_{v}.json", json.dumps(render.tune(p, api, cfg), ensure_ascii=False,
+                                                                   indent=1, sort_keys=True) + "\n")
+
+
+def _mini_project(d: str, episodes: dict, **bible_extra) -> Project:
+    root = Path(d)
+    (root / "episodes").mkdir(parents=True, exist_ok=True)
+    ch = {"name": "林晚", "role": "sales manager", "look": "x", "keep": "x", "face_detail": "x", "hair": "x",
+          "costume": "x", "voice_en": "x", "outfits": {"suit": {"look": "y", "keep": "y", "costume": "navy suit"}}}
+    bible = {"characters": {"lw": ch, "zk": {**ch, "name": "赵凯", "outfits": {}}},
+             "locations": {"lobby": {"name": "lobby", "look": "x", "light": "x", "keep": "the marble floor"}},
+             "props": {"bangle": {"name": "jade bangle", "look": "green", "keep": "its green colour"}},
+             "style": "Photorealistic.", "language": "zh-CN", **bible_extra}
+    (root / "bible.json").write_text(json.dumps(bible, ensure_ascii=False))
+    for ep, e in episodes.items():
+        (root / "episodes" / f"{ep}.json").write_text(json.dumps(e, ensure_ascii=False))
+    return Project(root)
+
+
+def _cut(who, **kw):
+    full = {"composition": f"Medium close-up of {{{who}}}.", "action": f"{{{who}}} stands still.", "camera": "Static.",
+            "end": "Hold.", "dur": 3}
+    return {"type": "MCU", "subjects": [who], **full, **({"speaker": who, "act": "quiet", "delivery": "quietly, looking at him"} if kw.get("line") else {}), **kw}
+
+
+def test_ledger_carries_state_and_refuses_contradictions():
+    from sheelshort import ledger
+    eps = {
+        "E01": {"clips": [{"id": "K1", "location": "lobby", "cuts": [_cut("lw", props=["bangle"])]},
+                          {"id": "K2", "location": "lobby", "outfits": {"lw": "suit"}, "cuts": [_cut("lw")]}],
+                "changes": [{"after": "K1", "who": "lw", "injury": {"hand": "a white gauze bandage on her left palm"}},
+                            {"prop": "bangle", "gone": "smashed on the marble floor"},
+                            {"who": "zk", "learns": ["father"]}]},
+        "E02": {"clips": [{"id": "K1", "location": "lobby", "summary": "They meet again.", "soundscape": "Room tone.",
+                           "cuts": [_cut("lw", props=["bangle"]), _cut("zk", line="你父亲是他", knows=["father"]),
+                                    _cut("lw", line="我知道", knows=["father"])]}]},
+        "E03": {"jump": "三天后", "clips": [{"id": "K1", "location": "lobby", "cuts": [_cut("lw")]}],
+                "changes": [{"who": "lw", "heals": ["hand"]}]},
+    }
+    with tempfile.TemporaryDirectory() as d:
+        p = _mini_project(d, eps, facts={"father": "沈怀山 is her father"})
+        errs = " | ".join(ledger.problems(p))
+        assert "E02 ledger: K1 cut 1: prop bangle is used, but it is gone" in errs
+        assert "lw's line uses 'father'" in errs and "zk's line" not in errs
+        assert "E02 ledger: K1 cut 1: lw wears 'default' but E01 ended with lw in 'suit'" in errs
+        assert "E03" not in errs   # a jump allows the outfit change
+        assert ledger.marks(p, "E01", "K2") == {"lw": {"hand": "a white gauze bandage on her left palm"}}
+        assert ledger.marks(p, "E03", "K1") == {"lw": {"hand": "a white gauze bandage on her left palm"}}   # heals at the end
+        scene = p.scene("E02")
+        assert "white gauze bandage" in h3prompt.build(scene, scene["clips"][0], _names(p, scene["clips"][0]))
+        md = ledger.write(p).read_text(encoding="utf-8")
+        assert "bangle: gone (smashed on the marble floor)" in md and "三天后" in md
+
+
+def test_arc_checks_rows_repetition_and_cliffhanger_links():
+    from sheelshort import ledger
+    clip = lambda who: {"id": "K1", "location": "lobby", "cuts": [_cut(who)]}   # noqa: E731
+    eps = {"E01": {"clips": [clip("lw")]}, "E02": {"clips": [clip("zk")]}, "E03": {"clips": [clip("zk")]}}
+    with tempfile.TemporaryDirectory() as d:
+        p = _mini_project(d, eps)
+        row = lambda ep: {"ep": ep, "hook": "h", "conflict": "c", "shape": "humiliation", "cliffhanger": "x"}   # noqa: E731
+        (Path(d) / "arc.json").write_text(json.dumps({"episodes": [row("E01"), row("E02")]}))
+        assert ledger.arc_problems(p) == ["arc: E03 has an episode file but no row in arc.json (its hook, conflict and cliffhanger)"]
+        (Path(d) / "arc.json").write_text(json.dumps({"episodes": [row("E01"), row("E02"), row("E03"), row("E04")]}))
+        notes = " | ".join(ledger.arc_notes(p))
+        assert "E01-E03 all have the conflict shape 'humiliation'" in notes
+        assert "E01-E03 all play in the same places (lobby)" in notes
+        assert "E02 does not open on E01's cliffhanger" in notes and "E03 does not open" not in notes
+
+
+def test_series_lock_spots_drift():
+    import glob
+    from sheelshort import lock
+    with tempfile.TemporaryDirectory() as d:
+        p = _mini_project(d, {})
+        (Path(d) / "voices").mkdir()
+        (Path(d) / "voices" / "lw.wav").write_bytes(b"one")
+        lock.write(p, None, "cast approved")
+        assert lock.problems(p) == []
+        p.cfg["render"]["h3_loras"] = {"MysticXXX": 0}
+        (Path(d) / "voices" / "lw.wav").write_bytes(b"two")
+        (Path(d) / "voices" / "zk.wav").write_bytes(b"new character: not drift")
+        errs = " | ".join(lock.problems(p))
+        assert "render.h3_loras: {} -> {'MysticXXX': 0}" in errs and "voices/lw.wav: changed" in errs and "zk.wav" not in errs
+        cached = sorted(glob.glob(str(ROOT / ".cache" / "object_info_*.json")))
+        if cached:   # only where a server's schemas are on record
+            info = json.loads(Path(cached[0]).read_text())
+            lock.write(p, info, "relocked")
+            assert lock.server_problems(p, info) == []
+            gone = {k: v for k, v in info.items() if k != "SamplerCustomAdvanced"}
+            assert "node SamplerCustomAdvanced is gone" in lock.server_problems(p, gone)
+
+
+def test_flow_tuning_helpers():
+    from sheelshort import flows
+    base = flows.load(ROOT / "sheelshort" / "workflows" / "u22_base.api.json")
+    tuned = flows.load(ROOT / "sheelshort" / "workflows" / "u22_tuned.api.json")
+    assert flows.loras(base)["minimax/MysticXXX_MMH3-V1.safetensors"] == 0.7   # as shipped: why the A/B exists
+    for api in (base, tuned):
+        flows.set_loras(api, {"MysticXXX": 0})
+        assert flows.loras(api)["minimax/MysticXXX_MMH3-V1.safetensors"] == 0.0
+        flows.add_interp(api, 30)
+        vc = [n for n in api.values() if n["class_type"] == "VHS_VideoCombine"][0]["inputs"]
+        assert vc["frame_rate"] == 30 and api[vc["images"][0]]["class_type"] == "RIFEInterpolation"
+        flows.add_interp(api, 30)   # applied twice: still one interpolation
+        assert sum(n["class_type"] == "RIFEInterpolation" for n in api.values()) == 1
+    flows.set_sampler(tuned, 8, 0.5)
+    assert [n["inputs"]["lowres_scale"] for n in tuned.values() if n["class_type"] == "SelfLiftH3Sampler"] == [0.5]
+    flows.set_sampler(base, 8, None)   # no SelfLift sampler: its own split stays
+    assert [n["inputs"]["steps"] for n in base.values() if n["class_type"] == "BasicScheduler"] == [12]
+
+
+def test_compliance_terms_and_diversion_notes():
+    from sheelshort import compliance
+    eps = {"E01": {"title": "雨夜", "clips": [{"id": "K1", "location": "lobby", "cuts": [
+        _cut("lw", line="加我微信，13912345678"), _cut("zk", line="这是最好的楼盘")]}]}}
+    with tempfile.TemporaryDirectory() as d:
+        p = _mini_project(d, eps)
+        assert compliance.problems(p, ["E01"]) == []
+        p.cfg.setdefault("compliance", {})["terms"] = ["最好"]
+        assert compliance.problems(p, ["E01"]) == ["E01 K1 cut 2: '最好' is on the compliance list ([compliance] terms)"]
+        notes = " | ".join(compliance.notes(p, ["E01"]))
+        assert "a mobile phone number" in notes and "contact handle" in notes
+
+
+def test_ai_label_and_metadata():
+    with tempfile.TemporaryDirectory() as d:
+        p = _mini_project(d, {})
+        ev = assemble.ai_label_events(p, 90.0, 1080, 1920)
+        assert len(ev) == 1 and "AI生成" in ev[0] and "0:01:30.00" in ev[0] and r"\an9" in ev[0]
+        p.cfg["edit"].update(ai_label_mode="opening", ai_label_s=3)
+        assert "0:00:03.00" in assemble.ai_label_events(p, 90.0, 1080, 1920)[0]
+        p.cfg["edit"]["ai_label"] = ""
+        assert assemble.ai_label_events(p, 90.0, 1080, 1920) == []
+        meta = assemble.aigc_metadata(p, "E01")
+        assert meta[0] == "-metadata" and meta[1].startswith('AIGC={"Label":"1"')
+
+
+def test_drift_alarms_against_the_series():
+    from sheelshort import drift
+    with tempfile.TemporaryDirectory() as d:
+        p = _mini_project(d, {})
+        (Path(d) / "drift").mkdir()
+        good = {"identity": {"lw": {"median": 0.72, "n": 6, "low": []}}, "colour": {"luma": 90, "black": 20, "u": -2, "v": 3},
+                "voice": {"lw": {"median_st": -0.5, "n": 4}}}
+        for ep in ("E01", "E02"):
+            (Path(d) / "drift" / f"{ep}.json").write_text(json.dumps(good))
+        bad = {"identity": {"lw": {"median": 0.55, "n": 6, "low": []}}, "colour": {"luma": 110, "black": 20, "u": -2, "v": 9},
+               "voice": {"lw": {"median_st": 2.6, "n": 4}}}
+        (Path(d) / "drift" / "E03.json").write_text(json.dumps(bad))
+        al = drift.alarms(p)
+        assert al["E01"] == [] and al["E02"] == []
+        text = " | ".join(al["E03"])
+        assert "under its series median" in text and "mean luma 110" in text and "white balance" in text and "+2.6 semitones" in text
+        assert "| E03 |" in drift.write(p).read_text(encoding="utf-8")
+
+
 if __name__ == "__main__":
     for name, fn in list(globals().items()):
         if name.startswith("test_"):
