@@ -92,6 +92,9 @@ upscale_fallback = "fail"        # "fail": an episode that could not be upscaled
                                  # "resize": use a plain resize instead (with a warning)
 font = "Heiti SC"            # libass family name; must have CJK glyphs
 music = "auto"                   # "auto": ACE-Step bed from the episode's `music` tags; a file path; or "" for none
+# Owner-supplied recordings: https://github.com/instl999/short-drama-audio-library (private, Git LFS).
+# Search/download workflow: skills/sheelshort/reference/audio-library.md.
+# Set a chosen absolute file path in projects/<name>/sheelshort.toml [edit].music.
 
 [fleet]
 # AutoDL.Art app instances as on-demand ComfyUI servers (sheelshort/fleet.py). Instances listed in `core` are powered

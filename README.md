@@ -2,6 +2,11 @@
 
 Script in, finished vertical short-drama (短剧) episodes out, on your own ComfyUI servers.
 
+**BGM and sound effects:** the owner's private [short-drama-audio-library](https://github.com/instl999/short-drama-audio-library)
+provides recordings with English mood/function tags. Agents should follow the
+[audio library workflow](skills/sheelshort/reference/audio-library.md) to search its catalog, fetch only selected
+Git LFS files, and connect them to a project's music and sound-effect cues.
+
 An agent (Claude Code with `skills/sheelshort/SKILL.md`) adapts the script into a series bible and episode files.
 The `sheelshort` engine then:
 1. **casts** each character (close-up, three-view sheet, voice);

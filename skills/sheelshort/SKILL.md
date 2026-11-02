@@ -11,7 +11,13 @@ timing, assembly). Every command is resumable: re-run it after any failure.
 ## 0. Setup (once)
 - `sheelshort.toml` at the repo root lists the ComfyUI servers (copy `sheelshort.example.toml`).
 - `python -m sheelshort new <project> --script <file>` creates `projects/<project>/`.
-- `python tools/install_sound_skill.py` installs the sound skill that `sfx search` uses (once per machine).
+- `python tools/install_sound_skill.py` installs the sound skill that `sfx search` uses (once per machine, for the
+  Freesound fallback; owner-library catalog searches do not need it).
+- For BGM and editorial effects, use the owner's private
+  [short-drama-audio-library](https://github.com/instl999/short-drama-audio-library). Read
+  [reference/audio-library.md](reference/audio-library.md) before the sound pass: clone its catalog without
+  downloading all audio, search English mood/function tags, and fetch only chosen files. Keep its audio in the
+  separate library checkout or project inputs, outside this repository's tracked source files.
 
 ## 1. Read the script, plan the series
 Read the whole script. Decide the episode split (**60–90 s each**, as the reference hits run; one hook, one turn, one
@@ -143,6 +149,14 @@ of the listener (`MCU`/`CU` of them holding the phone; the caller is not in `sub
 over-the-shoulder shot ("two lawyers in black suits behind {chenmo}"); a shot without `extras` holds only its
 `subjects`, and clip QC re-takes a close or medium shot that came back with a crowd.
 
+**BGM:** unless the user specifies another source, search the owner's audio library first by the episode's emotional
+arc (for example `suspense`, `sad`, `warm`, `romantic`, `epic`). Follow
+[reference/audio-library.md](reference/audio-library.md): download and verify the chosen recording, then merge its
+absolute local path into the project's `sheelshort.toml` under `[edit].music`. The episode JSON's `music` is a
+generation prompt, not a local-file setting. Record the selection per episode; `[edit].music` applies to the whole
+project, so update it before assembly when another episode needs a different track. If no library track fits,
+use the existing `music = "auto"` generation workflow.
+
 **Sound effects (`sfx` on a cut):** after the cuts are written, do a sound pass. The render already carries the
 diegetic sound you describe in `sound` (rain, footsteps, a door); `sfx` adds an *editorial* accent the edit lays on
 the beat: the boom as a hidden identity is revealed, a riser into it, the whoosh of a time jump, the ding of the text
@@ -150,7 +164,13 @@ the viewer must notice, the heartbeat while someone is about to be caught. Keep 
 at most one every ~10 s (`check` notes more): a cue on every cut is noise and none of them lands. A cue lands on the
 cut's first frame as the render actually cut it (a `riser` ends there, a `whoosh` peaks there); `{"cue": "slap",
 "at": 0.8}` puts it at a moment inside the cut. `python -m sheelshort sfx <project>` lists the cues.
-When no library cue fits the beat (a wooden palace door, a sword drawn, a car braking hard, a sad erhu note), find one:
+When no built-in cue fits the beat, search the owner's audio library by mood and function (`suspense`, `horror`,
+`riser`, `whoosh`, `transition`) as described in [reference/audio-library.md](reference/audio-library.md). Fetch the
+selected file, copy it into the project's `inputs/sfx/`, measure its onset/peak/end with `sheelshort.sfx.measure`,
+and register a bible `sfx` cue with its local file, measured `sync`, level and purpose. Retain its catalog ID,
+hash and provenance in project notes; the owner library's recordings have unknown licenses, not CC0.
+If neither a built-in cue nor an owner-library recording fits the actual source of the beat (a wooden palace door,
+a sword drawn, a car braking hard, a sad erhu note), search Freesound:
 - `python -m sheelshort sfx <project> search "<precise English description of the source>"`, one query at a time
   (Freesound refuses bursts). It lists the most downloaded CC0 clips with their rating, the uploader's description,
   and where the sound sits in each file (onset, peak, end, loudness), since you cannot listen to them.
