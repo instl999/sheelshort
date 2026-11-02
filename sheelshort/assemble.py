@@ -283,9 +283,42 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
         srows.append(f"{i + 1}\n{srt_time(s['start'])} --> {srt_time(end)}\n{wrap(s['text']).replace(chr(92) + 'N', chr(10))}\n")
     for card in plan.get("cards", []):
         rows += card_events(card, w, h, e.get("card_font", "Songti SC"))
-    ass.write_text(head + "\n".join(rows) + "\n", encoding="utf-8")
+    label = ai_label_events(p, plan["duration"], w, h)
+    ass.write_text(head + "\n".join(rows + label) + "\n", encoding="utf-8")
     srt.write_text("\n".join(srows), encoding="utf-8")
+    # the clean cut (no subtitles, for dubbing) still carries the AI label
+    (p.d("edit", ep) / "label.ass").write_text(head + "\n".join(label) + "\n", encoding="utf-8")
     return ass, srt
+
+
+def ai_label_events(p: Project, duration: float, w: int, h: int) -> list[str]:
+    """The visible AI-generated label (China's labelling rules for AI-generated content, in force since 2025-09-01:
+    a prominent label at the start of a video and in suitable places while it plays). `edit.ai_label` is the text,
+    "" for none; `ai_label_mode` "always" keeps it in the top right corner all episode long, "opening" shows it for
+    the first `ai_label_s` seconds."""
+    e = p.cfg["edit"]
+    text = e.get("ai_label", "AI生成")
+    if not text:
+        return []
+    end = duration if e.get("ai_label_mode", "always") == "always" else min(duration, float(e.get("ai_label_s", 3)))
+    size, m = round(w * 0.028), round(w * 0.045)
+    # top right: the place cards take the top left, name cards and subtitles the lower frame
+    style = (f"{{\\an9\\pos({w - m},{round(h * 0.055)})\\fs{size}\\bord1\\shad0\\1c&HFFFFFF&\\3c&H202020&"
+             f"\\alpha&H40&\\fn{e.get('font', 'PingFang SC')}}}")
+    return [f"Dialogue: 2,{ass_time(0)},{ass_time(end)},Line,,0,0,0,,{style}{text}"]
+
+
+def aigc_metadata(p: Project, ep: str) -> list[str]:
+    """The implicit label in the file's metadata (GB 45438-2025's `AIGC` field: AI-generated, producer, content id).
+    `use_metadata_tags` keeps the custom key in an MP4."""
+    import json
+    if not p.cfg["edit"].get("ai_label_metadata", True):
+        return []
+    c = p.cfg.get("compliance", {})
+    tag = {"Label": "1", "ContentProducer": c.get("producer", ""), "ProduceID": f"{p.root.name}-{ep}-{time.strftime('%Y%m%d%H%M%S')}",
+           "ReservedCode1": "", "ContentPropagator": "", "PropagateID": "", "ReservedCode2": ""}
+    return ["-metadata", f"AIGC={json.dumps(tag, ensure_ascii=False, separators=(',', ':'))}",
+            "-metadata", "comment=AI-generated content (AIGC)"]
 
 
 SUB_MARGIN = 0.21      # the subtitle's bottom sits this far above the frame's bottom (lower third, below the faces)
@@ -367,7 +400,9 @@ def upscaled(p: Project, ep: str, video: Path) -> Path:
             if not p.waker.replace():
                 break
             continue
-        out = p.run_job(key, lambda cl: flows.upscale_rtx(p.put(cl, video), scale + 0.005, f"sheelshort/{ep}_{video.stem}_up"),
+        fps = media.probe(video)["fps"] or 24   # a take interpolated in the render (`render.interp`) is already 30 fps
+        out = p.run_job(key, lambda cl: flows.upscale_rtx(p.put(cl, video), scale + 0.005, f"sheelshort/{ep}_{video.stem}_up",
+                                                          fps=fps),
                         p.d("clips", ep, "up"), video.stem, ("gifs", "videos"), 1800, exclude=bad)
         job = p.state["jobs"].get(key, {})
         if out or "NvVFX" not in job.get("error", ""):
@@ -436,7 +471,8 @@ def run(p: Project, ep: str) -> Path:
         vc = "[vg]"
     else:
         vc = "[vc]"
-    filt.append(f"{vc}split=2[vsub][vclean];[vsub]subtitles={_esc(ass)}:fontsdir={_esc(fonts)}[vout]")
+    filt.append(f"{vc}split=2[vsub][vlab];[vsub]subtitles={_esc(ass)}:fontsdir={_esc(fonts)}[vout];"
+                f"[vlab]subtitles={_esc(ass.with_name('label.ass'))}:fontsdir={_esc(fonts)}[vclean]")
     music = e.get("music")
     if music == "auto":
         music = score(p, ep)
@@ -462,7 +498,7 @@ def run(p: Project, ep: str) -> Path:
     master = out_dir / f"{p.master_name()}.mp4"
     clean = out_dir / f"{p.master_name()}_clean.mp4"   # the same cut without burned-in subtitles (dubbing, re-subtitling)
     enc = ["-c:v", "libx264", "-preset", "medium", "-crf", str(e.get("crf", 21)), "-profile:v", "high", "-pix_fmt", "yuv420p",
-           "-c:a", "aac", "-b:a", "192k", "-movflags", "+faststart"]
+           "-c:a", "aac", "-b:a", "192k", "-movflags", "+faststart+use_metadata_tags", *aigc_metadata(p, ep)]
     cmd = ["ffmpeg", "-y", "-v", "error", *ins, "-filter_complex", ";".join(filt),
            "-map", "[vout]", "-map", "[aout]", *enc, str(master), "-map", "[vclean]", "-map", "[aclean]", *enc, str(clean)]
     subprocess.run(cmd, check=True)
@@ -493,7 +529,7 @@ def settle_loudness(f: Path, target: float, tol: float = 0.5, ceiling: float = -
     for _ in range(3):   # the limiter takes back some of the gain: add the shortfall and go again from the original
         subprocess.run(["ffmpeg", "-y", "-v", "error", "-i", str(f), "-map", "0", "-c:v", "copy",
                         "-af", f"volume={gain:.2f}dB,alimiter=limit={10 ** ((ceiling - 1.5) / 20):.3f}:level=false:attack=1:release=50",
-                        "-c:a", "aac", "-b:a", "192k", "-movflags", "+faststart", str(tmp)], check=True)
+                        "-c:a", "aac", "-b:a", "192k", "-movflags", "+faststart+use_metadata_tags", str(tmp)], check=True)
         i2, tp2 = loudness_stats(tmp)
         if best is None or abs(i2 - target) < abs(best[0] - target):
             best = (i2, tp2)

@@ -6,6 +6,7 @@ dialogue = "h3": H3 voices the lines itself from the cast voice references (the 
 """
 from __future__ import annotations
 
+import copy
 import hashlib
 import json
 import threading
@@ -303,12 +304,14 @@ def _render(p, ep, key, clip, t, text, refs, files, seconds, track) -> None:
     def build(cl):
         imgs = [p.put(cl, files[name]) for name in refs.images()]
         if track is not None:
-            return flows.h3_drive(p.wf("h3_ref"), p.wf("h3_drive"), text, seconds, imgs, p.put(cl, track), seed,
-                                  f"sheelshort/{ep}_{stem(p, clip['id'], t)}", megapixels=rc["megapixels"],
-                                  upscale=rc["upscale"], lock_strength=rc["lock_strength"])
-        auds = [p.put(cl, files[name]) for name in refs.audios()]
-        return flows.h3_reference(p.wf("h3_ref"), text, seconds, imgs, auds, seed, f"sheelshort/{ep}_{stem(p, clip['id'], t)}",
-                                  megapixels=rc["h3_megapixels"])
+            api = flows.h3_drive(p.wf("h3_drive_model"), p.wf("h3_drive"), text, seconds, imgs, p.put(cl, track), seed,
+                                 f"sheelshort/{ep}_{stem(p, clip['id'], t)}", megapixels=rc["megapixels"],
+                                 upscale=rc["upscale"], lock_strength=rc["lock_strength"])
+        else:
+            auds = [p.put(cl, files[name]) for name in refs.audios()]
+            api = flows.h3_reference(p.wf("h3_ref"), text, seconds, imgs, auds, seed,
+                                     f"sheelshort/{ep}_{stem(p, clip['id'], t)}", megapixels=rc["h3_megapixels"])
+        return tune(p, api)
 
     dest = clip_path(p, ep, clip["id"], t)
     fp = fingerprint(text, files, track, seconds)
@@ -338,12 +341,32 @@ def _render(p, ep, key, clip, t, text, refs, files, seconds, track) -> None:
         log(f"{key}: -> {dest.name}")
     if dest.exists() and (fresh or not meta.exists()):   # a take rendered now records the inputs it was rendered from
         save_json(meta, {"fingerprint": fp, "inputs": inputs_fingerprint(p, ep, clip, files, track, seconds),
-                         "seconds": seconds, "seed": seed})
+                         "seconds": seconds, "seed": seed, "graph": graph_settings(p, track is not None)})
     if dest.exists() and track is None:
         from . import assemble
         assemble.heard_lines(p, ep, clip, dest)   # subtitle timing, computed while the other clips still render
     if dest.exists() and track is not None and rc.get("foley", True):
         foley(p, ep, clip, dest, seconds)
+
+
+def tune(p: Project, api: dict, cfg: dict | None = None) -> dict:
+    """The render settings layered on whichever H3 graph is in use: LoRA strengths, SelfLift steps and low-res scale,
+    and in-graph RIFE to the edit's frame rate (`render.h3_loras`, `h3_steps`, `h3_lowres_scale`, `interp`)."""
+    cfg = cfg or p.cfg
+    rc = cfg["render"]
+    flows.set_loras(api, rc.get("h3_loras", {}))
+    flows.set_sampler(api, rc.get("h3_steps"), rc.get("h3_lowres_scale"))
+    if rc.get("interp") == "rife":
+        flows.add_interp(api, int(cfg["edit"].get("fps", 30)))
+    return api
+
+
+def graph_settings(p: Project, acted: bool) -> dict:
+    """What a take was rendered with, beside its prompt: workflow files, LoRA strengths, sampler and frame rate."""
+    rc, w = p.cfg["render"], p.cfg["workflows"]
+    api = tune(p, copy.deepcopy(p.wf("h3_drive_model" if acted else "h3_ref")))
+    return {"workflow": w["h3_drive"] if acted else w["h3_ref"], "loras": flows.loras(api),
+            "steps": rc.get("h3_steps"), "lowres_scale": rc.get("h3_lowres_scale"), "interp": rc.get("interp", "")}
 
 
 def inputs_fingerprint(p: Project, ep: str, clip: dict, files: dict[str, Path], track: Path | None, seconds) -> str:
