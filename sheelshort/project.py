@@ -125,10 +125,10 @@ class Project:
     def clips(self, ep: str) -> list[dict]:
         """The episode's clips; in test mode (`limit_s`) only the opening ones: clips are taken in order until the
         running length reaches the limit, and one that would overshoot it by more than 5 s is left out."""
-        from . import wardrobe
+        from . import ledger, wardrobe
         from .h3prompt import clip_len
         e = self.episode(ep)
-        clips = [wardrobe.dress(e, c) for c in e["clips"]]
+        clips = [ledger.apply_marks(self, ep, wardrobe.dress(e, c)) for c in e["clips"]]
         if not self.limit_s:
             return clips
         out, t = [], 0.0
@@ -167,10 +167,10 @@ class Project:
 
     def scene(self, ep: str) -> dict:
         """Bible + episode in the shape h3prompt expects."""
-        from . import wardrobe
+        from . import ledger, wardrobe
         e = self.episode(ep)
         return {**self.bible, **{k: v for k, v in e.items() if k != "id"}, "characters": self.chars, "locations": self.locs,
-                "clips": [wardrobe.dress(e, c) for c in e["clips"]], "episode": ep}
+                "clips": [ledger.apply_marks(self, ep, wardrobe.dress(e, c)) for c in e["clips"]], "episode": ep}
 
     def d(self, *parts: str) -> Path:
         p = self.root.joinpath(*parts)
@@ -372,6 +372,14 @@ class Project:
                 if self.dry:
                     log(f"{key}: dry run, request written to {req}")
                     return None, None
+                if key.startswith("render/"):
+                    from . import lock
+                    drift = lock.server_problems(self, self.object_info(c))
+                    if drift:   # this server's image moved since the series was locked: render elsewhere
+                        self._down_until[c.base_url] = time.time() + 3600
+                        job.update(status="failed", error="series lock: this server differs from the lock: " + "; ".join(drift))
+                        log(f"{key}: {urlparse(c.base_url).hostname} {job['error'][:600]}")
+                        return None, c.base_url
                 job.clear()
                 job.update(server=c.base_url, prompt_id=c.queue(api), status="queued", queued_at=time.time(), units=units)
                 job["eta"] = self._eta(key, c.base_url, units)

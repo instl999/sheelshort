@@ -684,6 +684,10 @@ def build(scene: dict, clip: dict, refs: Refs, cameras: dict[int, dict] | None =
             src = f"in {pics(c) if own else pics('__keyframe__')}"
         defs.append(f"{S(c)} is {chars[c]['name']}, the {chars[c]['role']} {src}: {chars[c]['look']}"
                     + (f" {chars[c]['name']}'s manner: {chars[c]['demeanor'].rstrip('.')}." if chars[c].get("demeanor") else ""))
+        worn = (clip.get("marks") or {}).get(chars[c].get("base", c))   # injuries from earlier in the story (ledger.py)
+        if worn:
+            defs.append(f"{chars[c]['name']} also has, from earlier in the story and the same in every shot: "
+                        + "; ".join(v.rstrip(".") for v in worn.values()) + ".")
         if c in phone_only(clip):
             defs.append(f"{S(c)} never appears in the picture of this clip; only {S(c)}'s voice is heard, through a phone.")
     for pr in props:
