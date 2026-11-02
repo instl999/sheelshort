@@ -133,8 +133,8 @@ def voice(p: Project, ep: str) -> dict:
             media.extract_audio(video, wav, ln["start"], ln["end"])
             hz = speech.profile(wav, ref_hz=cast_hz).get("median_hz")
             wav.unlink(missing_ok=True)
-            if hz:
-                shifts.setdefault(p.base(who), []).append(12 * math.log2(hz / cast_hz))
+            if hz:   # a pitch tracker halves or doubles now and then: an octave off is its error, not the voice's
+                shifts.setdefault(p.base(who), []).append((12 * math.log2(hz / cast_hz) + 6) % 12 - 6)
     return {c: {"median_st": round(st.median(v), 2), "n": len(v)} for c, v in shifts.items()}
 
 
