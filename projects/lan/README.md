@@ -1,8 +1,8 @@
-# 蓝城雲境: example project (location pack + showcase episode)
+# 蓝城Yunjing: example project (location pack + showcase episode)
 
 > **Example project.** These assets are examples: use them to demo sheelshort to people, or as the starting point
-> for a real series set at 蓝城雲境. The showcase episode `episodes/D01.json` (《雲境》, 58 s) and its cast
-> (林晚 with an evening outfit, 赵凯, 周敏) show what one finished episode looks like. A real series is its own
+> for a real series set at 蓝城Yunjing. The showcase episode `episodes/D01.json` (Yunjing, 58 s) and its cast
+> (Lin Wan with an evening outfit, Zhao Kai, Zhou Min) show what one finished episode looks like. A real series is its own
 > project (`python -m sheelshort new <name> --script <file>`); copy `locations/`, `inputs/` and the `locations`
 > section of `bible.json` into it to shoot at the same property.
 >
@@ -10,7 +10,7 @@
 > for the real series. The showcase's characters, story and voices are a demo only: the series' cast, storylines and
 > voice tones wait for the screenwriter's scripts.
 
-The short drama is set in a high-end residential development, 蓝城雲境. The property's three official films are the
+The short drama is set in a high-end residential development, 蓝城Yunjing. The property's three official films are the
 source for every location in it:
 
 | film | what it shows |
@@ -22,10 +22,10 @@ source for every location in it:
 Everything this project made is committed with it: films, location pack, plates, the location renders in `cache/`,
 the showcase cast in `assets/` and `voices/`. Only `state.json`, logs and `requests/` stay local (they name the servers).
 
-## Showcase episode: 《雲境》 (D01)
+## Showcase episode: Yunjing (D01)
 
-`showcase/D01_雲境_preview.mp4` (720p, 60.7 s) and `showcase/D01_poster.jpg`. Written in `episodes/D01.json`; cast in
-`assets/` (林晚 with her evening outfit `suit`, 赵凯, 周敏) and `voices/`; the show flat's night light relit from its
+`showcase/D01_Yunjing_preview.mp4` (720p, 60.7 s) and `showcase/D01_poster.jpg`. Written in `episodes/D01.json`; cast in
+`assets/` (Lin Wan with her evening outfit `suit`, Zhao Kai, Zhou Min) and `voices/`; the show flat's night light relit from its
 plates (`assets/loc_flat_living__night*.png`). Rebuild the full-quality master with `python -m sheelshort make lan D01 --allow-thin` (written before the full-detail rules)
 (every take is re-rendered from these files; the masters themselves are not kept in git).
 
@@ -36,28 +36,28 @@ description of each place (look, keep, time, light) that is copied into `bible.j
 
 | id | place | angles | story use |
 |---|---|---|---|
-| `flat_foyer` | 样板间·玄关 (show-flat entrance foyer) | 1 | arrivals and exits, a visitor at the door, the owner coming home |
-| `flat_living` | 样板间·客厅 (show-flat living room) | 3 | the main stage: viewings, family confrontations, negotiations over the sale, a party |
-| `flat_kitchen` | 样板间·西厨岛台 (show-flat open kitchen island) | 2 | late-night talks over a drink, a couple's quarrel, a breakfast scene |
-| `flat_master` | 样板间·主卧 (show-flat master bedroom) | 2 | private moments, a secret discovered, a night-time phone call |
-| `flat_closet` | 样板间·衣帽间 (show-flat walk-in closet) | 1 | dressing for the big night, finding a hidden bag or document |
-| `flat_guestroom` | 样板间·次卧 (show-flat second bedroom) | 1 | a guest who stays too long, a family member's room |
-| `flat_bath` | 样板间·主卫 (show-flat master bathroom) | 1 | crying alone, washing off a slap, overheard phone call |
-| `club_entrance` | 会所·入口 (clubhouse main entrance) | 2 | arriving in a luxury car, a dramatic entrance, waiting outside in the rain |
-| `club_lobby` | 会所·大堂 (clubhouse grand lobby) | 2 | the property's showpiece: the sales launch, a public humiliation, a reunion across the hall |
-| `club_lounge` | 会所·大堂洽谈区 (lobby lounge) | 2 | the sales consultant's table: price negotiations, signing the contract, a rival buyer |
-| `club_corridor` | 会所·电梯厅走廊 (lift lobby corridor) | 2 | a chance meeting at the lift, a chase, a whispered threat |
-| `club_library` | 会所·书吧茶室 (clubhouse tea and reading room) | 2 | a quiet business deal over tea, an elder's summons, a blackmail meeting |
-| `club_vip` | 会所·VIP会客室 (VIP reception room) | 1 | a private meeting with the developer's boss, an engagement proposal |
-| `club_stairs` | 会所·楼梯间 (clubhouse stairwell) | 1 | a secret phone call, hiding from someone, a confession away from the crowd |
-| `club_hall` | 会所·大厅吧台 (clubhouse great hall and bar) | 3 | the owners' evening party, a toast gone wrong, two rivals at the bar |
-| `club_billiards` | 会所·台球室 (billiards room) | 1 | rich men talking business over a game, a bet |
-| `club_banquet` | 会所·宴会包间 (private banquet room) | 1 | the family banquet: seating fights, an announcement, a slap at the table |
-| `club_media` | 会所·影音室 (private media lounge) | 1 | a hidden recording played on the big screen, friends' night out |
-| `club_pool` | 会所·室内泳池 (indoor swimming pool) | 2 | a confrontation by the water, someone pushed in, a quiet night swim |
-| `club_gym` | 会所·瑜伽健身房 (yoga and fitness studio) | 1 | the rich wives' yoga class, gossip that sets off the plot |
-| `garage_drive` | 地库·车道 (underground garage driveway) | 2 | an ambush beside the car, a tail, a confrontation in the car park |
-| `garage_lobby` | 地库·入户大堂 (garage lift lobby) | 2 | waiting for the lift, someone blocking the way home |
+| `flat_foyer` | (show-flat entrance foyer) | 1 | arrivals and exits, a visitor at the door, the owner coming home |
+| `flat_living` | (show-flat living room) | 3 | the main stage: viewings, family confrontations, negotiations over the sale, a party |
+| `flat_kitchen` | (show-flat open kitchen island) | 2 | late-night talks over a drink, a couple's quarrel, a breakfast scene |
+| `flat_master` | (show-flat master bedroom) | 2 | private moments, a secret discovered, a night-time phone call |
+| `flat_closet` | (show-flat walk-in closet) | 1 | dressing for the big night, finding a hidden bag or document |
+| `flat_guestroom` | (show-flat second bedroom) | 1 | a guest who stays too long, a family member's room |
+| `flat_bath` | (show-flat master bathroom) | 1 | crying alone, washing off a slap, overheard phone call |
+| `club_entrance` | (clubhouse main entrance) | 2 | arriving in a luxury car, a dramatic entrance, waiting outside in the rain |
+| `club_lobby` | (clubhouse grand lobby) | 2 | the property's showpiece: the sales launch, a public humiliation, a reunion across the hall |
+| `club_lounge` | (lobby lounge) | 2 | the sales consultant's table: price negotiations, signing the contract, a rival buyer |
+| `club_corridor` | (lift lobby corridor) | 2 | a chance meeting at the lift, a chase, a whispered threat |
+| `club_library` | (clubhouse tea and reading room) | 2 | a quiet business deal over tea, an elder's summons, a blackmail meeting |
+| `club_vip` | 会所·VIP(VIP reception room) | 1 | a private meeting with the developer's boss, an engagement proposal |
+| `club_stairs` | (clubhouse stairwell) | 1 | a secret phone call, hiding from someone, a confession away from the crowd |
+| `club_hall` | (clubhouse great hall and bar) | 3 | the owners' evening party, a toast gone wrong, two rivals at the bar |
+| `club_billiards` | (billiards room) | 1 | rich men talking business over a game, a bet |
+| `club_banquet` | (private banquet room) | 1 | the family banquet: seating fights, an announcement, a slap at the table |
+| `club_media` | (private media lounge) | 1 | a hidden recording played on the big screen, friends' night out |
+| `club_pool` | (indoor swimming pool) | 2 | a confrontation by the water, someone pushed in, a quiet night swim |
+| `club_gym` | (yoga and fitness studio) | 1 | the rich wives' yoga class, gossip that sets off the plot |
+| `garage_drive` | (underground garage driveway) | 2 | an ambush beside the car, a tail, a confrontation in the car park |
+| `garage_lobby` | (garage lift lobby) | 2 | waiting for the lift, someone blocking the way home |
 
 Skipped: the kids' room, the window views (building sites), the floor plan card, the hallway between rooms and the
 garage's flooring display board.
