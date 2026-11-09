@@ -1,6 +1,6 @@
 ---
 name: sheelshort
-description: Turn a user's script into finished vertical short-drama (短剧) episodes on their ComfyUI servers. Use when the user gives a script, story, outline or novel chapter and wants episodes produced, or asks to run/resume/fix a sheelshort project.
+description: Turn a user's script into finished vertical short-drama (short drama) episodes on their ComfyUI servers. Use when the user gives a script, story, outline or novel chapter and wants episodes produced, or asks to run/resume/fix a sheelshort project.
 ---
 
 # sheelshort: script → episodes
@@ -46,27 +46,27 @@ Characters, locations, props, visual style. Rules that matter:
   then make it clearly visible. `check` notes them.
 - **`keep`**: the short list of things that must never change (anchors, hair, outfit).
 - **`voice_design`** (Chinese): **timbre only**: age, pitch, texture, accent, pace. *No emotion, no attitude*
-  ("压抑着愤怒" or "lazy, mocking" in a voice description makes every line come out in that one register).
+  ("suppressed anger" or "lazy, mocking" in a voice description makes every line come out in that one register).
 - **`voice_sample`**: one neutral sentence of ~25–35 characters the cast voice will say (its transcript).
 - **`voice_en`**: the same timbre in English, a few words.
 - **`demeanor`**: the character's standing manner, in English, as the audience should read them in any unwritten
   moment ("composed and warm, attentive eyes; never sarcastic or contemptuous"; for a villain "smug, eyes half-lidded,
   a faint sneer"). The engine repeats it in every face shot of the character (a shot's own action overrides it), so
-  the video model fills gaps in character: without it, 林晚 got an eye-roll that read as contempt. `check` notes main
+  the video model fills gaps in character: without it, Lin Wan got an eye-roll that read as contempt. `check` notes main
   characters (with a `card`) that have none.
 
 ## 3. Write `episodes/<EP>.json`
 **What the story changes (season ledger).** The engine carries every episode's end state into the next one
 (`python -m sheelshort ledger <project>` writes `ledger.md`). Tell it what changes:
-- `when` (the story day and time the episode starts, "第3天 傍晚") and `jump` when time has passed since the episode
-  before ("三天后"). Without a `jump` the episode continues straight on, so nobody may change clothes between them
+- `when` (the story day and time the episode starts, "Day 3, evening") and `jump` when time has passed since the episode
+  before ("three days later"). Without a `jump` the episode continues straight on, so nobody may change clothes between them
   unless a clip's `outfits` shows it.
 - `changes`: `{"after": "K3", "who": "linwan", "injury": {"left_hand": "a white gauze bandage wrapped round her left
   palm"}}` (written into every later prompt of hers until `{"who": "linwan", "heals": ["left_hand"]}`; make injuries
   large and plain, like the identity anchors); `{"who": "zhaokai", "learns": ["father"]}`; `{"prop": "bangle",
   "where": "in the tray on the dresser", "holder": "zhoumin"}`; `{"prop": "letter", "gone": "burned in the fireplace"}`
   (and `"back"` if it returns). Without `after` a change happens at the episode's end.
-- Secrets are the bible's `facts` (`{"father": "沈怀山 is 唐宁's father"}`); a cut whose line depends on one says
+- Secrets are the bible's `facts` (`{"father": "Shen Huaishan is Tang Ning's father"}`); a cut whose line depends on one says
   `"knows": ["father"]`, and `check` refuses it if the speaker has not learned it yet.
 `check` also refuses a prop used after it is gone.
 
@@ -80,13 +80,13 @@ references in text as `{charid}` / `{loc}`.
 60–90 s episodes, not cut down to a summary). Long lines are split with **reaction cuts** (`RX`): the listener's close-up while the line continues
 off-screen. `check` lets a line span its own cut plus the `RX` cuts after it.
 
-**Name cards:** give every main character `name_zh` and `card` (a short role: 「黄谷村大学生」, 「强盛集团开发商」) in
+**Name cards:** give every main character `name_zh` and `card` (a short role: "college student from Huanggu Village", "developer from Qiangsheng Group") in
 the bible. Their first solo close-up in the series (or a cut with `"intro": true`) gets a vertical name card beside the
 head, as in the reference series. Write that shot as a held chest-up close-up composed off-centre.
 
 **Shot sizes, as the reference hits use them:** most dialogue in `MCU` (mid-chest up, hands and gestures in frame:
-王妈在顾家当保姆 and 持械入宋 shoot nearly all talk this way); `CU` for the emotional peaks, punching in from the `MCU`;
-`MS` two-shots with both faces in frame for intimacy and stand-offs (备用联系人, 反派拿捏); quick `ECU` inserts of
+Mama Wang as a Nanny and Armed Into Song shoot nearly all talk this way); `CU` for the emotional peaks, punching in from the `MCU`;
+`MS` two-shots with both faces in frame for intimacy and stand-offs (Backup Contact, Handling the Villain); quick `ECU` inserts of
 the props the story turns on (a number card, a contract, a phone, joined hands).
 
 **Shot grammar (enforced by `check`):** speaking character → `CU` or `MCU`; two-person dialogue → `OTS` (`over` = whose
@@ -118,8 +118,8 @@ the speaker, or someone the speaker is thinking about, never empty); listener re
 - **Inserts** (`ECU` on a prop or hands, 1–1.5 s) carry plot: the contract, the pen, the money.
 
 **Look preset:** set `look_preset` in the bible by genre: `cinematic` (rural, period, thriller: moody, directional
-light), `bright` (comedy, bright urban stories: high-key and clean, like 王妈在顾家当保姆), or `glossy` (romance: warm,
-glowing, soft bokeh, like 备用联系人). It sets the light and acting of every prompt, the location plates and the
+light), `bright` (comedy, bright urban stories: high-key and clean, like Mama Wang as a Nanny), or `glossy` (romance: warm,
+glowing, soft bokeh, like Backup Contact). It sets the light and acting of every prompt, the location plates and the
 finishing grade. The notes below are for `cinematic`.
 
 **Look:** `style` names the medium and grade, never a wide lens or "crisp" detail (the engine adds long lenses, shallow
@@ -198,8 +198,8 @@ its last:
 
 A complete cut:
 ```json
-{"type": "MCU", "subjects": ["linwan"], "speaker": "linwan", "line": "就这套吧。全款。", "say": "就这套吧。……全款。",
- "act": "平静，像在买一杯咖啡，最后两个字轻轻落下", "emotion": "calm",
+{"type": "MCU", "subjects": ["linwan"], "speaker": "linwan", "line": "This one. Full payment.", "say": "This one... full payment.",
+ "act": "calm, as if buying a coffee, the last two words landing softly", "emotion": "calm",
  "delivery": "calm and offhand, a faint easy smile on the last word, eyes steady on the view",
  "composition": "Medium close-up from mid-chest up of {linwan} on the right of frame against the bright floor-to-ceiling window, the city soft and out of focus behind her.",
  "action": "{linwan} stands still facing the window, shoulders relaxed, her left hand resting on the tote strap. She keeps her head level and her eyes on the view while she speaks, lips moving only on the words, then turns her head slowly to her right toward {zhoumin} off screen, a faint easy smile settling on her face.",
@@ -225,9 +225,9 @@ expression starts and changes. Ten words is the floor; two sentences is normal. 
 **Acting fields (this is what makes the voices sound acted):**
 - `line`: the clean subtitle text.
 - `say`: what the actor actually says, with the rhythm in the punctuation: `……` for a break, `——` for a cut-off,
-  `！`/`？！` for force, repeated syllables for stammers (「求……求您。」). Same words as `line`.
-- `act`: a Chinese performance direction for the voice, specific and physical: 「压着哭腔，声音发抖，最后两个字几乎说不出口」,
-  「冷笑一声，一字一顿」, 「急促喘息，声音拔高，快要失控」. Not just 「生气」.
+  `！`/`？！` for force, repeated syllables for stammers ("Please... please."). Same words as `line`.
+- `act`: a Chinese performance direction for the voice, specific and physical: "holding back tears, voice shaking, the last two words almost unspoken",
+  "a cold laugh, one word at a time", "rapid breathing, voice rising, about to lose control". Not just "angry".
 - `emotion`: one word for scoring: calm, cold, firm, warm, whisper (kept calm) or sob, broken, plead, anger, shout,
   fear, shock, despair (intense: wider pitch band allowed).
 - `delivery`: the same performance in English for the *face* in the picture prompt ("eyes brimming, voice
