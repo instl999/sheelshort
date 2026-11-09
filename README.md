@@ -1,6 +1,6 @@
 # sheelshort
 
-Script in, finished vertical short-drama (短剧) episodes out, on your own ComfyUI servers.
+Script in, finished vertical short-drama (short drama) episodes out, on your own ComfyUI servers.
 
 **BGM and sound effects:** the owner's private [short-drama-audio-library](https://github.com/instl999/short-drama-audio-library)
 provides recordings with English mood/function tags. Agents should follow the
