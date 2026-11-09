@@ -2,7 +2,7 @@
 
 This spike tests whether MiniMax H3, run through the **U22** workflow on our ComfyUI servers, keeps faces and voices consistent across the clips of one scene under the house shot rules. The rules are listed in [docs/DESIGN.md §0.2](../docs/DESIGN.md).
 
-The test scene is [scene.json](scene.json): 归来, two 12 s clips, each four 3 s cuts, Mandarin dialogue plus one voice-over. Lin Xia and Lu Chen both speak in both clips, so each voice can be compared across clips.
+The test scene is [scene.json](scene.json): The Return, two 12 s clips, each four 3 s cuts, Mandarin dialogue plus one voice-over. Lin Xia and Lu Chen both speak in both clips, so each voice can be compared across clips.
 
 | Variant | H3 references | Tests |
 |---|---|---|
@@ -46,7 +46,7 @@ The test scene is [scene.json](scene.json): 归来, two 12 s clips, each four 3 
 
 ## Location photo libraries
 
-- **Index and tag.** `locations` hashes every photo in `inputs/locations/<loc>/` and asks the servers' vision model (Qwen3.8-27B via the llama.cpp nodes of the `通用反推` workflow) for framing, what the camera faces, visible features, landmarks, time of day, people and visible text. About 10 s per photo once the model is loaded. Tags live in `inputs/locations/<loc>/library.json`; unchanged photos are never re-tagged.
+- **Index and tag.** `locations` hashes every photo in `inputs/locations/<loc>/` and asks the servers' vision model (Qwen3.8-27B via the llama.cpp nodes of the `generic captioning` workflow) for framing, what the camera faces, visible features, landmarks, time of day, people and visible text. About 10 s per photo once the model is loaded. Tags live in `inputs/locations/<loc>/library.json`; unchanged photos are never re-tagged.
 - **Hand edits win.** Set `"pin": true` (always use), `"veto": true` (never use), `"allow_people"` / `"allow_text"`, or rewrite `tags` yourself (or let the agent do it); re-indexing keeps them.
 - **Selection per clip.** Up to `library.max_per_clip` photos, within what is left of H3's 9-image budget. Photos with people or visible text are dropped (they leak into the video as extras or on-screen text), and so are photos at the wrong time of day (`locations.<loc>.time` or `clips[].time`). The rest are picked greedily to cover what each cut's background needs: a cut's `bg` hint, or else its composition text, matched against the tags, with wide photos preferred for medium shots and medium or detail photos for close-ups. Near-duplicates are skipped. The choice and the reason for it are logged.
 
