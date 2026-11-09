@@ -1,7 +1,7 @@
-# 蓝城Yunjing: example project (location pack + showcase episode)
+# Blue City Yunjing: example project (location pack + showcase episode)
 
 > **Example project.** These assets are examples: use them to demo sheelshort to people, or as the starting point
-> for a real series set at 蓝城Yunjing. The showcase episode `episodes/D01.json` (Yunjing, 58 s) and its cast
+> for a real series set at Blue City Yunjing. The showcase episode `episodes/D01.json` (Yunjing, 58 s) and its cast
 > (Lin Wan with an evening outfit, Zhao Kai, Zhou Min) show what one finished episode looks like. A real series is its own
 > project (`python -m sheelshort new <name> --script <file>`); copy `locations/`, `inputs/` and the `locations`
 > section of `bible.json` into it to shoot at the same property.
@@ -10,7 +10,7 @@
 > for the real series. The showcase's characters, story and voices are a demo only: the series' cast, storylines and
 > voice tones wait for the screenwriter's scripts.
 
-The short drama is set in a high-end residential development, 蓝城Yunjing. The property's three official films are the
+The short drama is set in a high-end residential development, Blue City Yunjing. The property's three official films are the
 source for every location in it:
 
 | film | what it shows |
@@ -48,7 +48,7 @@ description of each place (look, keep, time, light) that is copied into `bible.j
 | `club_lounge` | (lobby lounge) | 2 | the sales consultant's table: price negotiations, signing the contract, a rival buyer |
 | `club_corridor` | (lift lobby corridor) | 2 | a chance meeting at the lift, a chase, a whispered threat |
 | `club_library` | (clubhouse tea and reading room) | 2 | a quiet business deal over tea, an elder's summons, a blackmail meeting |
-| `club_vip` | 会所·VIP(VIP reception room) | 1 | a private meeting with the developer's boss, an engagement proposal |
+| `club_vip` | VIP (VIP reception room) | 1 | a private meeting with the developer's boss, an engagement proposal |
 | `club_stairs` | (clubhouse stairwell) | 1 | a secret phone call, hiding from someone, a confession away from the crowd |
 | `club_hall` | (clubhouse great hall and bar) | 3 | the owners' evening party, a toast gone wrong, two rivals at the bar |
 | `club_billiards` | (billiards room) | 1 | rich men talking business over a game, a bet |
