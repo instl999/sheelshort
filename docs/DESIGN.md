@@ -165,7 +165,7 @@ Scene: two 12 s clips, each four 3 s cuts, Mandarin dialogue plus one voice-over
   6. Subtitles come from the script at the exact placed line times.
 - **A/B kept.** `--dialogue h3` renders the M0 variant C (H3 voices itself) into `*_h3_t*.mp4`. `evaluate` compares
   the two modes line by line.
-- **Owner verdict (2026-10-31, 归来 E01): the H3-voiced master is better.** The default is therefore
+- **Owner verdict (2026-10-31, The Return E01): the H3-voiced master is better.** The default is therefore
   `render.dialogue = "h3"`. The performed track remains available as `"acted"`. The prompt-side lessons stay in both
   modes: `say` with verbatim punctuation inside `<d>`, timbre-only voice definitions, and a per-line `delivery`. The
   objective pitch-motion measure did not separate the modes either (acted median 2.2, H3 3.3, with H3 readings partly
@@ -173,15 +173,15 @@ Scene: two 12 s clips, each four 3 s cuts, Mandarin dialogue plus one voice-over
 - **Acted voice references (`voice_ref = "acted"`), owner verdict 2026-10-31.** In this mode H3 still voices the lines,
   but each speaker's `<Audio N>` is built from acted Drama 3 takes of their own lines. The test used the same seeds,
   so the reference was the only difference.
-  - 全村抢 opening: the cast-voice version is better.
-  - 归来: about the same, with a slight preference for the acted references.
-  - The pitch measures rose on 归来 K1/K1b and were mixed on K2.
+  - Village Grab opening: the cast-voice version is better.
+  - The Return: about the same, with a slight preference for the acted references.
+  - The pitch measures rose on The Return K1/K1b and were mixed on K2.
   - **Decision:** `voice_ref = "cast"` stays the default. Acted references cost an extra Drama 3 stage per episode for
     no consistent gain. They stay available for scenes that need it.
 
 ### 0.8 Throughput and autoscaling (2026-10-31)
 
-**Where the time goes.** Measured on 全村抢 E02 and E03, 13 clips:
+**Where the time goes.** Measured on Village Grab E02 and E03, 13 clips:
 - **GPU generation:** about 5 min per clip (median).
 - **Getting each result back:** about 110 s per clip (median) when the server has already started its next job. The
   file transfer itself takes 6–8 s; the rest is the server answering slowly while it starts that job.
@@ -216,7 +216,7 @@ The owner's decision: **Beijing only.** The fleet adds servers while a render ha
 it added when idle and at the end of the run. It never touches other instances.
 
 ### 0.9 Quality pass 1 (2026-10-31): measured against the reference series
-**The target**, from drama-studio's shot study of the original 全村抢 episode 1: 151 s, 73 shots, mean shot 2.07 s,
+**The target**, from drama-studio's shot study of the original Village Grab episode 1: 151 s, 73 shots, mean shot 2.07 s,
 median 1.84 s, 2 shots over 5 s. Name cards appear on the intro close-ups. There is no end card: the cut lands on the
 cliffhanger line.
 
@@ -341,7 +341,7 @@ The fresh render's 10 clips all passed clip QC on the first take. It runs 122.5 
 2.45 s. Detection over-counts slightly: a contract waved across the lens reads as a cut. The before/after sheet is
 `projects/quancun/edit/E02/compare_before_after.jpg`. The look and the coverage are a clear step up.
 
-**The fresh-agent test** on a new script (《雨夜外卖》, written only from the old skill) produced the same defects:
+**The fresh-agent test** on a new script (Rainy Night Delivery, written only from the old skill) produced the same defects:
 12 jump cuts and around 80% static camera. So they came from the workflow, not from one adaptation. `--fit` repairs 7
 of the 12; the other 5 are one-person phone-call sequences, which need a rewrite.
 
@@ -438,7 +438,7 @@ loudness and format. Episodes 1, 5 and 12 were studied frame by frame, including
 | Backup Contact | 169 s | 3.27 s | 3.02 s | 15% | 2% | 4 | −15.0 |
 | After Divorce... Swept the Demon Realm | 70 s | 2.53 s | 2.21 s | 6% | 14% | 4.5 | −9.8 |
 | Handling the Villain S3 | 64 s | 2.51 s | 2.29 s | 4% | 5% | 4 | −13.4 |
-| 全村抢 recut (ours) | 118–176 s | 2.45–3.01 s | 2.4–2.5 s | 2–10% | 0% | – | −14.8 |
+| Village Grab recut (ours) | 118–176 s | 2.45–3.01 s | 2.4–2.5 s | 2–10% | 0% | – | −14.8 |
 
 **What we already match.**
 - Shot pacing: a mean of 2.1–3.3 s.
@@ -454,7 +454,7 @@ loudness and format. Episodes 1, 5 and 12 were studied frame by frame, including
   - `check` notes any episode over 100 s or under 45 s.
   - The script's content is kept, spread over more episodes.
 - **Scene openings.** Most episodes and scenes open on 1.5–3 s of a wide shot that already has action in it. Armed Into Song
-  and 横扫魔域 put a vertical calligraphy location title on it ("the Qinzhoou prefectural office back hall", "Demon's Approach City").
+  and Swept the Demon Realm put a vertical calligraphy location title on it ("the Qinzhoou prefectural office back hall", "Demon's Approach City").
   - The skill's old rule, "never an establishing shot", is replaced by this pattern, with a cold open as the
     alternative.
   - `check` lists scenes that open without a WS or MS.
@@ -478,7 +478,7 @@ loudness and format. Episodes 1, 5 and 12 were studied frame by frame, including
   true peak −1.
 
 **Not adopted.**
-- **Sub-second flash cuts.** Mama Wang has 18% of shots under 1 s and 横扫魔域 14%, in comic beats and action. H3 does not
+- **Sub-second flash cuts.** Mama Wang has 18% of shots under 1 s and Swept the Demon Realm 14%, in comic beats and action. H3 does not
   place a cut that precisely inside a clip. The 1.2 s minimum stays.
 - **Transition stings.** Ink wipes (Armed Into Song) and white flashes (Mama Wang) appear only in single series.
 
@@ -501,7 +501,7 @@ stinger-on-every-cut habit: loud transients start no more often at cuts than at 
 sparse (`check` notes more than one every ~10 s). Verified on a copy of waimai2 E01: thunder, buzz, sting, riser and
 hit landed on their cuts at +1 to +6 dB over the moment without them.
 
-**What the fresh-agent waimai2 test exposed, and the fixes.** A new agent wrote 《雨夜外卖》 (2 episodes) from the
+**What the fresh-agent waimai2 test exposed, and the fixes.** A new agent wrote Rainy Night Delivery (2 episodes) from the
 skill alone. Both masters (102.7 s and 77.5 s) came out with no error exits and no clip re-takes. Faces, eyelines and
 light held, and both episodes end on a held face. `make E01,E02` took 78 min: 35 min of it was render, with no 5090
 stock for the first 18 min; 16 min was clip QC, 11 of them stalled on an SSL handshake; 16 min was upscale. Fixed:
