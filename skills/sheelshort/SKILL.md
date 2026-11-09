@@ -75,7 +75,7 @@ three characters (better two). Fields per cut: `type`, `subjects`, `speaker`, `o
 `emotion`, `delivery`, `composition`, `action`, `camera`, `sound`, `end`, `props`. Write character and location
 references in text as `{charid}` / `{loc}`.
 
-**Pacing like the mature series** (the original 全村抢 E01: 151 s, 73 shots, mean 2.1 s, median 1.8 s, 2 shots over
+**Pacing like the mature series** (the original Village Grab E01: 151 s, 73 shots, mean 2.1 s, median 1.8 s, 2 shots over
 5 s): aim for **2–2.5 s per cut, 4–6 cuts per 10–15 s clip**, and keep the script's full content (spread over more
 60–90 s episodes, not cut down to a summary). Long lines are split with **reaction cuts** (`RX`): the listener's close-up while the line continues
 off-screen. `check` lets a line span its own cut plus the `RX` cuts after it.
