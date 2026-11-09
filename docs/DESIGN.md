@@ -10,15 +10,15 @@
 ### 0.1 Confirmed setup
 - **Market:** Chinese-language short drama first. **No automated upload.** The pipeline ends at the delivery package.
 - **Compute:** the user's two rented ComfyUI servers. Each is an RTX 5090 (32 GB) running ComfyUI 0.42.1 with about 330 ready-made workflows. **H3 runs locally inside ComfyUI** (`MiniMaxH3ReferenceToVideo` and related nodes), so no MiniMax API key is needed. Jobs go to the least busy server. The MiniMax cloud API adapter (`spike/h3.py`) stays as an optional backend.
-- **Default video workflow: U22** (`U22-YZ金鱼-MiniMax-H3-多参考生视频-优化版`). It is two-pass reference-to-video with a turbo LoRA and a 1.3× latent upscale, and takes references by filename through `ZealmanH3PickReferenceMedia` (≤9 images, ≤3 videos, ≤3 audio clips). Variants of it are kept for comparison: `u22_selflift` (终极篇, SelfLift sampler with fight/drama LoRA switches) and `u22_full`.
+- **Default video workflow: U22** (`U22-YZ Goldfish-MiniMax-H3 multi-reference video optimized`). It is two-pass reference-to-video with a turbo LoRA and a 1.3× latent upscale, and takes references by filename through `ZealmanH3PickReferenceMedia` (≤9 images, ≤3 videos, ≤3 audio clips). Variants of it are kept for comparison: `u22_selflift` (终极篇, SelfLift sampler with fight/drama LoRA switches) and `u22_full`.
 - **Helper workflows on the servers:**
 
 | Job | Workflow |
 |---|---|
-| Close-ups, props, location plates | `C01-文生图-Zimage基础版` (Z-Image turbo + AWPortrait LoRA) |
-| Three-view sheets, keyframes, image repairs | `Y01-图像修改千问2511` (Qwen-Image-Edit 2511, extended to 3 inputs) |
-| Designed voices | `N06-Qwen3TTS音频创造` (voice from a written description) |
-| Cloned voices | `N06-Qwen3TTS音频克隆` (a user recording speaking new lines) |
+| Close-ups, props, location plates | `C01-text-to-image-Zimage basic` (Z-Image turbo + AWPortrait LoRA) |
+| Three-view sheets, keyframes, image repairs | `Y01-image edit Qwen 2511` (Qwen-Image-Edit 2511, extended to 3 inputs) |
+| Designed voices | `N06-Qwen3TTS audio creation` (voice from a written description) |
+| Cloned voices | `N06-Qwen3TTS audio cloning` (a user recording speaking new lines) |
 
   `Y04` is deliberately not used because it loads an NSFW checkpoint.
 - **Workflow handling:** the servers store UI-format workflows. The ComfyUI frontend's own `graphToPrompt()` converts them to API format; hand conversion is error-prone with Set/Get nodes, autogrow inputs and bypass switches. Every job is then **validated against the server's live node schemas** before it is queued. This caught a real bug in U22 as shipped: an updated node received the strings `"cuda"`/`"bf16"` in two BOOLEAN inputs.
@@ -72,7 +72,7 @@ These are enforced in `spike/h3prompt.py` (`check_rules` plus the prompt builder
 ### 0.5 Reference inputs (location libraries and blockouts built in the spike; faces and voices proposed)
 - **Fixed scene references (location libraries): built** (`spike/library.py`, `spike.py locations`):
   - **Input:** any number of photos per location in `inputs/locations/<loc>/` (sub-folders allowed; the flat `inputs/loc_<id>_*` form still works).
-  - **Indexing:** each photo is hashed and tagged once by the servers' own vision model: Qwen3.8-27B through the llama.cpp nodes of the `通用反推` workflow, about 10 s per photo. The tags are framing (wide/medium/detail), what the camera faces, features, landmarks, time of day, people and visible text. The index is `library.json` next to the photos. People can pin or veto a photo, allow people or text in it, or rewrite its tags, and re-indexing keeps those edits.
+  - **Indexing:** each photo is hashed and tagged once by the servers' own vision model: Qwen3.8-27B through the llama.cpp nodes of the `generic captioning` workflow, about 10 s per photo. The tags are framing (wide/medium/detail), what the camera faces, features, landmarks, time of day, people and visible text. The index is `library.json` next to the photos. People can pin or veto a photo, allow people or text in it, or rewrite its tags, and re-indexing keeps those edits.
   - **Selection:** for each clip, up to 3 photos (configurable) within the remaining 9-image budget:
     - Dropped: photos with people or legible text, which would leak into the video as extras or on-screen text, and photos at the wrong time of day.
     - Picked: greedily, to cover what each cut's background needs (its `bg` hint or composition text, matched against the tags), preferring wide photos for medium shots and medium or detail photos for close-ups, skipping near-duplicates (dHash), and ranking real photos above synthetic ones.
@@ -131,7 +131,7 @@ Scene: two 12 s clips, each four 3 s cuts, Mandarin dialogue plus one voice-over
       1. A vision check on keyframes: head count and who is where, matched against the measured view.
       2. Per-cut location pictures chosen to match the camera's view direction, so the references stop contradicting "not in frame".
       3. Depth control for angles the text can't force.
-  - **Quality of those runs, unchanged by the bug:** dialogue CER is 0% except one homophone ASR slip (家/嫁) in E/K1, cross-clip voice similarity is 0.69–0.88, and render time is ~7–8 min per clip.
+  - **Quality of those runs, unchanged by the bug:** dialogue CER is 0% except one homophone ASR slip (a homophone) in E/K1, cross-clip voice similarity is 0.69–0.88, and render time is ~7–8 min per clip.
   - **Known issue:** Lu Chen's thin scar is still drawn as a long line in some close-ups (open issue 1 below).
 - **Decision:** variant C, the locked reference pack plus reference voices, is the production default. A keyframe on its own does not hold identity.
 - **Throughput:** a 60–90 s episode is 5–8 clips. That is roughly 35–55 GPU-minutes, or about 20–30 min wall-clock on the two servers.
@@ -246,7 +246,7 @@ cliffhanger line.
 
 ### 0.10 Quality pass 2 (2026-10-31): every episode at reference pacing
 **Episodes.** E02–E04 were rewritten from the complete script episodes, as E01 was. They use reaction cuts, a second
-villager (村妇), Gao Liang's aide, and a city street:
+villager (village woman), Gao Liang's aide, and a city street:
 
 | Episode | Before | Now (planned) |
 |---|---|---|
@@ -426,18 +426,18 @@ field, real skin, and eyelines off the lens. No change without an A/B. The next 
 
 ### 0.14 Five reference hits (2026-10-31): production logic
 
-The owner picked five current hits: 王妈在顾家当保姆后全家只会搞笑了 (live-action comedy), 持械入宋 S10
-(photoreal AI, period), 备用联系人 (photoreal AI, urban romance), 和离后我带女儿横扫魔域 (3D xianxia) and
-反派拿捏 S3 (stylised AI romance). All 100 episodes (20 per series) were measured with ffmpeg: scene-change cuts,
+The owner picked five current hits: After Mama Wang Becomes a Nanny, the Family Only Knows How to Be Funny (live-action comedy), Armed Into Song S10
+(photoreal AI, period), Backup Contact (photoreal AI, urban romance), After Divorce I Took My Daughter and Swept the Demon Realm (3D xianxia) and
+Handling the Villain S3 (stylised AI romance). All 100 episodes (20 per series) were measured with ffmpeg: scene-change cuts,
 loudness and format. Episodes 1, 5 and 12 were studied frame by frame, including their opening and closing seconds.
 
 | Series | Episode (median) | Mean shot | Median shot | Shots > 5 s | Shots < 1 s | First 10 s | LUFS |
 |---|---|---|---|---|---|---|---|
-| 王妈在顾家当保姆 | 84 s | 2.10 s | 1.64 s | 5% | 18% | 5.5 shots | −10.5 |
-| 持械入宋 S10 | 88 s | 2.89 s | 2.84 s | 4% | 1% | 4 | −10.3 |
-| 备用联系人 | 169 s | 3.27 s | 3.02 s | 15% | 2% | 4 | −15.0 |
-| 和离后…横扫魔域 | 70 s | 2.53 s | 2.21 s | 6% | 14% | 4.5 | −9.8 |
-| 反派拿捏 S3 | 64 s | 2.51 s | 2.29 s | 4% | 5% | 4 | −13.4 |
+| Mama Wang as a Nanny | 84 s | 2.10 s | 1.64 s | 5% | 18% | 5.5 shots | −10.5 |
+| Armed Into Song S10 | 88 s | 2.89 s | 2.84 s | 4% | 1% | 4 | −10.3 |
+| Backup Contact | 169 s | 3.27 s | 3.02 s | 15% | 2% | 4 | −15.0 |
+| After Divorce... Swept the Demon Realm | 70 s | 2.53 s | 2.21 s | 6% | 14% | 4.5 | −9.8 |
+| Handling the Villain S3 | 64 s | 2.51 s | 2.29 s | 4% | 5% | 4 | −13.4 |
 | 全村抢 recut (ours) | 118–176 s | 2.45–3.01 s | 2.4–2.5 s | 2–10% | 0% | – | −14.8 |
 
 **What we already match.**
@@ -453,8 +453,8 @@ loudness and format. Episodes 1, 5 and 12 were studied frame by frame, including
     cliffhangers.
   - `check` notes any episode over 100 s or under 45 s.
   - The script's content is kept, spread over more episodes.
-- **Scene openings.** Most episodes and scenes open on 1.5–3 s of a wide shot that already has action in it. 持械入宋
-  and 横扫魔域 put a vertical calligraphy location title on it ("秦州府衙后堂", "魔临城").
+- **Scene openings.** Most episodes and scenes open on 1.5–3 s of a wide shot that already has action in it. Armed Into Song
+  and 横扫魔域 put a vertical calligraphy location title on it ("the Qinzhoou prefectural office back hall", "Demon's Approach City").
   - The skill's old rule, "never an establishing shot", is replaced by this pattern, with a cold open as the
     alternative.
   - `check` lists scenes that open without a WS or MS.
@@ -463,7 +463,7 @@ loudness and format. Episodes 1, 5 and 12 were studied frame by frame, including
 - **Endings.** All five end on a face at the peak, held 2–3 s and cut hard. The last shot runs a median 2.0–3.1 s.
   - The skill says so.
   - `check` notes an episode that ends on a wide shot, an insert, or a shot under 2 s.
-- **Shot sizes.** 王妈 and 持械入宋 shoot nearly all dialogue chest-up, with hands and gestures in frame, and punch in
+- **Shot sizes.** Mama Wang and Armed Into Song shoot nearly all dialogue chest-up, with hands and gestures in frame, and punch in
   to a close-up for peaks. Our close-ups were face-filling throughout.
   - New `MCU` type: mid-chest up on a 65mm lens, may carry a line, its own size class, so an MCU-to-CU punch-in is
     a real cut.
@@ -478,9 +478,9 @@ loudness and format. Episodes 1, 5 and 12 were studied frame by frame, including
   true peak −1.
 
 **Not adopted.**
-- **Sub-second flash cuts.** 王妈 has 18% of shots under 1 s and 横扫魔域 14%, in comic beats and action. H3 does not
+- **Sub-second flash cuts.** Mama Wang has 18% of shots under 1 s and 横扫魔域 14%, in comic beats and action. H3 does not
   place a cut that precisely inside a clip. The 1.2 s minimum stays.
-- **Transition stings.** Ink wipes (持械入宋) and white flashes (王妈) appear only in single series.
+- **Transition stings.** Ink wipes (Armed Into Song) and white flashes (Mama Wang) appear only in single series.
 
 ---
 
@@ -580,7 +580,7 @@ Series safety, for 110 episodes run unattended:
   compared by name and type only: option lists and defaults differ between servers of one image.
 - **Drift** (`drift.py`): per episode, SFace identity per character, colour (luma, black level, white balance) and
   voice pitch against the cast, with alarms against the series' own running medians.
-- **Regression:** golden prompts (the 雲境 showcase) and golden graphs in `tests/golden/`, CI on every push, and
+- **Regression:** golden prompts (the Yunjing showcase) and golden graphs in `tests/golden/`, CI on every push, and
   `smoke`: one clip at its production seed against an accepted reference render after a server change.
 - **Compliance:** the visible AI label (top right, all episode by default) and the GB 45438-2025 `AIGC` metadata field
   in every master and clean cut; `[compliance] terms` and traffic-diversion notes in `check`.
