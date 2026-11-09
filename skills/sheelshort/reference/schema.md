@@ -5,7 +5,7 @@ A complete worked example is `projects/waimai2/` (bible.json, episodes/E01.json,
 ## bible.json
 ```json
 {
-  "title": "归来 (The Return)",
+  "title": "(The Return)",
   "language": "zh-CN",
   "style": "The target video is a photorealistic live-action Chinese vertical short drama in 9:16 with cinematic composition, ...",
   "look_preset": "cinematic",
@@ -19,12 +19,12 @@ A complete worked example is `projects/waimai2/` (bible.json, episodes/E01.json,
       "costume": "a deep-red satin slip evening gown with thin straps, ankle length, black pointed-toe high heels, small pearl stud earrings",
       "voice_en": "in a warm, slightly low female voice",
       "demeanor": "composed and warm, attentive eyes, a quiet strength; never sarcastic, never contemptuous",
-      "voice_design": "二十八岁左右的成年女性，音色温暖、略偏低沉，普通话标准，语速中等",
-      "voice_sample": "我等了你整整三年，每天晚上都站在这扇窗前，看着这座城市的灯一盏一盏地熄灭。"
+      "voice_design": "an adult woman around 28, warm and slightly low voice, standard Mandarin, moderate pace",
+      "voice_sample": "I waited for you for three whole years, every night standing at this window watching the city's lights go out one by one."
     }
   },
   "locations": {
-    "penthouse": {"name": "penthouse living room", "name_zh": "顶层公寓", "look": "...", "keep": "...", "time": "night",
+    "penthouse": {"name": "penthouse living room", "name_zh": "Penthouse", "look": "...", "keep": "...", "time": "night",
                   "light": "night; warm brass table lamps as the key light against the cool blue night skyline"}
   },
   "props": {
@@ -55,7 +55,7 @@ clean (comedy, bright urban stories); `glossy` is warm and glowing with soft bok
 ## episodes/E01.json
 ```json
 {
-  "id": "E01", "title": "归来", "logline": "...",
+  "id": "E01", "title": "The Return", "logline": "...",
   "clips": [
     {
       "id": "K1", "location": "penthouse",
@@ -65,9 +65,9 @@ clean (comedy, bright urban stories); `glossy` is warm and glowing with soft bok
         {"type": "MS", "subjects": ["linxia", "luchen"], "composition": "...", "action": "...", "camera": "Slow push in, ...",
          "sound": "...", "end": "...", "props": ["wine_glass"]},
         {"type": "CU", "subjects": ["linxia"], "speaker": "linxia",
-         "line": "整整三年，我以为你死了。",
-         "say": "整整三年……我以为你——死了。",
-         "act": "压着哭腔，声音发抖，又恨又委屈，最后两个字几乎说不出口",
+         "line": "Three whole years... I thought you were dead.",
+         "say": "Three whole years... I thought you were dead.",
+         "act": "holding back tears, voice shaking, resentful and aggrieved, the last two words almost unspoken",
          "emotion": "broken",
          "delivery": "low and trembling, holding back anger and tears",
          "composition": "...", "action": "...", "camera": "Static camera ...", "end": "..."}
@@ -100,8 +100,8 @@ Episode fields for the season ledger (`ledger.py`; SKILL.md §3):
 
 | episode field | meaning |
 |---|---|
-| `when` | the story day and time the episode starts ("第3天 傍晚") |
-| `jump` | time has passed since the episode before ("三天后"); without it the episode continues straight on |
+| `when` | the story day and time the episode starts ("Day 3, evening") |
+| `jump` | time has passed since the episode before ("three days later"); without it the episode continues straight on |
 | `picks_up` | how the episode opens on the previous episode's cliffhanger, when its first clip shows other people |
 | `changes` | what the story changes, each after a clip (`"after": "K3"`) or at the end: `{"who", "injury": {part: what is seen}}`, `{"who", "heals": [part]}`, `{"who", "learns": [fact]}`, `{"who", "carries" / "drops": [prop]}`, `{"prop", "where", "holder"}`, `{"prop", "gone": "how"}`, `{"prop", "back": "how"}` |
 
