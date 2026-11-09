@@ -10,7 +10,7 @@
 ### 0.1 Confirmed setup
 - **Market:** Chinese-language short drama first. **No automated upload.** The pipeline ends at the delivery package.
 - **Compute:** the user's two rented ComfyUI servers. Each is an RTX 5090 (32 GB) running ComfyUI 0.42.1 with about 330 ready-made workflows. **H3 runs locally inside ComfyUI** (`MiniMaxH3ReferenceToVideo` and related nodes), so no MiniMax API key is needed. Jobs go to the least busy server. The MiniMax cloud API adapter (`spike/h3.py`) stays as an optional backend.
-- **Default video workflow: U22** (`U22-YZ Goldfish-MiniMax-H3 multi-reference video optimized`). It is two-pass reference-to-video with a turbo LoRA and a 1.3× latent upscale, and takes references by filename through `ZealmanH3PickReferenceMedia` (≤9 images, ≤3 videos, ≤3 audio clips). Variants of it are kept for comparison: `u22_selflift` (终极篇, SelfLift sampler with fight/drama LoRA switches) and `u22_full`.
+- **Default video workflow: U22** (`U22-YZ Goldfish-MiniMax-H3 multi-reference video optimized`). It is two-pass reference-to-video with a turbo LoRA and a 1.3× latent upscale, and takes references by filename through `ZealmanH3PickReferenceMedia` (≤9 images, ≤3 videos, ≤3 audio clips). Variants of it are kept for comparison: `u22_selflift` (Final Chapter, SelfLift sampler with fight/drama LoRA switches) and `u22_full`.
 - **Helper workflows on the servers:**
 
 | Job | Workflow |
@@ -549,7 +549,7 @@ and the series structure) found what breaks at the scale of ~1000 clips. Fixed i
 - Costume changes (`outfits`), phone lines (`via`), extras, sound effects: §0.15.
 
 Open, needing the owner's decisions or a test first (in the review page): episode count vs. 60-90 s length for a
-110-集 script, paywall cadence, a series music kit, identity checks in clip QC (face similarity), voice-identity
+110-episode script, paywall cadence, a series music kit, identity checks in clip QC (face similarity), voice-identity
 scoring per line, prop states and injuries, a series layer (`series.json`, `continuity.json`, `check --series`), group
 scenes beyond three characters.
 
